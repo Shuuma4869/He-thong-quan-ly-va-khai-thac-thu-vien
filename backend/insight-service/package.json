@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10 <11"
+  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
@@ -10,6 +14,8 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
@@ -26,8 +32,8 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
-    "@nestjs/cli": "11.0.10",
-    "@nestjs/schematics": "11.0.7",
+    "@nestjs/cli": "11.0.24",
+    "@nestjs/schematics": "11.1.0",
     "@nestjs/testing": "11.2.6",
     "@types/express": "5.0.3",
     "@types/jest": "30.0.0",

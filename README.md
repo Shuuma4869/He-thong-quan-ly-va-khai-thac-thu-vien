@@ -16,24 +16,29 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 ## Yêu cầu môi trường
 
-Git, Java 21, Node.js 20+, npm 10+, Docker Engine/Desktop và Docker Compose. Maven hệ thống không bắt buộc vì `core-service` có Maven Wrapper tự quản lý Maven 3.9.11.
+Git, Java 21, Node.js 22.x, npm 10.x, Docker Engine/Desktop và Docker Compose. Version được pin trong `.java-version`, `.nvmrc`, `.node-version` và `package.json`. Maven hệ thống không bắt buộc vì Core có Maven Wrapper 3.9.11.
 
-## Chạy local
+## Khởi chạy lần đầu
+
+Từ thư mục clone trên Windows PowerShell:
 
 ```powershell
-Copy-Item .env.example .env
-docker compose up -d postgres redis kafka minio
+.\scripts\bootstrap-local.ps1
+.\scripts\smoke-test.ps1
+.\scripts\check-quality.ps1
+```
 
-cd backend/core-service
-.\mvnw.cmd spring-boot:run
+Bootstrap kiểm tra prerequisite, tạo `.env` nếu thiếu, chạy `npm ci`, Prisma validate/generate/deploy và khởi động hạ tầng. Script không ghi đè `.env` và không xóa volume.
 
-cd ../insight-service
-npm install
-npm run prisma:generate
+Sau đó mở ba terminal tại root project:
+
+```powershell
+.\scripts\start-core.ps1
+
+cd backend\insight-service
 npm run start:dev
 
-cd ../../frontend
-npm install
+cd frontend
 npm run dev
 ```
 
@@ -42,10 +47,7 @@ Frontend: `http://localhost:5173`; Core health: `http://localhost:8080/api/v1/he
 ## Kiểm thử và build
 
 ```powershell
-cd backend/core-service; .\mvnw.cmd test; .\mvnw.cmd package
-cd ../insight-service; npm test; npm run build
-cd ../../frontend; npm run typecheck; npm test; npm run build; npm run lint
-cd ..; docker compose config --quiet
+.\scripts\check-quality.ps1
 ```
 
 ## Cấu trúc
@@ -58,4 +60,4 @@ cd ..; docker compose config --quiet
 - `kiem-thu/`: nơi dành cho kiểm thử xuyên service.
 - `ho-so-nop-bai/`: khung lưu minh chứng ở các giai đoạn sau.
 
-Đọc [hướng dẫn chạy local](tai-lieu/08-van-hanh/chay-local.md) và [tổng quan dự án](tai-lieu/00-bat-dau/tong-quan-du-an.md) trước khi phát triển.
+Đọc [hướng dẫn chạy local](tai-lieu/08-van-hanh/chay-local.md), [xử lý lỗi môi trường](tai-lieu/08-van-hanh/xu-ly-loi-moi-truong.md) và [pre-push gate](tai-lieu/08-van-hanh/pre-push-gate.md) khi cần chi tiết.

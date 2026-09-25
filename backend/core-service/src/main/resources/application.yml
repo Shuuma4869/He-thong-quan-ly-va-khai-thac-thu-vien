@@ -2,7 +2,7 @@ spring:
   application:
     name: lams-core-service
   datasource:
-    url: ${CORE_DATABASE_URL:jdbc:postgresql://localhost:5432/lams_core}
+    url: ${CORE_DATABASE_URL:jdbc:postgresql://localhost:15432/lams_core}
     username: ${CORE_DATABASE_USERNAME:lams}
     password: ${CORE_DATABASE_PASSWORD:lams-local-password}
   jpa:
@@ -14,9 +14,9 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:16379}
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
     producer:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:

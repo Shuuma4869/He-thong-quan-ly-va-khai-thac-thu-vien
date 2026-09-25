@@ -1,0 +1,21 @@
+# Pre-push gate
+
+- [ ] Java 21
+- [ ] Node 22
+- [ ] `npm ci` PASS
+- [ ] Spring test/package PASS
+- [ ] Nest test/build PASS
+- [ ] Frontend typecheck/lint/test/build PASS
+- [ ] Docker Compose config PASS
+- [ ] PostgreSQL `SELECT 1` PASS
+- [ ] Redis PING/SET/GET/DEL PASS
+- [ ] Kafka INTERNAL/EXTERNAL produce-consume PASS
+- [ ] MinIO health PASS
+- [ ] Flyway PASS
+- [ ] Prisma validate/generate/deploy PASS
+- [ ] Core Docker image PASS
+- [ ] Insight Docker image PASS
+- [ ] Frontend Docker image PASS
+- [ ] Clean clone rehearsal PASS
+- [ ] Không có secret thật
+- [ ] `git status` clean

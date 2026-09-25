@@ -1,4 +1,6 @@
 .env
+.env.local
+.env.*.local
 node_modules/
 dist/
 coverage/
@@ -10,6 +12,7 @@ target/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+Desktop.ini
 **/.mvn/wrapper/dists/
 playwright-report/
 test-results/
