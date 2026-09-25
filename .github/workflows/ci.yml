@@ -1,0 +1,30 @@
+name: Kiểm tra starter
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: chmod +x mvnw && ./mvnw test
+        working-directory: backend/core-service
+  node-apps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: '**/package-lock.json' }
+      - run: npm ci
+        working-directory: backend/insight-service
+      - run: npm test && npm run build
+        working-directory: backend/insight-service
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck && npm test && npm run lint && npm run build
+        working-directory: frontend

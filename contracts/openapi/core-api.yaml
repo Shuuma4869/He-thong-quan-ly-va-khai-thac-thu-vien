@@ -1,0 +1,53 @@
+openapi: 3.1.0
+info:
+  title: LAMS Core API
+  version: 0.1.0
+  description: Contract nền tảng. Chỉ health endpoint đã được hiện thực ở giai đoạn 01.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+paths:
+  /health:
+    get:
+      operationId: getCoreHealth
+      summary: Kiểm tra tiến trình Core Service
+      tags: [System]
+      responses:
+        '200':
+          description: Tiến trình đang phản hồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [service, status, timestamp]
+      properties:
+        service:
+          type: string
+          const: lams-core-service
+        status:
+          type: string
+          enum: [UP]
+        timestamp:
+          type: string
+          format: date-time
+    ProblemDetail:
+      type: object
+      description: Schema dự kiến cho lỗi API tương lai, chưa có endpoint nghiệp vụ sử dụng.
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        requestId: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }

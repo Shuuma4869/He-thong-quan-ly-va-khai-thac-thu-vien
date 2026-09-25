@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+BASE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+MAVEN_DIR="$BASE_DIR/.mvn/wrapper/dists/apache-maven-3.9.11"
+if [ ! -x "$MAVEN_DIR/bin/mvn" ]; then
+  ZIP_PATH="${TMPDIR:-/tmp}/lams-maven-3.9.11.zip"
+  mkdir -p "$BASE_DIR/.mvn/wrapper/dists"
+  curl -fsSL "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.zip" -o "$ZIP_PATH"
+  unzip -q "$ZIP_PATH" -d "$BASE_DIR/.mvn/wrapper/dists"
+  rm -f "$ZIP_PATH"
+fi
+exec "$MAVEN_DIR/bin/mvn" "$@"

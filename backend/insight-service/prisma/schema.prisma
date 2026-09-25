@@ -1,0 +1,16 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("INSIGHT_DATABASE_URL")
+}
+
+model ServiceMetadata {
+  key       String   @id @map("metadata_key") @db.VarChar(100)
+  value     String   @map("metadata_value")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("service_metadata")
+}

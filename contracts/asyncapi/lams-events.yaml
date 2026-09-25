@@ -1,0 +1,70 @@
+asyncapi: 3.0.0
+info:
+  title: LAMS Planned Events
+  version: 0.1.0
+  description: Contract định hướng; toàn bộ message trong tài liệu này là planned và chưa có producer/consumer nghiệp vụ.
+defaultContentType: application/json
+servers:
+  localKafka:
+    host: localhost:9092
+    protocol: kafka
+channels:
+  circulationEvents:
+    address: lams.circulation.events.v1
+    messages:
+      copyBorrowed: { $ref: '#/components/messages/COPY_BORROWED' }
+      copyReturned: { $ref: '#/components/messages/COPY_RETURNED' }
+  holdEvents:
+    address: lams.hold.events.v1
+    messages:
+      holdCreated: { $ref: '#/components/messages/HOLD_CREATED' }
+      holdReady: { $ref: '#/components/messages/HOLD_READY' }
+      holdExpired: { $ref: '#/components/messages/HOLD_EXPIRED' }
+  discoveryEvents:
+    address: lams.discovery.events.v1
+    messages:
+      searchPerformed: { $ref: '#/components/messages/SEARCH_PERFORMED' }
+      searchZeroResult: { $ref: '#/components/messages/SEARCH_ZERO_RESULT' }
+  inventoryEvents:
+    address: lams.inventory.events.v1
+    messages:
+      mismatchFound: { $ref: '#/components/messages/INVENTORY_MISMATCH_FOUND' }
+operations:
+  plannedCirculationPublish:
+    action: send
+    channel: { $ref: '#/channels/circulationEvents' }
+    x-status: planned
+  plannedHoldPublish:
+    action: send
+    channel: { $ref: '#/channels/holdEvents' }
+    x-status: planned
+  plannedDiscoveryPublish:
+    action: send
+    channel: { $ref: '#/channels/discoveryEvents' }
+    x-status: planned
+  plannedInventoryPublish:
+    action: send
+    channel: { $ref: '#/channels/inventoryEvents' }
+    x-status: planned
+components:
+  schemas:
+    EventEnvelope:
+      type: object
+      required: [eventId, eventType, occurredAt, aggregateId, version, data]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string }
+        occurredAt: { type: string, format: date-time }
+        aggregateId: { type: string }
+        correlationId: { type: string }
+        version: { type: integer, minimum: 1 }
+        data: { type: object, additionalProperties: true }
+  messages:
+    COPY_BORROWED: { name: COPY_BORROWED, title: Bản sách đã được mượn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    COPY_RETURNED: { name: COPY_RETURNED, title: Bản sách đã được trả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    HOLD_CREATED: { name: HOLD_CREATED, title: Yêu cầu giữ chỗ đã tạo, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    HOLD_READY: { name: HOLD_READY, title: Yêu cầu giữ chỗ sẵn sàng nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    HOLD_EXPIRED: { name: HOLD_EXPIRED, title: Yêu cầu giữ chỗ hết hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    SEARCH_PERFORMED: { name: SEARCH_PERFORMED, title: Tìm kiếm đã thực hiện, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    SEARCH_ZERO_RESULT: { name: SEARCH_ZERO_RESULT, title: Tìm kiếm không có kết quả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    INVENTORY_MISMATCH_FOUND: { name: INVENTORY_MISMATCH_FOUND, title: Phát hiện sai lệch kiểm kê, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }

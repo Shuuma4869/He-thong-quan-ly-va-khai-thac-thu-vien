@@ -1,0 +1,15 @@
+.env
+node_modules/
+dist/
+coverage/
+target/
+.idea/
+.vscode/
+*.iml
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+**/.mvn/wrapper/dists/
+playwright-report/
+test-results/

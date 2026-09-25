@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: lams-core-service
+  datasource:
+    url: ${CORE_DATABASE_URL:jdbc:postgresql://localhost:5432/lams_core}
+    username: ${CORE_DATABASE_USERNAME:lams}
+    password: ${CORE_DATABASE_PASSWORD:lams-local-password}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: lams-core-service
+      auto-offset-reset: earliest
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+server:
+  port: ${CORE_PORT:8080}
