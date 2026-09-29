@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.shuuma4869.lams.core.shared.config.SecurityConfig;
+import io.github.shuuma4869.lams.core.shared.security.SecurityProblemWriter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -14,8 +15,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
         value = HealthController.class,
-        properties = "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration")
-@Import(SecurityConfig.class)
+        properties = {"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+                "lams.auth.jwt-secret=health-test-secret-with-at-least-32-bytes"})
+@Import({SecurityConfig.class, SecurityProblemWriter.class})
 class HealthControllerTest {
     @Autowired
     private MockMvc mockMvc;
