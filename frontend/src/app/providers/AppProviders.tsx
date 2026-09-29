@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider, useIsFetching } from '@tanstack/react-query';
 import { type PropsWithChildren, useState } from 'react';
 import { AppErrorBoundary } from '../../shared/components/AppErrorBoundary';
+import { AuthProvider } from '../../features/auth/AuthProvider';
 
 function GlobalQueryIndicator() {
   const pendingRequests = useIsFetching();
@@ -22,7 +23,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <GlobalQueryIndicator />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
   );

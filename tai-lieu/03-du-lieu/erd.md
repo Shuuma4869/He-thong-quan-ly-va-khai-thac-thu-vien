@@ -40,6 +40,10 @@ erDiagram
   USERS ||--o{ NOTIFICATIONS : receives
   MEDIA_ASSETS }o--|| BOOKS : may_attach
 
+  USERS { uuid id PK; string member_code UK; string email_normalized UK; string password_hash; string status }
+  ROLES { string code PK }
+  USER_ROLES { uuid user_id FK; string role_code FK }
+  REFRESH_TOKENS { uuid id PK; uuid user_id FK; uuid family_id; string token_hash UK; datetime expires_at; datetime revoked_at }
   BOOKS { uuid id PK; string title; string normalized_title; datetime created_at }
   EDITIONS { uuid id PK; uuid book_id FK; string isbn13; int publication_year; uuid publisher_id FK }
   BOOK_COPIES { uuid id PK; uuid edition_id FK; string barcode UK; string status; uuid shelf_id FK; bigint version }
@@ -50,6 +54,8 @@ erDiagram
 ```
 
 ## Quy tắc trọng yếu
+
+Phase 1A đã triển khai `USERS`, `ROLES`, `USER_ROLES`, `REFRESH_TOKENS` bằng Flyway V2. `USERS.id` là UUID cho Member/Profile tham chiếu sau này; `member_code` do Identity tạo, duy nhất. Chưa có bảng MemberProfile.
 
 - Book, Edition và Copy là ba aggregate/data concept khác nhau.
 - Chỉ một loan chưa trả được tồn tại cho một copy; thực thi bằng constraint/index cùng transaction.

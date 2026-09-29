@@ -2,11 +2,68 @@ openapi: 3.1.0
 info:
   title: LAMS Core API
   version: 0.1.0
-  description: Contract nền tảng. Chỉ health endpoint đã được hiện thực ở giai đoạn 01.
+  description: Core health và Identity/Auth của Phase 1A.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
 paths:
+  /auth/register:
+    post:
+      operationId: register
+      tags: [Auth]
+      summary: Tạo tài khoản READER và đăng nhập ngay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/AuthSession' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /auth/login:
+    post:
+      operationId: login
+      tags: [Auth]
+      summary: Đăng nhập bằng email hoặc mã thành viên
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthSession' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [Auth]
+      summary: Rotate refresh cookie và cấp access token mới
+      responses:
+        '200': { $ref: '#/components/responses/AuthSession' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      summary: Thu hồi refresh family và xóa cookie
+      responses:
+        '204': { description: Đã đăng xuất; access token cũ hết hạn theo TTL }
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [Auth]
+      summary: Lấy thông tin Identity của người đang đăng nhập
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Identity hiện tại
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUserResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
   /health:
     get:
       operationId: getCoreHealth
@@ -20,7 +77,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    AuthSession:
+      description: Access JWT trong JSON; refresh opaque chỉ trong HttpOnly cookie lams_refresh
+      headers:
+        Set-Cookie:
+          schema: { type: string }
+          description: 'lams_refresh; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Secure theo cấu hình'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AuthSessionResponse' }
+    Problem:
+      description: Lỗi theo Problem Details
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
   schemas:
+    Role:
+      type: string
+      enum: [READER, LIBRARIAN, ADMIN]
+    RegisterRequest:
+      type: object
+      required: [fullName, email, password]
+      description: Role và memberCode luôn do server quyết định; trường lạ bị bỏ qua, không được dùng để cấp quyền.
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 150 }
+        email: { type: string, format: email, maxLength: 320 }
+        password: { type: string, minLength: 8, maxLength: 128, writeOnly: true }
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier: { type: string, description: Email hoặc memberCode }
+        password: { type: string, writeOnly: true }
+        remember: { type: boolean, default: false }
+    CurrentUserResponse:
+      type: object
+      required: [id, memberCode, email, fullName, roles]
+      properties:
+        id: { type: string, format: uuid }
+        memberCode: { type: string, example: TV-0123456789ABCDEF }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        roles:
+          type: array
+          items: { $ref: '#/components/schemas/Role' }
+    AuthSessionResponse:
+      type: object
+      required: [accessToken, accessTokenExpiresAt, user]
+      properties:
+        accessToken: { type: string, description: JWT ngắn hạn, giữ trong memory }
+        accessTokenExpiresAt: { type: string, format: date-time }
+        user: { $ref: '#/components/schemas/CurrentUserResponse' }
     HealthResponse:
       type: object
       required: [service, status, timestamp]
@@ -36,7 +149,7 @@ components:
           format: date-time
     ProblemDetail:
       type: object
-      description: Schema dự kiến cho lỗi API tương lai, chưa có endpoint nghiệp vụ sử dụng.
+      required: [type, title, status, detail, instance, requestId]
       properties:
         type: { type: string, format: uri }
         title: { type: string }
@@ -46,8 +159,10 @@ components:
         requestId: { type: string }
         errors:
           type: array
-          items:
-            type: object
-            properties:
-              field: { type: string }
-              message: { type: string }
+          items: { $ref: '#/components/schemas/ValidationError' }
+    ValidationError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }

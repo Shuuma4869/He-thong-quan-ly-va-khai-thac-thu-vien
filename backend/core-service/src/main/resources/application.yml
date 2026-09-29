@@ -34,3 +34,13 @@ management:
 
 server:
   port: ${CORE_PORT:8080}
+
+lams:
+  auth:
+    jwt-secret: ${LAMS_JWT_SECRET}
+    access-ttl: ${AUTH_ACCESS_TOKEN_TTL:PT15M}
+    refresh-ttl: ${AUTH_REFRESH_TOKEN_TTL:PT8H}
+    remember-ttl: ${AUTH_REMEMBER_TOKEN_TTL:P30D}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

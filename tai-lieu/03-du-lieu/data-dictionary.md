@@ -4,7 +4,10 @@
 
 | Entity | Ý nghĩa | Thuộc tính/constraint quan trọng | Owner |
 |---|---|---|---|
-| User | Tài khoản reader/staff/admin | định danh duy nhất; trạng thái; credential hash; không lưu mật khẩu rõ | Core/Identity |
+| User (`users`, V2) | Tài khoản reader/staff/admin | UUID `id`; `member_code` unique; `email_normalized` unique; `password_hash` BCrypt; `status` ACTIVE/LOCKED/DISABLED; timestamps | Core/Identity |
+| Role (`roles`, V2) | Mã quyền | READER, LIBRARIAN, ADMIN; chỉ seed mã quyền | Core/Identity |
+| UserRole (`user_roles`, V2) | Quyền của tài khoản | FK `users.id`, `roles.code`; registration chỉ cấp READER | Core/Identity |
+| RefreshToken (`refresh_tokens`, V2) | Phiên làm mới | SHA-256 `token_hash` unique; `family_id`, expiry, revoke, replacement, remember; không lưu raw token | Core/Identity |
 | Book | Tác phẩm logic | title chuẩn hóa; description; không chứa số lượng availability | Core/Catalog |
 | Edition | Ấn bản của Book | ISBN, publisher, publication year, language; Book FK bắt buộc | Core/Catalog |
 | Copy | Bản vật lý | barcode unique; edition; branch/shelf; state; optimistic version | Core/Inventory |
