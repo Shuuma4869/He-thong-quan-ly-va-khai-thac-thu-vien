@@ -1,5 +1,6 @@
-import { BarChart3, BookCopy, ClipboardList, Library, Menu } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { BarChart3, BookCopy, ClipboardList, Library } from 'lucide-react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../features/auth/auth-context';
 
 const navigation = [
   { label: 'Bảng điều khiển', icon: BarChart3, to: '/nhan-vien/bang-dieu-khien' },
@@ -8,6 +9,9 @@ const navigation = [
 ];
 
 export function StaffLayout() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const signOut = async () => { await auth.logout(); navigate('/dang-nhap', { replace: true }); };
   return (
     <div className="staff-shell">
       <aside className="staff-sidebar" aria-label="Điều hướng nhân viên">
@@ -21,7 +25,7 @@ export function StaffLayout() {
         </nav>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="staff-topbar"><button className="icon-button" aria-label="Mở menu"><Menu size={20} /></button><span>Nền tảng vận hành thư viện</span></header>
+        <header className="staff-topbar"><span>Nền tảng vận hành thư viện</span><button className="ml-auto text-link" type="button" onClick={() => void signOut()}>Đăng xuất</button></header>
         <main className="p-5 md:p-8"><Outlet /></main>
       </div>
     </div>
