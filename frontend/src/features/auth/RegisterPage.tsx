@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, BookOpen, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError } from '../../shared/api/client';
 import { destinationFor, useAuth } from './auth-context';
+import { AuthHero } from './AuthHero';
 
 const schema = z.object({
   fullName: z.string().trim().min(1, 'Vui lòng nhập họ và tên.').max(150),
@@ -35,13 +36,7 @@ export function RegisterPage() {
     }
   };
   return <main className="login-page">
-    <section className="login-brand" aria-labelledby="brand-title"><div className="login-brand-content">
-      <Link className="inline-flex items-center gap-2 text-sm text-teal-50" to="/"><ArrowLeft size={16} /> Về trang chủ</Link>
-      <div className="mt-16 flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.16em]"><BookOpen /> LAMS · Hệ thống quản lí và khai thác thư viện</div>
-      <h1 id="brand-title" className="editorial-title mt-8">Tìm sách nhanh hơn.<br />Quản lý thư viện gọn hơn.</h1>
-      <p className="mt-6 max-w-xl text-base leading-7 text-teal-50/80">Tra cứu sách, theo dõi lượt mượn và xử lý các nghiệp vụ thư viện trong một hệ thống thống nhất.</p>
-      <div className="shelf-motif" aria-hidden="true"><span /><span /><span /><span /><span /></div>
-    </div></section>
+    <AuthHero />
     <section className="login-form-panel"><motion.div initial={reduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="w-full max-w-md">
       <p className="eyebrow">Tài khoản mới</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">Tạo tài khoản</h2>
       <p className="mt-3 text-muted">Điền thông tin cơ bản để bắt đầu sử dụng thư viện.</p>

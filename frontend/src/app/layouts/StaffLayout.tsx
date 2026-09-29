@@ -1,6 +1,7 @@
-import { BarChart3, BookCopy, ClipboardList, Library } from 'lucide-react';
+import { BarChart3, BookCopy, ClipboardList } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
+import { BrandLogo } from '../../shared/branding/BrandLogo';
 
 const navigation = [
   { label: 'Bảng điều khiển', icon: BarChart3, to: '/nhan-vien/bang-dieu-khien' },
@@ -15,7 +16,7 @@ export function StaffLayout() {
   return (
     <div className="staff-shell">
       <aside className="staff-sidebar" aria-label="Điều hướng nhân viên">
-        <div className="flex items-center gap-2 px-3 py-2 font-semibold"><Library size={20} /> LAMS Staff</div>
+        <div className="px-3 py-2"><BrandLogo variant="compact" /></div>
         <nav className="mt-8 grid gap-1">
           {navigation.map(({ label, icon: Icon, to }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `staff-nav ${isActive ? 'staff-nav-active' : ''}`}>
