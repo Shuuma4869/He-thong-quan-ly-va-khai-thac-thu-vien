@@ -2,7 +2,7 @@
 
 ## Bài toán và mục tiêu
 
-LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, audit và dữ liệu nhu cầu. Giai đoạn 01 chỉ xây nền tảng kỹ thuật để hai developer phát triển độc lập.
+LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, audit và dữ liệu nhu cầu. Hiện dự án đã có nền tảng kỹ thuật và phần xác thực của Phase 1A; các nghiệp vụ thư viện sẽ được phát triển theo từng giai đoạn.
 
 ## Actors
 
@@ -12,15 +12,15 @@ LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư vi
 
 ## Scope
 
-Foundation gồm React, Spring, NestJS, PostgreSQL, Redis, Kafka, MinIO, contract, sơ đồ, test foundation và runbook. MVP tương lai gồm danh tính, catalog, copy, mượn/trả/gia hạn và hold cơ bản.
+Repository hiện có React, Spring, NestJS, PostgreSQL, Redis, Kafka, MinIO, contract, tài liệu vận hành và kiểm thử nền. Danh tính và đăng nhập đã được triển khai. Member/Profile, catalog, bản sách, mượn/trả/gia hạn và giữ chỗ là các phần việc tiếp theo.
 
 ## Ngoài phạm vi hiện tại
 
-Không có auth production, CRUD nghiệp vụ, semantic search, thuật toán phân bổ hold, live shelf audit, recommendation, tích hợp metadata/email thật hoặc triển khai production.
+Chưa có CRUD nghiệp vụ thư viện, semantic search, thuật toán phân bổ giữ chỗ, kiểm kê theo kệ, đề xuất bổ sung sách, tích hợp metadata/email thật hoặc triển khai production.
 
 ## Flagship features định hướng
 
-Smart Discovery, Smart Hold & Availability, Live Shelf Audit và Demand-to-Acquisition Intelligence. Chúng mới có boundary và design notes.
+Smart Discovery, Smart Hold & Availability, Live Shelf Audit và Demand-to-Acquisition Intelligence hiện mới có tài liệu thiết kế, chưa có luồng nghiệp vụ hoàn chỉnh.
 
 ## Glossary
 
