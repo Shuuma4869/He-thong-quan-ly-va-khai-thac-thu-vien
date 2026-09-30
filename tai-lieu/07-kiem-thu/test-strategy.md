@@ -10,6 +10,6 @@
 | Concurrency | double borrow, hold assignment, expiry race | test đa thread + DB thật |
 | Load | P95/error/resource theo workload | chỉ sau khi có traffic model |
 
-Starter có test health Spring/Nest và empty state React; `PostgresContainerFoundation` chuẩn bị cho integration test. Không dùng H2 để chứng minh behavior PostgreSQL. Test dữ liệu tối thiểu, tạo trong test và dọn bằng transaction/container; không seed catalog giả ở runtime.
+Hiện có test health cho Spring/Nest, test giao diện React và kiểm thử Auth với PostgreSQL qua Testcontainers. `PostgresContainerFoundation` dùng chung cho integration test của Core. Không dùng H2 để thay PostgreSQL trong kiểm thử nghiệp vụ; dữ liệu test được tạo trong test và dọn bằng transaction/container, không seed catalog giả ở runtime.
 
 Quality gate dự kiến: compile/typecheck, unit/slice, migration integration, contract validation, lint, secret/dependency scan; E2E chạy khi feature có đường đi hoàn chỉnh.

@@ -4,7 +4,7 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 ## Trạng thái
 
-Đây là **starter/foundation của Giai đoạn 01**, chưa phải sản phẩm hoàn chỉnh. Repository có ứng dụng chạy tối thiểu, database thật, ranh giới module, contract và tài liệu thiết kế; chưa có auth production, catalog CRUD, mượn/trả hay các tính năng thông minh.
+Nền tảng kỹ thuật và Auth Phase 1A đã có trên `main`: Core quản lý tài khoản, vai trò, đăng ký, đăng nhập và phiên đăng nhập; frontend có màn hình đăng nhập, đăng ký và bảo vệ route nhân viên. Member/Profile, catalog CRUD, mượn/trả và các tính năng tìm kiếm nâng cao vẫn chưa triển khai. Đây chưa phải sản phẩm hoàn chỉnh.
 
 ## Kiến trúc ngắn
 

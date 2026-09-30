@@ -11,3 +11,5 @@ Giữ Spring Security để khóa mặc định mọi endpoint chưa được th
 ## Hệ quả
 
 Starter không có demo credential hoặc authentication giả. Phase Auth phải thay thế cấu hình này bằng identity/RBAC production và test tương ứng.
+
+Phase 1A đã triển khai Identity/Auth. Quyết định trên ghi lại cấu hình của giai đoạn trước; cấu hình đang chạy nằm trong `SecurityConfig` và được kiểm thử ở `AuthIntegrationTest`.

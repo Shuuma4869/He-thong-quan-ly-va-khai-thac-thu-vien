@@ -69,7 +69,7 @@ npm run prisma:generate
 npm run prisma:deploy
 ```
 
-Không dùng `prisma db push` thay migration. Core chạy Flyway `V1__foundation.sql` khi khởi động.
+Không dùng `prisma db push` thay migration. Core chạy Flyway `V1__foundation.sql` và `V2__identity_auth.sql` khi khởi động trên database mới.
 
 ## Dừng an toàn
 
