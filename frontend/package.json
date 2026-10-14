@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "build": "npm run typecheck && vite build",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "lint": "eslint ."
   },
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.36.0",
+    "@playwright/test": "1.64.0",
     "@tailwindcss/vite": "4.1.14",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",

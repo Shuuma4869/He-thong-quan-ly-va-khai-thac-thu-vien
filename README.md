@@ -4,7 +4,9 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 ## Trạng thái
 
-Nền tảng kỹ thuật và Auth Phase 1A đã có trên `main`: Core quản lý tài khoản, vai trò, đăng ký, đăng nhập và phiên đăng nhập; frontend có màn hình đăng nhập, đăng ký và bảo vệ route nhân viên. Member/Profile, catalog CRUD, mượn/trả và các tính năng tìm kiếm nâng cao vẫn chưa triển khai. Đây chưa phải sản phẩm hoàn chỉnh.
+Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Đợt Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Trạng thái review và kiểm chứng xem trong [báo cáo Phase 1](tai-lieu/07-kiem-thu/phase-1-verification.md).
+
+Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Catalog CRUD, mượn/trả và tìm kiếm sách nâng cao chưa triển khai. Đây chưa phải sản phẩm hoàn chỉnh.
 
 ## Kiến trúc ngắn
 

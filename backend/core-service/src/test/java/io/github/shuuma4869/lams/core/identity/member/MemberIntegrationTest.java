@@ -43,6 +43,7 @@ class MemberIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired org.springframework.security.oauth2.jwt.JwtEncoder jwt;
 
     private String email() { return "member-" + UUID.randomUUID() + "@example.test"; }
 
@@ -60,6 +61,24 @@ class MemberIntegrationTest {
                                 "password", "correct-password-123", "remember", false))))
                 .andExpect(status().isOk()).andReturn();
         return json.readTree(result.getResponse().getContentAsString()).path("accessToken").asText();
+    }
+
+    @Test
+    void invalidAndExpiredTokensCannotReadMemberEndpoints() throws Exception {
+        var claims = org.springframework.security.oauth2.jwt.JwtClaimsSet.builder()
+                .issuer("lams-core").subject(UUID.randomUUID().toString())
+                .issuedAt(java.time.Instant.now().minusSeconds(600))
+                .expiresAt(java.time.Instant.now().minusSeconds(300))
+                .claim("roles", java.util.List.of("ADMIN")).build();
+        String expired = jwt.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                org.springframework.security.oauth2.jwt.JwsHeader.with(
+                        org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        for (String token : java.util.List.of("not-a-jwt", expired)) {
+            for (String path : java.util.List.of("/api/v1/me/profile", "/api/v1/members")) {
+                mvc.perform(get(path).header("Authorization", "Bearer " + token))
+                        .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.requestId").exists());
+            }
+        }
     }
 
     @Test
@@ -164,6 +183,108 @@ class MemberIntegrationTest {
         mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
                         .param("sort", "member_code,asc"))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void staffListRechecksActiveStatusAndCurrentRolesInsteadOfTrustingOldJwt() throws Exception {
+        for (String role : java.util.List.of("LIBRARIAN", "ADMIN")) {
+            String address = email();
+            JsonNode account = register(address, "Staff access regression");
+            UUID id = UUID.fromString(account.path("user").path("id").asText());
+            jdbc.update("INSERT INTO user_roles(user_id, role_code) VALUES (?, ?)", id, role);
+            String token = login(address);
+            mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+            for (String state : java.util.List.of("LOCKED", "DISABLED")) {
+                jdbc.update("UPDATE users SET status=? WHERE id=?", state, id);
+                mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token))
+                        .andExpect(status().isForbidden()).andExpect(jsonPath("$.requestId").exists());
+                mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + token))
+                        .andExpect(status().isForbidden());
+            }
+            jdbc.update("UPDATE users SET status='ACTIVE' WHERE id=?", id);
+            jdbc.update("DELETE FROM user_roles WHERE user_id=? AND role_code=?", id, role);
+            mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isForbidden());
+            jdbc.update("DELETE FROM refresh_tokens WHERE user_id=?", id);
+            jdbc.update("DELETE FROM user_roles WHERE user_id=?", id);
+            jdbc.update("DELETE FROM users WHERE id=?", id);
+            mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Test
+    void searchBindsInjectionEscapesWildcardsAndKeepsStablePages() throws Exception {
+        String address = email();
+        JsonNode account = register(address, "Search operator");
+        UUID id = UUID.fromString(account.path("user").path("id").asText());
+        jdbc.update("INSERT INTO user_roles(user_id, role_code) VALUES (?, 'ADMIN')", id);
+        String token = login(address);
+        String marker = "Tìm " + UUID.randomUUID();
+        JsonNode first = register(email(), marker + " O'Brien_%\\");
+        JsonNode second = register(email(), marker + " O'Brien_%\\");
+        register(email(), marker + " Other");
+        String literal = marker + " O'Brien_%\\";
+        var result = mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
+                .param("query", literal).param("sort", "fullName,desc").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(2)).andReturn();
+        String firstId = json.readTree(result.getResponse().getContentAsString()).path("items").get(0).path("userId").asText();
+        var next = mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
+                .param("query", literal).param("sort", "fullName,desc").param("size", "1").param("page", "1"))
+                .andExpect(status().isOk()).andReturn();
+        String nextId = json.readTree(next.getResponse().getContentAsString()).path("items").get(0).path("userId").asText();
+        assertThat(firstId).isLessThan(nextId);
+        assertThat(java.util.Set.of(firstId, nextId)).containsExactlyInAnyOrder(
+                first.path("user").path("id").asText(), second.path("user").path("id").asText());
+        mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
+                .param("query", "' OR 1=1 --")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+        for (String state : java.util.List.of("ACTIVE", "LOCKED", "DISABLED")) {
+            UUID target = UUID.fromString(first.path("user").path("id").asText());
+            jdbc.update("UPDATE users SET status=? WHERE id=?", state, target);
+            mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
+                    .param("query", first.path("user").path("memberCode").asText()).param("status", state))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                    .andExpect(jsonPath("$.items[0].status").value(state));
+        }
+        for (var invalid : java.util.List.of(
+                Map.entry("page", "not-a-number"), Map.entry("page", "2147483648"),
+                Map.entry("size", "-1"), Map.entry("sort", "fullName,asc;DROP TABLE users"),
+                Map.entry("sort", "email,asc"))) {
+            mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
+                    .param(invalid.getKey(), invalid.getValue()))
+                    .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.requestId").exists());
+        }
+        mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token)
+                .param("page", "2147483647").param("size", "100"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void selfAndListReadOnlyResponsesDoNotExposeOrChangeIdentity() throws Exception {
+        for (String role : java.util.List.of("READER", "LIBRARIAN", "ADMIN")) {
+            String address = email();
+            JsonNode registered = register(address, "Read only check");
+            UUID id = UUID.fromString(registered.path("user").path("id").asText());
+            if (!role.equals("READER")) jdbc.update("INSERT INTO user_roles(user_id, role_code) VALUES (?, ?)", id, role);
+            String token = login(address);
+            var before = jdbc.queryForMap("SELECT * FROM users WHERE id=?", id);
+            int tokens = jdbc.queryForObject("SELECT count(*) FROM refresh_tokens WHERE user_id=?", Integer.class, id);
+            var result = mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + token)
+                    .param("userId", UUID.randomUUID().toString())).andExpect(status().isOk()).andReturn();
+            JsonNode body = json.readTree(result.getResponse().getContentAsString());
+            var fields = new java.util.HashSet<String>();
+            body.fieldNames().forEachRemaining(fields::add);
+            assertThat(fields).containsExactlyInAnyOrder("userId", "memberCode", "fullName", "email", "status", "profile");
+            assertThat(body.has("profile") && body.get("profile").isNull()).isTrue();
+            assertThat(body.path("userId").asText()).isEqualTo(id.toString());
+            if (!role.equals("READER")) mvc.perform(get("/api/v1/members").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+            assertThat(jdbc.queryForMap("SELECT * FROM users WHERE id=?", id)).isEqualTo(before);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM refresh_tokens WHERE user_id=?", Integer.class, id))
+                    .isEqualTo(tokens);
+        }
     }
 
     @Test

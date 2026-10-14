@@ -2,6 +2,7 @@ package io.github.shuuma4869.lams.core.identity.member.api;
 
 import io.github.shuuma4869.lams.core.identity.member.application.MemberService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,11 +17,11 @@ public class MemberAdminController {
 
     @GetMapping("/api/v1/members")
     @PreAuthorize("hasAnyRole('LIBRARIAN', 'ADMIN')")
-    public MemberService.MemberPage list(@RequestParam(required = false) String query,
+    public MemberService.MemberPage list(JwtAuthenticationToken token, @RequestParam(required = false) String query,
                                          @RequestParam(required = false) String status,
                                          @RequestParam(required = false) String page,
                                          @RequestParam(required = false) String size,
                                          @RequestParam(required = false) String sort) {
-        return members.list(query, status, page, size, sort);
+        return members.list(java.util.UUID.fromString(token.getToken().getSubject()), query, status, page, size, sort);
     }
 }

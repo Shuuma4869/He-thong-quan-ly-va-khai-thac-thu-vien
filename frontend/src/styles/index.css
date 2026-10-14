@@ -82,3 +82,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 480px) { .login-brand { min-height: 166px; } .login-brand-content { padding: 1rem 1.25rem; } .brand-logo--full .brand-logo__mark { width: 2.6rem; height: 2.6rem; } .brand-logo--full .brand-logo__words strong { font-size: 1.3rem; } .brand-logo--full .brand-logo__words > span { font-size: .68rem; } .login-aux-row { flex-direction: column; align-items: flex-start; gap: .5rem; } }
 @media (min-width: 900px) { .login-page { grid-template-columns: minmax(0, .96fr) minmax(480px, 1.04fr); grid-template-rows: auto; } .login-brand-content { justify-content: space-between; padding: clamp(2.5rem, 4.5vw, 5.25rem); } .auth-hero-copy { margin-block: auto; } .staff-sidebar { display: block; } .staff-topbar .icon-button { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+.member-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-block: 1.5rem; }
+.member-filters > .field { min-width: min(100%, 200px); }
+.field select { min-height: 2.9rem; max-width: 100%; border: 1px solid #ccd7d3; border-radius: .7rem; padding: .7rem; background: white; font: inherit; }
+.member-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #e1e8e5; border-radius: .7rem; background: white; }
+.member-table { width: 100%; min-width: 540px; border-collapse: collapse; text-align: left; }
+.member-table th, .member-table td { padding: 1rem; border-bottom: 1px solid #e1e8e5; overflow-wrap: anywhere; }
+.member-table th { background: #f0f4f2; font-size: .875rem; }
+.button-secondary:disabled { cursor: not-allowed; opacity: .55; }
+:where(a, button, select, [tabindex]):focus-visible { outline: 2px solid #0f766e; outline-offset: 3px; }
+.staff-mobile-nav { display: flex; flex-wrap: wrap; padding: .5rem; border-bottom: 1px solid #e1e8e5; background: white; }
+@media (min-width: 900px) { .staff-mobile-nav { display: none; } }
+@media (max-width: 600px) { .member-filters > .field { flex: 1 1 100%; } }

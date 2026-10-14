@@ -14,5 +14,5 @@ try {
         Where-Object { $_.Name -notlike '*.original' } |
         Select-Object -First 1
     if (-not $jar) { throw 'Không tìm thấy Core Service JAR sau khi package.' }
-    Invoke-LamsNative 'java' @('-jar', $jar.FullName) 'Core Service dừng với lỗi'
+    Invoke-LamsNative 'java' @('-jar', (Join-Path 'target' $jar.Name)) 'Core Service dừng với lỗi'
 } finally { Pop-Location }
