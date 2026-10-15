@@ -47,6 +47,8 @@ Desktop mở bằng lệnh trên; Core health: `http://localhost:8080/api/v1/hea
 
 Xem [hướng dẫn desktop Windows](tai-lieu/08-van-hanh/desktop-windows.md) để build EXE/bộ cài, yêu cầu C++/Rust/WebView2 và xử lý lỗi. Backend/database vẫn chạy riêng; bộ cài giao diện chưa phải gói offline toàn hệ thống. Chế độ web vẫn có thể chạy `npm run dev` trong frontend để phát triển/kiểm thử.
 
+[Cấu hình pilot Render + Neon](tai-lieu/08-van-hanh/cloud-pilot.md) đã được chuẩn bị cho Core HTTPS và PostgreSQL tập trung. Đây là cấu hình để triển khai sau khi có tài khoản, không phải thông báo đã có máy chủ hoạt động. Chưa có updater, ký số hay nghiệm thu trên máy Windows thứ hai.
+
 ## Kiểm thử và build
 
 ```powershell
