@@ -7,5 +7,6 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /workspace/target/core-service-*.jar app.jar
+USER 10001:10001
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

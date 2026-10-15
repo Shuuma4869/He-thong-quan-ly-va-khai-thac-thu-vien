@@ -1,0 +1,46 @@
+# Activate explicitly; missing server secrets must stop startup instead of using local defaults.
+spring:
+  datasource:
+    url: ${CORE_DATABASE_URL}
+    username: ${CORE_DATABASE_USERNAME}
+    password: ${CORE_DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 0
+      connection-timeout: 10000
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    redis:
+      enabled: false
+
+logging:
+  structured:
+    format:
+      console: ecs
+
+lams:
+  auth:
+    cookie-secure: true
+    cookie-same-site: None
+    require-trusted-origin: true
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}

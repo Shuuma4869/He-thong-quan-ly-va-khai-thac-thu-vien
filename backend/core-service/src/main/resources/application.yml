@@ -43,4 +43,4 @@ lams:
     remember-ttl: ${AUTH_REMEMBER_TOKEN_TTL:P30D}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://tauri.localhost}

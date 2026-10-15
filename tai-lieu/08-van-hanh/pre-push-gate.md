@@ -6,6 +6,8 @@
 - [ ] Spring test/package PASS
 - [ ] Nest test/build PASS
 - [ ] Frontend typecheck/lint/test/build PASS
+- [ ] Khi sửa desktop: Rust fmt/test/clippy, Tauri release/NSIS build và E2E WebView2 với API thật PASS
+- [ ] Tài liệu/API/task output khớp implementation; không thêm audit/PR draft vào repo
 - [ ] Docker Compose config PASS
 - [ ] PostgreSQL `SELECT 1` PASS
 - [ ] Redis PING/SET/GET/DEL PASS

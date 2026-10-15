@@ -1,9 +1,47 @@
-const coreApiUrl = import.meta.env.VITE_CORE_API_URL ?? 'http://localhost:8080/api/v1';
-const insightApiUrl = import.meta.env.VITE_INSIGHT_API_URL ?? 'http://localhost:3000/api/v1';
+import { resolveApiConfig } from './config';
+
+const { coreUrl: coreApiUrl, insightUrl: insightApiUrl, timeoutMs } = resolveApiConfig(import.meta.env);
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly requestId?: string) {
     super(message);
+  }
+}
+
+export class ApiTransportError extends ApiError {
+  constructor(public readonly reason: 'network' | 'timeout') {
+    super(0, reason === 'timeout'
+      ? 'Máy chủ phản hồi quá lâu. Vui lòng thử lại sau.'
+      : 'Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.');
+  }
+}
+
+async function send(url: string, init: RequestInit, signal?: AbortSignal) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort(signal?.reason);
+  signal?.throwIfAborted();
+  signal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    let data: unknown;
+    if (response.status !== 204) {
+      try { data = await response.json(); }
+      catch (error) {
+        if (controller.signal.aborted) throw error;
+        if (response.ok) throw new ApiError(502, 'Máy chủ trả dữ liệu không hợp lệ.');
+      }
+    }
+    return { response, data };
+  } catch (error) {
+    if (signal?.aborted) throw signal.reason ?? error;
+    if (timedOut) throw new ApiTransportError('timeout');
+    if (error instanceof ApiError) throw error;
+    throw new ApiTransportError('network');
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 }
 
@@ -14,14 +52,15 @@ let pendingRefresh: Promise<boolean> | null = null;
 
 export function configureCoreAuth(hooks: AuthHooks | null) { authHooks = hooks; pendingRefresh = null; }
 
-async function request<T>(baseUrl: string, method: Method, path: string, body?: unknown, retry = true, signal?: AbortSignal): Promise<T> {
+async function request<T>(baseUrl: string | undefined, method: Method, path: string, body?: unknown, retry = true, signal?: AbortSignal): Promise<T> {
+  if (!baseUrl) throw new ApiError(503, 'Dịch vụ này chưa được cấu hình ở môi trường hiện tại.');
   const hooks = baseUrl === coreApiUrl ? authHooks : null;
   const token = hooks?.token();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-LAMS-Client': '1' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${baseUrl}${path}`, {
-    method, headers, credentials: 'include', signal, body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const { response, data } = await send(`${baseUrl}${path}`, {
+    method, headers, credentials: 'include', body: body === undefined ? undefined : JSON.stringify(body),
+  }, signal);
   const protectedRequest = !['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path.split('?')[0]);
   if (response.status === 401 && retry && hooks && authHooks === hooks && protectedRequest) {
     signal?.throwIfAborted();
@@ -45,18 +84,18 @@ async function request<T>(baseUrl: string, method: Method, path: string, body?: 
   if (!response.ok) {
     let detail = 'Không thể hoàn tất yêu cầu.';
     let requestId = response.headers.get('X-Request-Id') ?? undefined;
-    try {
-      const problem = await response.json() as { detail?: string; requestId?: string };
-      detail = problem.detail ?? detail;
-      requestId = problem.requestId ?? requestId;
-    } catch { /* Lỗi mạng/proxy có thể không trả JSON. */ }
+    if (data && typeof data === 'object') {
+      const problem = data as { detail?: unknown; requestId?: unknown };
+      if (typeof problem.detail === 'string') detail = problem.detail;
+      if (typeof problem.requestId === 'string') requestId = problem.requestId;
+    }
     throw new ApiError(response.status, detail, requestId);
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  return data as T;
 }
 
-function api(baseUrl: string) {
+function api(baseUrl: string | undefined) {
   return {
     get: <T>(path: string, retry = true, signal?: AbortSignal) => request<T>(baseUrl, 'GET', path, undefined, retry, signal),
     post: <T>(path: string, body?: unknown, retry = true) => request<T>(baseUrl, 'POST', path, body, retry),

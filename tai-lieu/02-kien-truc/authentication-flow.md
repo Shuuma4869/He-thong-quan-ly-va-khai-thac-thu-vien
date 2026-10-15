@@ -2,9 +2,13 @@
 
 ## Mục đích
 
-Identity nằm trong Spring Core và `lams_core`. Đăng ký chỉ cấp `READER`. Access JWT sống 15 phút trong memory của frontend; opaque refresh token chỉ đi qua cookie `lams_refresh` HttpOnly, SameSite=Lax, path `/api/v1/auth`. PostgreSQL lưu SHA-256 của refresh token. Cấu hình `AUTH_COOKIE_SECURE=true` cho HTTPS production.
+Identity nằm trong Spring Core và `lams_core`. Đăng ký chỉ cấp `READER`. Access JWT sống 15 phút trong memory của frontend; opaque refresh token chỉ đi qua cookie `lams_refresh` HttpOnly, path `/api/v1/auth`. Local dùng SameSite=Lax. PostgreSQL lưu SHA-256 của refresh token.
 
 Core yêu cầu `LAMS_JWT_SECRET` (ít nhất 32 byte) khi khởi động; `.env.example` chỉ là giá trị mẫu cho local. Không dùng giá trị mẫu khi triển khai production. CORS chỉ cho các origin cấu hình trong `CORS_ALLOWED_ORIGINS`, có hỗ trợ cookie credentials.
+
+Profile `pilot` phục vụ client khác site với API: refresh cookie bắt buộc `Secure; SameSite=None`, mọi POST `/api/v1/auth/*` phải có Origin HTTPS chính xác trong allowlist và `X-LAMS-Client: 1`. Header không phải secret; nó buộc yêu cầu cross-origin từ trình duyệt đi qua preflight, kết hợp kiểm tra Origin phía server để chống CSRF. Yêu cầu không có Origin cũng bị từ chối trong pilot. API nghiệp vụ vẫn xác thực bằng Bearer JWT, không bằng refresh cookie. Không bật cookie None khi thiếu Secure hoặc thiếu bộ lọc trusted origin; server từ chối cấu hình đó khi khởi động.
+
+Client pilot/production bắt buộc Core URL HTTPS, không fallback localhost; Insight có thể chưa cấu hình. Timeout mặc định 15 giây, cấu hình được trong khoảng 1–120 giây. Lỗi timeout/network không tự gửi lại POST; người dùng nhận thông báo để quyết định thử lại. Cơ chế thử lại sau 401 bên dưới vẫn chỉ thực hiện một lần. Xem [runbook pilot](../08-van-hanh/cloud-pilot.md) trước khi build bản kết nối Internet. Chính sách chặn cookie bên thứ ba của máy vẫn cần kiểm tra thực tế trên WebView2; unit/integration test không thay thế kiểm tra đó.
 
 ```mermaid
 sequenceDiagram

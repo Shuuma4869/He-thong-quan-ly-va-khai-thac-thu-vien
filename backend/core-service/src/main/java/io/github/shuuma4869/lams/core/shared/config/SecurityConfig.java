@@ -2,6 +2,7 @@ package io.github.shuuma4869.lams.core.shared.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import io.github.shuuma4869.lams.core.shared.security.SecurityProblemWriter;
+import io.github.shuuma4869.lams.core.shared.security.TrustedAuthOriginFilter;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import javax.crypto.SecretKey;
@@ -28,6 +29,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 @EnableMethodSecurity
@@ -36,7 +38,10 @@ public class SecurityConfig {
     PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProblemWriter problems) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProblemWriter problems,
+            @Value("${lams.auth.require-trusted-origin:false}") boolean requireTrustedOrigin,
+            @Value("${lams.cors.allowed-origins}") String origins) throws Exception {
+        if (requireTrustedOrigin) http.addFilterAfter(new TrustedAuthOriginFilter(origins, problems), CorsFilter.class);
         var converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             var roles = jwt.getClaimAsStringList("roles");
@@ -50,7 +55,7 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/actuator/health", "/api/v1/health").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/api/v1/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .anyRequest().authenticated())
@@ -89,7 +94,7 @@ public class SecurityConfig {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
         config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Request-Id"));
+        config.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Request-Id", "X-LAMS-Client"));
         config.setExposedHeaders(java.util.List.of("X-Request-Id"));
         config.setAllowCredentials(true);
         var source = new UrlBasedCorsConfigurationSource();

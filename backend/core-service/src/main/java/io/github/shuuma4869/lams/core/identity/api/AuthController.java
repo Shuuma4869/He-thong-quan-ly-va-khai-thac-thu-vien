@@ -32,10 +32,18 @@ public class AuthController {
 
     private final AuthService auth;
     private final boolean cookieSecure;
+    private final String cookieSameSite;
 
-    public AuthController(AuthService auth, @Value("${lams.auth.cookie-secure}") boolean cookieSecure) {
+    public AuthController(AuthService auth, @Value("${lams.auth.cookie-secure}") boolean cookieSecure,
+            @Value("${lams.auth.cookie-same-site:Lax}") String cookieSameSite,
+            @Value("${lams.auth.require-trusted-origin:false}") boolean requireTrustedOrigin) {
+        if (!java.util.Set.of("Lax", "Strict", "None").contains(cookieSameSite)
+                || ("None".equals(cookieSameSite) && (!cookieSecure || !requireTrustedOrigin))) {
+            throw new IllegalArgumentException("SameSite=None yêu cầu Secure và kiểm trusted origin cho Auth.");
+        }
         this.auth = auth;
         this.cookieSecure = cookieSecure;
+        this.cookieSameSite = cookieSameSite;
     }
 
     @PostMapping("/register")
@@ -73,7 +81,7 @@ public class AuthController {
 
     private String cookie(String value, Duration maxAge, boolean clear) {
         var builder = ResponseCookie.from("lams_refresh", value).httpOnly(true).secure(cookieSecure)
-                .sameSite("Lax").path("/api/v1/auth");
+                .sameSite(cookieSameSite).path("/api/v1/auth");
         if (clear) builder.maxAge(Duration.ZERO);
         else if (maxAge != null) builder.maxAge(maxAge);
         return builder.build().toString();

@@ -2,7 +2,7 @@
 
 ## Bài toán và mục tiêu
 
-LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, audit và dữ liệu nhu cầu. Hiện dự án đã có nền tảng kỹ thuật và phần xác thực của Phase 1A; các nghiệp vụ thư viện sẽ được phát triển theo từng giai đoạn.
+LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, kiểm kê và dữ liệu nhu cầu. Hiện dự án đã có Auth, Member chỉ đọc và giao diện desktop Windows; các nghiệp vụ thư viện sẽ được phát triển theo từng giai đoạn.
 
 ## Actors
 
@@ -12,7 +12,7 @@ LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư vi
 
 ## Scope
 
-Repository hiện có React, Spring, NestJS, PostgreSQL, Redis, Kafka, MinIO, contract, tài liệu vận hành và kiểm thử nền. Danh tính và đăng nhập đã được triển khai. Member/Profile, catalog, bản sách, mượn/trả/gia hạn và giữ chỗ là các phần việc tiếp theo.
+Repository hiện có Tauri/WebView2 + React, Spring, NestJS, PostgreSQL, Redis, Kafka, MinIO, contract, tài liệu vận hành và kiểm thử. Auth và Member/Profile chỉ đọc đã được triển khai: self profile, staff list mã/tên/status, tìm/lọc/sort/page. Profile bổ sung/PATCH đang hoãn; catalog, bản sách, mượn/trả/gia hạn và giữ chỗ là các phần việc tiếp theo. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
 
 ## Ngoài phạm vi hiện tại
 

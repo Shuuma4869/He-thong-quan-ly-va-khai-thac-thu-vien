@@ -1,0 +1,26 @@
+# Manual pilot only. Connect the repository and review free-tier limits before creating resources.
+services:
+  - type: web
+    name: lams-core-pilot
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./backend/core-service/Dockerfile
+    dockerContext: ./backend/core-service
+    autoDeployTrigger: 'off'
+    healthCheckPath: /actuator/health/readiness
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: pilot
+      - key: JAVA_TOOL_OPTIONS
+        value: '-XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=20 -XX:ActiveProcessorCount=2'
+      - key: CORE_DATABASE_URL
+        sync: false
+      - key: CORE_DATABASE_USERNAME
+        sync: false
+      - key: CORE_DATABASE_PASSWORD
+        sync: false
+      - key: LAMS_JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false

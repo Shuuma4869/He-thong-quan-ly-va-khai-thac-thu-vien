@@ -34,5 +34,6 @@ Write-Host ''
 Write-Host 'Bootstrap hoàn tất. Flyway sẽ tự migrate khi Core Service khởi động.' -ForegroundColor Green
 Write-Host 'Chạy ba ứng dụng ở ba terminal:'
 Write-Host '  .\scripts\start-core.ps1'
-Write-Host '  cd backend\insight-service; npm run start:dev'
-Write-Host '  cd frontend; npm run dev'
+Write-Host '  .\scripts\start-insight.ps1'
+Write-Host '  .\scripts\start-desktop.ps1'
+Write-Host 'Desktop cần chạy setup-desktop.ps1 một lần trước đó; xem tai-lieu/08-van-hanh/desktop-windows.md.'
