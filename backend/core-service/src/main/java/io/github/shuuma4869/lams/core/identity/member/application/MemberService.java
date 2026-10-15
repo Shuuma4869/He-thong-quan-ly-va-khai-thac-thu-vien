@@ -1,6 +1,8 @@
 package io.github.shuuma4869.lams.core.identity.member.application;
 
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
+import io.github.shuuma4869.lams.core.identity.application.AuthService;
+import io.github.shuuma4869.lams.core.identity.domain.RoleCode;
 import io.github.shuuma4869.lams.core.identity.domain.UserStatus;
 import io.github.shuuma4869.lams.core.identity.member.infrastructure.MemberRepository;
 import java.util.List;
@@ -21,9 +23,11 @@ public class MemberService {
     public record MemberPage(List<MemberItem> items, PageMetadata page) {}
 
     private final MemberRepository members;
+    private final AuthService identity;
 
-    public MemberService(MemberRepository members) {
+    public MemberService(MemberRepository members, AuthService identity) {
         this.members = members;
+        this.identity = identity;
     }
 
     public CurrentProfile current(UUID principalId) {
@@ -37,7 +41,12 @@ public class MemberService {
                 identity.status().name(), null);
     }
 
-    public MemberPage list(String query, String statusValue, String pageValue, String sizeValue, String sortValue) {
+    public MemberPage list(UUID principalId, String query, String statusValue, String pageValue,
+                           String sizeValue, String sortValue) {
+        var actor = identity.currentUser(principalId);
+        if (actor.roles().stream().noneMatch(role -> role == RoleCode.LIBRARIAN || role == RoleCode.ADMIN)) {
+            throw new AuthFailure(403, "Bạn không có quyền xem danh sách thành viên.");
+        }
         String normalizedQuery = query == null ? null : query.trim();
         if (normalizedQuery != null && normalizedQuery.length() > 150) {
             throw invalid("query không được dài quá 150 ký tự.");

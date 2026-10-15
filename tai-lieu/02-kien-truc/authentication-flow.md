@@ -63,3 +63,5 @@ sequenceDiagram
 ```
 
 Frontend gom các yêu cầu refresh đồng thời vào một promise để tránh reuse do rotation. Server dùng row lock; nếu token đã rotate bị dùng lại, cả family bị thu hồi. Account `LOCKED`/`DISABLED` không được login hoặc refresh. `/auth/me` kiểm tra trạng thái từ DB.
+
+Profile dùng `GET /api/v1/me/profile`; Member List dùng `GET /api/v1/members` và kiểm quyền/trạng thái hiện tại từ DB. Frontend dùng chung API client và AuthProvider, không lưu token ở localStorage. Mỗi truy vấn Member có cache key theo user và bộ lọc, có AbortSignal; đăng xuất xóa cache và chặn phản hồi refresh cũ khôi phục phiên. Nếu rotation đang chạy, frontend đợi nó kết thúc trước khi gửi logout để server thu hồi đúng refresh family. Một request bị 401 chỉ thử lại một lần sau refresh; nếu vẫn 401 thì kết thúc phiên phía frontend.

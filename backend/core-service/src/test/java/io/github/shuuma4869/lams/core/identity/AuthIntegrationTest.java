@@ -166,8 +166,10 @@ class AuthIntegrationTest {
         var first = CompletableFuture.supplyAsync(() -> refreshAtGate(old, gate));
         var second = CompletableFuture.supplyAsync(() -> refreshAtGate(old, gate));
         gate.countDown();
-        int successes = (first.get() == 200 ? 1 : 0) + (second.get() == 200 ? 1 : 0);
-        assertThat(successes).isEqualTo(1);
+        assertThat(java.util.List.of(first.get(), second.get())).containsExactlyInAnyOrder(200, 401);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM refresh_tokens WHERE revoked_at IS NULL "
+                + "AND family_id=(SELECT family_id FROM refresh_tokens WHERE token_hash=?)",
+                Integer.class, AuthService.hash(old))).isZero();
     }
 
     private int refreshAtGate(String token, CountDownLatch gate) {

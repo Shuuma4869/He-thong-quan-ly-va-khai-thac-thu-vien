@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LAMS Core API
-  version: 0.1.0
+  version: 0.1.1
   description: Core health, Identity/Auth và Member read API.
 servers:
   - url: http://localhost:8080/api/v1
@@ -84,11 +84,12 @@ paths:
       operationId: listMembers
       tags: [Member]
       summary: Staff tìm kiếm và phân trang danh sách thành viên
+      description: Chỉ LIBRARIAN/ADMIN có token phù hợp và tài khoản ACTIVE còn quyền staff trong database. Token cũ không giữ quyền sau khi bị khóa hoặc thu hồi role. Query chỉ tìm memberCode/fullName, không tìm email.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: query, in: query, required: false, schema: { type: string, maxLength: 150 } }
         - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/UserStatus' } }
-        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
         - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
         - name: sort
           in: query

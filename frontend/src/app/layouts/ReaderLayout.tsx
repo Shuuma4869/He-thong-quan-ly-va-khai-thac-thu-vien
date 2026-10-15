@@ -10,11 +10,14 @@ export function ReaderLayout() {
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <header className="border-b border-line bg-surface/95">
-        <div className="shell flex h-16 items-center justify-between">
+        <div className="shell flex min-h-16 flex-wrap items-center justify-between gap-3 py-3">
           <Link to="/"><BrandLogo variant="compact" /></Link>
-          <nav aria-label="Điều hướng chính" className="flex items-center gap-5 text-sm">
+          <nav aria-label="Điều hướng chính" className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
             <Link className="nav-link" to="/">Trang chủ</Link>
-            {auth.user ? <><span>{auth.user.fullName} · {auth.user.memberCode}</span>
+            {auth.user ? <><span className="break-all">{auth.user.fullName} · {auth.user.memberCode}</span>
+              <Link className="nav-link" to="/ho-so">Hồ sơ của tôi</Link>
+              {auth.user.roles.some(role => role === 'LIBRARIAN' || role === 'ADMIN')
+                && <Link className="nav-link" to="/nhan-vien/thanh-vien">Thành viên</Link>}
               <button className="button-secondary" type="button" onClick={() => void signOut()}>Đăng xuất</button></>
               : <Link className="button-secondary" to="/dang-nhap"><LogIn size={16} /> Đăng nhập</Link>}
           </nav>

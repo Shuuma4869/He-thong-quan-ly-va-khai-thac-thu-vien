@@ -29,3 +29,40 @@ it('gom hai phản hồi 401 thành một lần refresh rồi retry đúng một
   expect(fetchMock).toHaveBeenCalledTimes(4);
   expect(clear).not.toHaveBeenCalled();
 });
+
+it('auth/me cũng refresh, nhưng 401 lần hai kết thúc phiên', async () => {
+  let token = 'old';
+  const clear = vi.fn();
+  const refresh = vi.fn(async () => { token = 'new'; return true; });
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(Response.json({}, { status: 401 }))));
+  configureCoreAuth({ token: () => token, refresh, clear });
+  await expect(coreApi.get('/auth/me')).rejects.toMatchObject({ status: 401 });
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(clear).toHaveBeenCalledTimes(1);
+});
+
+it('401 đến sau logout không khôi phục phiên hoặc gây refresh mới', async () => {
+  let token: string | null = 'old';
+  let finish!: (response: Response) => void;
+  const refresh = vi.fn();
+  const clear = vi.fn();
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+  configureCoreAuth({ token: () => token, refresh, clear });
+  const pending = coreApi.get('/members');
+  token = null;
+  finish(Response.json({}, { status: 401 }));
+  await expect(pending).rejects.toMatchObject({ status: 401 });
+  expect(refresh).not.toHaveBeenCalled();
+  expect(clear).not.toHaveBeenCalled();
+});
+
+it('403 không refresh và signal được chuyển đến fetch', async () => {
+  const refresh = vi.fn();
+  const signal = new AbortController().signal;
+  const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({}, { status: 403 })));
+  vi.stubGlobal('fetch', fetch);
+  configureCoreAuth({ token: () => 'access', refresh, clear: vi.fn() });
+  await expect(coreApi.get('/members', true, signal)).rejects.toMatchObject({ status: 403 });
+  expect(fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signal }));
+  expect(refresh).not.toHaveBeenCalled();
+});
