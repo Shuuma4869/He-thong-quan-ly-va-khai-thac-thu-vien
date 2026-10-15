@@ -14,6 +14,7 @@ Không cần Maven hệ thống. `mvnw.cmd` lưu Maven 3.9.11 trong cache ngư�
 Từ `<thu-muc-du-an>`:
 
 ```powershell
+.\scripts\setup-desktop.ps1
 .\scripts\bootstrap-local.ps1
 .\scripts\smoke-test.ps1
 .\scripts\check-quality.ps1
@@ -30,13 +31,11 @@ Mở ba terminal tại root project:
 ```
 
 ```powershell
-cd backend\insight-service
-npm run start:dev
+.\scripts\start-insight.ps1
 ```
 
 ```powershell
-cd frontend
-npm run dev
+.\scripts\start-desktop.ps1
 ```
 
 Health:
@@ -78,3 +77,7 @@ Không dùng `prisma db push` thay migration. Core chạy Flyway `V1__foundation
 ```
 
 Script chỉ chạy `docker compose down`, không xóa named volume. Xem [xử lý lỗi môi trường](xu-ly-loi-moi-truong.md) trước khi can thiệp dữ liệu.
+
+## Desktop và web
+
+Mặc định dùng cửa sổ Tauri trên Windows. [Runbook desktop](desktop-windows.md) ghi prerequisite, lệnh build EXE/bộ cài, cookie/CORS và E2E WebView2. Vite chỉ chạy khi dev; release không cần cổng 5173. Muốn kiểm web riêng thì chạy npm run dev trong frontend, không chạy đồng thời desktop dev trên cùng cổng. Backend và database vẫn khởi động riêng.

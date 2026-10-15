@@ -4,13 +4,13 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 ## Trạng thái
 
-Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Đợt Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Trạng thái review và kiểm chứng xem trong [báo cáo Phase 1](tai-lieu/07-kiem-thu/phase-1-verification.md).
+Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Phạm vi và đầu ra công việc được quản lý trong [hướng dẫn thành viên](tai-lieu/00-bat-dau/huong-dan-thanh-vien.md); kết quả từng lần chạy xem ở CI của PR.
 
 Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Catalog CRUD, mượn/trả và tìm kiếm sách nâng cao chưa triển khai. Đây chưa phải sản phẩm hoàn chỉnh.
 
 ## Kiến trúc ngắn
 
-- `frontend`: React + TypeScript + Vite, UI tiếng Việt theo feature.
+- `frontend`: Tauri 2 + WebView2 trên Windows; React + TypeScript + Vite dùng chung UI theo feature. Bản release mở cửa sổ riêng, không cần Chrome/Vite.
 - `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.
 - `backend/insight-service`: NestJS + Prisma, dành cho discovery, analytics và tích hợp bất đồng bộ.
 - `PostgreSQL`: hai database `lams_core`, `lams_insight`; là source of truth.
@@ -20,11 +20,12 @@ Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form s
 
 Git, Java 21, Node.js 22.x, npm 10.x, Docker Engine/Desktop và Docker Compose. Version được pin trong `.java-version`, `.nvmrc`, `.node-version` và `package.json`. Maven hệ thống không bắt buộc vì Core có Maven Wrapper 3.9.11.
 
-## Khởi chạy lần đầu
+## Khởi chạy desktop Windows
 
 Từ thư mục clone trên Windows PowerShell:
 
 ```powershell
+.\scripts\setup-desktop.ps1
 .\scripts\bootstrap-local.ps1
 .\scripts\smoke-test.ps1
 .\scripts\check-quality.ps1
@@ -37,14 +38,14 @@ Sau đó mở ba terminal tại root project:
 ```powershell
 .\scripts\start-core.ps1
 
-cd backend\insight-service
-npm run start:dev
+.\scripts\start-insight.ps1
 
-cd frontend
-npm run dev
+.\scripts\start-desktop.ps1
 ```
 
-Frontend: `http://localhost:5173`; Core health: `http://localhost:8080/api/v1/health`; Insight health: `http://localhost:3000/api/v1/health`.
+Desktop mở bằng lệnh trên; Core health: `http://localhost:8080/api/v1/health`; Insight health: `http://localhost:3000/api/v1/health`.
+
+Xem [hướng dẫn desktop Windows](tai-lieu/08-van-hanh/desktop-windows.md) để build EXE/bộ cài, yêu cầu C++/Rust/WebView2 và xử lý lỗi. Backend/database vẫn chạy riêng; bộ cài giao diện chưa phải gói offline toàn hệ thống. Chế độ web vẫn có thể chạy `npm run dev` trong frontend để phát triển/kiểm thử.
 
 ## Kiểm thử và build
 
