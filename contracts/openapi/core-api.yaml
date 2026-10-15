@@ -2,7 +2,11 @@ openapi: 3.1.0
 info:
   title: LAMS Core API
   version: 0.1.1
-  description: Core health, Identity/Auth và Member read API.
+  description: >-
+    Core health, Identity/Auth và Member read API. Khi bật profile pilot, tất cả
+    POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
+    X-LAMS-Client bằng 1; thiếu hoặc sai trả 403. Client trình duyệt tự gửi Origin.
+    Local giữ tương thích với cấu hình SameSite=Lax.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
@@ -19,6 +23,7 @@ paths:
             schema: { $ref: '#/components/schemas/RegisterRequest' }
       responses:
         '201': { $ref: '#/components/responses/AuthSession' }
+        '403': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /auth/login:
@@ -34,6 +39,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/AuthSession' }
         '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /auth/refresh:
     post:
@@ -43,6 +49,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/AuthSession' }
         '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
   /auth/logout:
     post:
       operationId: logout
@@ -50,6 +57,7 @@ paths:
       summary: Thu hồi refresh family và xóa cookie
       responses:
         '204': { description: Đã đăng xuất; access token cũ hết hạn theo TTL }
+        '403': { $ref: '#/components/responses/Problem' }
   /auth/me:
     get:
       operationId: getCurrentUser
@@ -131,7 +139,7 @@ components:
       headers:
         Set-Cookie:
           schema: { type: string }
-          description: 'lams_refresh; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Secure theo cấu hình'
+          description: 'lams_refresh; HttpOnly; Path=/api/v1/auth. Local SameSite=Lax; pilot SameSite=None và Secure, kèm kiểm tra Origin/header cho POST Auth.'
       content:
         application/json:
           schema: { $ref: '#/components/schemas/AuthSessionResponse' }

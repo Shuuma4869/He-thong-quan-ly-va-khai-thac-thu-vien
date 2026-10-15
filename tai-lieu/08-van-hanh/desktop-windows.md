@@ -53,9 +53,27 @@ Không commit `.tools`, `target`, bộ cài, node_modules hay dữ liệu WebVie
 
 Dev dùng `http://localhost:5173`, API localhost 8080/3000. Release dùng origin `http://tauri.localhost`, API `http://api.tauri.localhost:8080/api/v1` và cổng 3000 cho Insight. Đây là tên loopback của Chromium/WebView2, không phải dịch vụ Internet và không cần sửa hosts file. Các API phải chạy tại cổng mặc định này cho release hiện tại.
 
-Hai origin release cùng site để refresh cookie `HttpOnly; SameSite=Lax` hoạt động. Không hạ SameSite xuống None, không tắt bảo mật WebView. CORS chỉ cho phép origin cụ thể, không wildcard credentials. Launcher Core/Insight bổ sung origin desktop ngay cả khi `.env` cũ chưa có; nếu chạy backend bằng Docker/lệnh riêng, đặt `CORS_ALLOWED_ORIGINS` và `FRONTEND_ORIGIN` gồm `http://tauri.localhost`.
+Hai origin release local cùng site để refresh cookie `HttpOnly; SameSite=Lax` hoạt động. Không đổi cookie local sang None hoặc tắt bảo mật WebView. CORS chỉ cho phép origin cụ thể, không wildcard credentials. Launcher Core/Insight bổ sung origin desktop ngay cả khi `.env` cũ chưa có; nếu chạy backend bằng Docker/lệnh riêng, đặt `CORS_ALLOWED_ORIGINS` và `FRONTEND_ORIGIN` gồm `http://tauri.localhost`.
 
 `build-desktop.ps1` đặt URL desktop trong phạm vi build và khôi phục biến cũ sau đó. Không đưa secret vào bất cứ biến VITE nào. Giao diện dùng HashRouter trên desktop để reload/deep link không phụ thuộc web server. Rust chặn chuyển cửa sổ ra origin khác; không cấp quyền filesystem/shell hoặc plugin native cho nội dung web.
+
+## Bản kết nối máy chủ HTTPS
+
+Chỉ build để phân phối sau khi đã triển khai và kiểm tra Core HTTPS theo [hướng dẫn pilot](cloud-pilot.md). Thay URL ví dụ bằng URL thật:
+
+```powershell
+.\scripts\build-desktop.ps1 -Environment pilot -CoreApiUrl 'https://TEN-DICH-VU.onrender.com/api/v1'
+```
+
+Không truyền `-InsightApiUrl` khi pilot chưa cần Insight. Script bật origin `https://tauri.localhost`, giới hạn CSP vào các API đã chỉ định và không dùng `.env.desktop` local. Server pilot phải cho phép origin này, bật cookie Secure/SameSite=None và kiểm tra trusted origin/header. Bản local vẫn là mặc định khi không có `-Environment`.
+
+Các môi trường hiện dùng cùng app identifier, version và đường dẫn output; build sau sẽ thay artifact build trước. Không cài đồng thời bản local và pilot như hai sản phẩm riêng. Ghi lại môi trường và commit của artifact trước khi bàn giao. Chưa có server pilot thật nên chưa nghiệm thu đăng nhập HTTPS từ máy người dùng; không phát hành bộ cài trỏ tới URL mẫu.
+
+Sau khi cài, có thể mở từ Start Menu/shortcut hoặc PowerShell:
+
+```powershell
+& "$env:LOCALAPPDATA\LAMS\lams-desktop.exe"
+```
 
 ## Kiểm thử
 
