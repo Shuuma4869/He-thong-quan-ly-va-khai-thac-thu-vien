@@ -1,6 +1,26 @@
-import { test, expect } from '@playwright/test';
+import { test as base, expect, chromium, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+
+const desktopEndpoint = process.env.LAMS_E2E_DESKTOP_CDP;
+const test = base.extend({
+  page: async ({ page }, providePage) => {
+    if (!desktopEndpoint) { await providePage(page); return; }
+    const desktop = await chromium.connectOverCDP(desktopEndpoint);
+    try {
+      const context = desktop.contexts()[0];
+      await context.clearCookies();
+      const nativePage = context.pages()[0];
+      if (!nativePage) throw new Error('Cửa sổ WebView2 chưa mở.');
+      await nativePage.goto('http://tauri.localhost/');
+      expect(await nativePage.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
+      await providePage(nativePage);
+    } finally { await desktop.close(); }
+  },
+});
+async function navigate(page: Page, path: string) {
+  await page.goto(desktopEndpoint ? `http://tauri.localhost/#${path}` : path);
+}
 
 const core = process.env.LAMS_E2E_CORE_URL;
 const container = process.env.LAMS_E2E_CONTAINER;
@@ -31,7 +51,7 @@ test.beforeAll(async ({ request }) => {
 test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', async ({ page }) => {
   const address = `reader-browser-${suffix}@example.test`;
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/dang-ky');
+  await navigate(page, '/dang-ky');
   await page.getByLabel('Họ và tên', { exact: true }).fill('Người đọc kiểm thử');
   await page.getByLabel('Email', { exact: true }).fill(address);
   await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
@@ -42,21 +62,24 @@ test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', a
   await expect(page.getByText(/Chưa có thông tin hồ sơ bổ sung/)).toBeVisible();
   await page.reload();
   await expect(page.getByText(address, { exact: true })).toBeVisible();
+  const refreshCookie = (await page.context().cookies()).find(cookie => cookie.name === 'lams_refresh');
+  expect(refreshCookie?.httpOnly).toBe(true);
+  expect(refreshCookie?.sameSite).toBe('Lax');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/profile-mobile.png', fullPage: true });
-  await page.goto('/nhan-vien/thanh-vien');
+  await navigate(page, '/nhan-vien/thanh-vien');
   await expect(page.getByRole('heading', { name: /403/ })).toBeVisible();
-  await page.goto('/ho-so');
+  await navigate(page, '/ho-so');
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
   await expect(page.getByRole('link', { name: 'Đăng nhập', exact: true }).first()).toBeVisible();
-  await page.goto('/ho-so');
+  await navigate(page, '/ho-so');
   await expect(page.getByLabel('Email hoặc mã thành viên')).toBeVisible();
 });
 
 for (const role of ['LIBRARIAN', 'ADMIN']) {
   test(`${role} tìm/lọc/sắp xếp/phân trang và reload URL`, async ({ page }) => {
     await page.setViewportSize(role === 'ADMIN' ? { width: 390, height: 844 } : { width: 1440, height: 900 });
-    await page.goto('/dang-nhap');
+    await navigate(page, '/dang-nhap');
     await page.getByLabel('Email hoặc mã thành viên').fill(accounts[role].email);
     await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
@@ -69,7 +92,7 @@ for (const role of ['LIBRARIAN', 'ADMIN']) {
     await expect(page.getByText('Không có thành viên phù hợp', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Xóa bộ lọc' }).click();
     await page.getByRole('combobox', { name: 'Sắp xếp', exact: true }).selectOption('fullName,desc');
-    await page.goto('/nhan-vien/thanh-vien?query=' + suffix + '&size=1&page=0&sort=fullName,desc');
+    await navigate(page, '/nhan-vien/thanh-vien?query=' + suffix + '&size=1&page=0&sort=fullName,desc');
     await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
     await page.getByRole('button', { name: 'Trang sau' }).click();
     await expect(page).toHaveURL(/page=1/);

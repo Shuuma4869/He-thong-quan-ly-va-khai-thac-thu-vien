@@ -1,8 +1,10 @@
-param([int]$CorePort = 18081, [int]$FrontendPort = 15174)
+param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 $projectRoot = Get-LamsRoot
-foreach ($port in @($CorePort, $FrontendPort)) {
+if ($Desktop) { $CorePort = 8080 }
+$ports = if ($Desktop) { @($CorePort, $DebugPort) } else { @($CorePort, $FrontendPort) }
+foreach ($port in $ports) {
     if (Test-LamsTcpPort -Port $port) { throw "Cổng kiểm thử $port đang được sử dụng." }
 }
 if ((& node --version) -notmatch '^v22\.') { throw 'Cần Node 22 theo version pin.' }
@@ -26,6 +28,18 @@ $settings = @{
     LAMS_E2E_FRONTEND_URL = "http://127.0.0.1:$FrontendPort"
     LAMS_E2E_CONTAINER = $container
     LAMS_E2E_OWNER = $runId
+    LAMS_E2E_DESKTOP_CDP = ''
+}
+if ($Desktop) {
+    $desktopExe = if ($DesktopExecutable) { (Resolve-Path -LiteralPath $DesktopExecutable).Path }
+        else { Join-Path $projectRoot 'frontend\src-tauri\target\release\lams-desktop.exe' }
+    if (-not (Test-Path -LiteralPath $desktopExe)) { throw 'Chạy scripts/build-desktop.ps1 trước khi kiểm thử desktop.' }
+    $settings.CORS_ALLOWED_ORIGINS = 'http://tauri.localhost'
+    $settings.LAMS_E2E_FRONTEND_URL = 'http://tauri.localhost'
+    $settings.LAMS_E2E_DESKTOP_CDP = "http://127.0.0.1:$DebugPort"
+    # Test-only debug port and isolated WebView profile; never applied by the app launcher.
+    $settings.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$DebugPort"
+    $settings.WEBVIEW2_USER_DATA_FOLDER = (Join-Path $logs 'webview-profile')
 }
 function Wait-TestHttp([string]$Url) {
     $deadline = [DateTime]::UtcNow.AddSeconds(90)
@@ -73,6 +87,20 @@ try {
     }
     $core = Start-Process @launchCore
     $launched += @{ pid = $core.Id; ticks = $core.StartTime.ToUniversalTime().Ticks }
+    Wait-TestHttp "http://127.0.0.1:$CorePort/api/v1/health"
+    if ($Desktop) {
+        $desktopProcess = Start-Process -FilePath $desktopExe -WorkingDirectory (Split-Path $desktopExe) -WindowStyle Normal -PassThru
+        $launched += @{ pid = $desktopProcess.Id; ticks = $desktopProcess.StartTime.ToUniversalTime().Ticks }
+        Wait-TestHttp "http://127.0.0.1:$DebugPort/json/version"
+        for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            $desktopProcess.Refresh()
+            if ($desktopProcess.MainWindowHandle -ne 0) { break }
+            if ($desktopProcess.HasExited) { throw 'Ứng dụng desktop đã thoát khi khởi động.' }
+            Start-Sleep -Seconds 1
+        }
+        if ($desktopProcess.MainWindowHandle -eq 0) { throw 'Không tìm thấy cửa sổ desktop LAMS.' }
+        Write-Output "LAMS native process: $($desktopProcess.Id); window handle: $($desktopProcess.MainWindowHandle)"
+    } else {
     $launchFrontend = @{
         FilePath = (Get-Command node.exe).Source
         ArgumentList = @('node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', "$FrontendPort", '--strictPort')
@@ -82,12 +110,12 @@ try {
     }
     $frontend = Start-Process @launchFrontend
     $launched += @{ pid = $frontend.Id; ticks = $frontend.StartTime.ToUniversalTime().Ticks }
-    Wait-TestHttp "http://127.0.0.1:$CorePort/api/v1/health"
     Wait-TestHttp "http://127.0.0.1:$FrontendPort/"
+    }
     Push-Location (Join-Path $projectRoot 'frontend')
     try { Invoke-LamsNative 'npm' @('run', 'test:e2e') 'E2E Phase 1 thất bại' }
     finally { Pop-Location }
-    Write-Output 'PHASE1_E2E_PASS'
+    if ($Desktop) { Write-Output 'DESKTOP_E2E_PASS' } else { Write-Output 'PHASE1_E2E_PASS' }
 } finally {
     foreach ($record in $launched) {
         $process = Get-Process -Id $record.pid -ErrorAction SilentlyContinue

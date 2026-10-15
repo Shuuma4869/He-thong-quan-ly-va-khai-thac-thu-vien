@@ -9,6 +9,9 @@
   },
   "scripts": {
     "dev": "vite",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build -- --locked",
+    "build:desktop": "npm run typecheck && vite build --mode desktop",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "build": "npm run typecheck && vite build",
     "test": "vitest run",
@@ -30,6 +33,7 @@
   "devDependencies": {
     "@eslint/js": "9.36.0",
     "@playwright/test": "1.64.0",
+    "@tauri-apps/cli": "2.12.2",
     "@tailwindcss/vite": "4.1.14",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",
@@ -45,8 +49,8 @@
     "jsdom": "27.0.0",
     "tailwindcss": "4.1.14",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.45.0",
+    "typescript-eslint": "8.71.2",
     "vite": "7.3.6",
-    "vitest": "3.2.7"
+    "vitest": "5.0.4"
   }
 }

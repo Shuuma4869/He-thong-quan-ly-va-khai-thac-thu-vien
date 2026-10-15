@@ -2,6 +2,12 @@ Set-StrictMode -Version 3.0
 
 $script:LamsRoot = Split-Path -Parent $PSScriptRoot
 
+# Prefer the project's pinned Node without changing the machine-wide installation.
+$localNode = Join-Path $script:LamsRoot '.tools\node-v22.23.3-win-x64'
+if (Test-Path -LiteralPath (Join-Path $localNode 'node.exe')) { $env:PATH = "$localNode;$env:PATH" }
+$cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+if (Test-Path -LiteralPath $cargoBin) { $env:PATH = "$cargoBin;$env:PATH" }
+
 function Get-LamsRoot {
     return $script:LamsRoot
 }

@@ -3,6 +3,8 @@ package io.github.shuuma4869.lams.core.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,6 +49,7 @@ class AuthIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("lams.auth.jwt-secret", () -> "integration-test-secret-with-at-least-32-bytes");
+        registry.add("lams.cors.allowed-origins", () -> "http://localhost:5173,http://tauri.localhost");
     }
 
     @RestController
@@ -76,6 +79,24 @@ class AuthIntegrationTest {
         return header.split(";", 2)[0].split("=", 2)[1];
     }
     private Cookie refreshCookie(String value) { return new Cookie("lams_refresh", value); }
+
+    @Test
+    void desktopCorsAllowsOnlyExplicitOriginsWithCredentials() throws Exception {
+        for (String origin : java.util.List.of("http://localhost:5173", "http://tauri.localhost")) {
+            mvc.perform(options("/api/v1/auth/login").header("Origin", origin)
+                    .header("Access-Control-Request-Method", "POST")
+                    .header("Access-Control-Request-Headers", "content-type"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Access-Control-Allow-Origin", origin))
+                    .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+        }
+        for (String origin : java.util.List.of("http://tauri.localhost.evil.test", "https://example.com", "null")) {
+            mvc.perform(options("/api/v1/auth/login").header("Origin", origin)
+                    .header("Access-Control-Request-Method", "POST"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+        }
+    }
 
     @Test
     void registrationPersistenceAndDuplicateConflict() throws Exception {

@@ -16,3 +16,5 @@ Desktop.ini
 **/.mvn/wrapper/dists/
 playwright-report/
 test-results/
+.tools/
+frontend/src-tauri/gen/
