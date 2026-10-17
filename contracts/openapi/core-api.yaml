@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: LAMS Core API
-  version: 0.1.1
+  version: 0.2.0
   description: >-
-    Core health, Identity/Auth và Member read API. Khi bật profile pilot, tất cả
+    Core health, Identity/Auth, Member, Catalog và Inventory API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
     X-LAMS-Client bằng 1; thiếu hoặc sai trả 403. Client trình duyệt tự gửi Origin.
     Local giữ tương thích với cấu hình SameSite=Lax.
@@ -115,6 +115,583 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /authors:
+    get:
+      operationId: listAuthors
+      tags: [Catalog]
+      summary: Lấy danh sách tác giả có phân trang
+      description: LIBRARIAN hoặc ADMIN; sắp xếp ổn định theo tên rồi đến mã định danh.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Danh sách tác giả theo trang
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorPage' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createAuthor
+      tags: [Catalog]
+      summary: Tạo tác giả
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthorRequest' }
+      responses:
+        '201': { description: Tác giả đã được tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Author' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /authors/{authorId}:
+    parameters:
+      - name: authorId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getAuthor
+      tags: [Catalog]
+      summary: Lấy thông tin một tác giả
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Thông tin tác giả
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Author' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateAuthor
+      tags: [Catalog]
+      summary: Cập nhật tên tác giả
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthorRequest' }
+      responses:
+        '200':
+          description: Tác giả đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Author' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteAuthor
+      tags: [Catalog]
+      summary: Xóa tác giả chưa được sách tham chiếu
+      description: Cơ sở dữ liệu từ chối xóa khi còn quan hệ sách–tác giả; API trả 409 và giữ nguyên tác giả.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã xóa tác giả }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [Catalog]
+      summary: Lấy danh sách thể loại có phân trang
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Danh sách thể loại theo trang
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryPage' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCategory
+      tags: [Catalog]
+      summary: Tạo thể loại
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryRequest' }
+      responses:
+        '201': { description: Thể loại đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /categories/{categoryId}:
+    parameters:
+      - { name: categoryId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getCategory
+      tags: [Catalog]
+      summary: Lấy thông tin một thể loại
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Thông tin thể loại, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCategory
+      tags: [Catalog]
+      summary: Cập nhật thể loại
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryRequest' }
+      responses:
+        '200': { description: Thể loại đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCategory
+      tags: [Catalog]
+      summary: Xóa thể loại chưa được sách tham chiếu
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã xóa thể loại }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /publishers:
+    get:
+      operationId: listPublishers
+      tags: [Catalog]
+      summary: Lấy danh sách nhà xuất bản có phân trang
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Danh sách nhà xuất bản theo trang
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublisherPage' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPublisher
+      tags: [Catalog]
+      summary: Tạo nhà xuất bản
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublisherRequest' }
+      responses:
+        '201': { description: Nhà xuất bản đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Publisher' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /publishers/{publisherId}:
+    parameters:
+      - { name: publisherId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getPublisher
+      tags: [Catalog]
+      summary: Lấy thông tin một nhà xuất bản
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Thông tin nhà xuất bản, content: { application/json: { schema: { $ref: '#/components/schemas/Publisher' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePublisher
+      tags: [Catalog]
+      summary: Cập nhật nhà xuất bản
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublisherRequest' }
+      responses:
+        '200': { description: Nhà xuất bản đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Publisher' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deletePublisher
+      tags: [Catalog]
+      summary: Xóa nhà xuất bản chưa được ấn bản tham chiếu
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã xóa nhà xuất bản }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /books:
+    get:
+      operationId: listBooks
+      tags: [Catalog]
+      summary: Lấy danh sách tác phẩm có phân trang
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Danh sách tác phẩm và quan hệ tác giả/thể loại
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookPage' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBook
+      tags: [Catalog]
+      summary: Tạo tác phẩm logic
+      description: Tạo Book và các quan hệ trong cùng giao dịch; không tạo ấn bản, bản vật lý hoặc số lượng tồn.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookRequest' }
+      responses:
+        '201': { description: Tác phẩm đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Book' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getBook
+      tags: [Catalog]
+      summary: Lấy thông tin tác phẩm và quan hệ Catalog
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Tác phẩm, tác giả và thể loại, content: { application/json: { schema: { $ref: '#/components/schemas/Book' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateBook
+      tags: [Catalog]
+      summary: Cập nhật tác phẩm và toàn bộ quan hệ tác giả/thể loại
+      description: Phần tử lặp trong authorIds/categoryIds được gộp; danh sách quan hệ bị thay thế trong cùng giao dịch.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookRequest' }
+      responses:
+        '200': { description: Tác phẩm đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Book' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBook
+      tags: [Catalog]
+      summary: Xóa tác phẩm chưa có ấn bản hoặc nghiệp vụ tham chiếu
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã xóa tác phẩm }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/editions:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listEditions
+      tags: [Catalog]
+      summary: Lấy các ấn bản của một tác phẩm
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách ấn bản, content: { application/json: { schema: { $ref: '#/components/schemas/EditionPage' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEdition
+      tags: [Catalog]
+      summary: Tạo ấn bản cho tác phẩm
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EditionRequest' }
+      responses:
+        '201': { description: Ấn bản đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Edition' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/editions/{editionId}:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: editionId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getEdition
+      tags: [Catalog]
+      summary: Lấy một ấn bản thuộc tác phẩm
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Chi tiết ấn bản, content: { application/json: { schema: { $ref: '#/components/schemas/Edition' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEdition
+      tags: [Catalog]
+      summary: Cập nhật thông tin ấn bản
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EditionRequest' }
+      responses:
+        '200': { description: Ấn bản đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Edition' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEdition
+      tags: [Catalog]
+      summary: Xóa ấn bản chưa có bản sách vật lý tham chiếu
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã xóa ấn bản }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /branches:
+    get:
+      operationId: listBranches
+      tags: [Inventory]
+      summary: Lấy danh sách chi nhánh có phân trang
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách chi nhánh, content: { application/json: { schema: { $ref: '#/components/schemas/BranchPage' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBranch
+      tags: [Inventory]
+      summary: Tạo chi nhánh
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BranchRequest' }
+      responses:
+        '201': { description: Chi nhánh đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Branch' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /branches/{branchId}:
+    parameters:
+      - { name: branchId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getBranch
+      tags: [Inventory]
+      summary: Lấy thông tin chi nhánh
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Chi nhánh, content: { application/json: { schema: { $ref: '#/components/schemas/Branch' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateBranch
+      tags: [Inventory]
+      summary: Cập nhật mã, tên hoặc trạng thái chi nhánh
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BranchRequest' }
+      responses:
+        '200': { description: Chi nhánh đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Branch' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /shelves:
+    get:
+      operationId: listShelves
+      tags: [Inventory]
+      summary: Lấy danh sách kệ có phân trang, có thể lọc theo chi nhánh
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: branchId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách kệ, content: { application/json: { schema: { $ref: '#/components/schemas/ShelfPage' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createShelf
+      tags: [Inventory]
+      summary: Tạo kệ trong chi nhánh
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShelfRequest' }
+      responses:
+        '201': { description: Kệ đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/Shelf' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /shelves/{shelfId}:
+    parameters:
+      - { name: shelfId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getShelf
+      tags: [Inventory]
+      summary: Lấy thông tin kệ
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Kệ và chi nhánh, content: { application/json: { schema: { $ref: '#/components/schemas/Shelf' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateShelf
+      tags: [Inventory]
+      summary: Cập nhật thông tin hoặc chuyển kệ sang chi nhánh khác
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShelfRequest' }
+      responses:
+        '200': { description: Kệ đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Shelf' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /copies:
+    get:
+      operationId: listCopies
+      tags: [Inventory]
+      summary: Tìm bản sách theo ấn bản, kệ hoặc trạng thái
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: editionId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: shelfId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/CopyStatus' } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách bản sách, content: { application/json: { schema: { $ref: '#/components/schemas/CopyPage' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCopy
+      tags: [Inventory]
+      summary: Tạo mã vạch cho một bản sách vật lý
+      description: Bản mới bắt đầu ở trạng thái IN_PROCESS; API này không thay đổi trạng thái lưu thông.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookCopyRequest' }
+      responses:
+        '201': { description: Bản sách đã tạo, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /copies/{copyId}:
+    parameters:
+      - { name: copyId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getCopy
+      tags: [Inventory]
+      summary: Lấy thông tin một bản sách
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Bản sách và vị trí hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCopy
+      tags: [Inventory]
+      summary: Cập nhật mã vạch hoặc vị trí với version hiện tại
+      description: Không cho phép đổi trạng thái. Bản đang mượn hoặc giữ chỗ không thể chuyển vị trí.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookCopyRequest' }
+      responses:
+        '200': { description: Bản sách đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /health:
     get:
       operationId: getCoreHealth
@@ -199,6 +776,207 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/MemberItem' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    AuthorRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, description: Tên sẽ được loại khoảng trắng ở hai đầu. }
+    Author:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 200 }
+    AuthorPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Author' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    CategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 150 }
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 150 }
+    CategoryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Category' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    PublisherRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+    Publisher:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 200 }
+    PublisherPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Publisher' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    BookRequest:
+      type: object
+      required: [title, authorIds, categoryIds]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: [string, 'null'], maxLength: 10000 }
+        authorIds:
+          type: array
+          maxItems: 100
+          items: { type: string, format: uuid }
+        categoryIds:
+          type: array
+          maxItems: 100
+          items: { type: string, format: uuid }
+    BookRelatedItem:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    Book:
+      type: object
+      required: [id, title, authors, categories]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        authors:
+          type: array
+          items: { $ref: '#/components/schemas/BookRelatedItem' }
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/BookRelatedItem' }
+    BookPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Book' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    EditionRequest:
+      type: object
+      properties:
+        isbn13: { type: [string, 'null'], pattern: '^[0-9]{13}$' }
+        publisherId: { type: [string, 'null'], format: uuid }
+        publicationYear: { type: [integer, 'null'], minimum: 1000, maximum: 9999 }
+        language: { type: [string, 'null'], maxLength: 35 }
+    Edition:
+      type: object
+      required: [id, bookId, bookTitle]
+      properties:
+        id: { type: string, format: uuid }
+        bookId: { type: string, format: uuid }
+        bookTitle: { type: string }
+        isbn13: { type: [string, 'null'] }
+        publisherId: { type: [string, 'null'], format: uuid }
+        publisherName: { type: [string, 'null'] }
+        publicationYear: { type: [integer, 'null'] }
+        language: { type: [string, 'null'] }
+    EditionPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Edition' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    BranchRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 30 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        status: { type: string, enum: [ACTIVE, DISABLED], default: ACTIVE }
+    Branch:
+      type: object
+      required: [id, code, name, status]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [ACTIVE, DISABLED] }
+    BranchPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Branch' } }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    ShelfRequest:
+      type: object
+      required: [branchId, code, label]
+      properties:
+        branchId: { type: string, format: uuid }
+        code: { type: string, minLength: 1, maxLength: 30 }
+        label: { type: string, minLength: 1, maxLength: 150 }
+        sortOrder: { type: integer, minimum: 0, default: 0 }
+    Shelf:
+      type: object
+      required: [id, branchId, branchCode, code, label, sortOrder]
+      properties:
+        id: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        branchCode: { type: string }
+        code: { type: string }
+        label: { type: string }
+        sortOrder: { type: integer }
+    ShelfPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Shelf' } }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    CopyStatus:
+      type: string
+      enum: [IN_PROCESS, AVAILABLE, ON_LOAN, ON_HOLD, LOST, DAMAGED, WITHDRAWN]
+    BookCopyRequest:
+      type: object
+      required: [editionId, barcode, shelfId]
+      properties:
+        editionId: { type: string, format: uuid }
+        barcode: { type: string, minLength: 1, maxLength: 100 }
+        shelfId: { type: string, format: uuid }
+        version: { type: integer, minimum: 0, description: Bắt buộc khi cập nhật; bỏ qua khi tạo mới. }
+    BookCopy:
+      type: object
+      required: [id, editionId, shelfId, branchId, shelfCode, barcode, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        editionId: { type: string, format: uuid }
+        bookTitle: { type: string }
+        isbn13: { type: [string, 'null'] }
+        shelfId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        shelfCode: { type: string }
+        barcode: { type: string }
+        status: { $ref: '#/components/schemas/CopyStatus' }
+        version: { type: integer, minimum: 0 }
+    CopyPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/BookCopy' } }
         page: { $ref: '#/components/schemas/PageMetadata' }
     RegisterRequest:
       type: object
