@@ -10,7 +10,7 @@
 | Concurrency | double borrow, hold assignment, expiry race | test đa thread + DB thật |
 | Load | P95/error/resource theo workload | chỉ sau khi có traffic model |
 
-Hiện có test health cho Spring/Nest, kiểm thử Auth và Member với PostgreSQL qua Testcontainers, kiểm tra cấu trúc contract Member và test giao diện React. `PostgresContainerFoundation` dùng chung cho integration test của Core. Không dùng H2 để thay PostgreSQL trong kiểm thử nghiệp vụ; dữ liệu test được tạo trong test và dọn bằng transaction/container, không seed catalog giả ở runtime.
+Hiện có test health cho Spring/Nest, kiểm thử Auth/Member/Catalog với PostgreSQL qua Testcontainers, kiểm tra OpenAPI Member/Catalog và test giao diện React. Catalog kiểm migration mới, FK/unique, quyền, transaction rollback, phân trang và status Copy; không dùng H2 thay PostgreSQL. `PostgresContainerFoundation` dùng chung cho integration test của Core. Dữ liệu test được tạo trong test và dọn trong database/container thử nghiệm, không seed catalog giả ở runtime.
 
 `scripts/check-quality.ps1` chạy test/build Core, Prisma validate/test/build Insight, typecheck/lint/Vitest/build frontend và kiểm tra cấu hình Compose. CI chạy các bước tương ứng và build Docker image. Kiểm tra Member OpenAPI hiện chỉ bao phủ đường dẫn, quyền khai báo và cấu trúc DTO liên quan, chưa thay thế việc kiểm định toàn bộ OpenAPI.
 
