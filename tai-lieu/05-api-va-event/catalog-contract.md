@@ -4,10 +4,11 @@ Trạng thái: hợp đồng backend cho các API Catalog/Inventory đã triển
 
 ## Quyền và quy tắc chung
 
-- Tất cả endpoint dưới đây yêu cầu tài khoản ACTIVE có vai trò LIBRARIAN hoặc ADMIN; quyền được xác minh lại từ dữ liệu Identity hiện tại.
+- GET Author, Category, Publisher, Book và Edition cho phép tài khoản ACTIVE đã đăng nhập, gồm READER; quyền ghi và toàn bộ Inventory chỉ dành cho LIBRARIAN hoặc ADMIN. Trạng thái tài khoản và quyền ghi được kiểm tra lại từ Identity hiện tại. Chưa đăng nhập trả 401; tài khoản bị khóa trả 403.
 - Danh sách dùng `page` mặc định 0, `size` mặc định 20, giới hạn 1–100, response `{items,page:{number,size,totalElements,totalPages}}`.
 - Dữ liệu truy vấn được bind; tên cột sắp xếp/quan hệ được xác định ở máy chủ.
 - Validation trả 422, đối tượng không tồn tại trả 404, ràng buộc duy nhất/khóa ngoại/xung đột version trả 409. Lỗi theo Problem Details kèm `requestId`.
+- OpenAPI tách `BookCopyRequest` khi tạo mới khỏi `BookCopyUpdateRequest` khi PATCH; chỉ PATCH bắt buộc `version` và thiếu version trả 422.
 - Migration chỉ tiến về trước; không sửa V1/V2 hoặc migration đã áp dụng. Tên đã trim trước khi lưu; khóa định danh chuẩn hóa của Category là Unicode NFKC, gộp khoảng trắng và không phân biệt hoa thường.
 
 ## Author, Category, Publisher
@@ -23,6 +24,7 @@ GET danh sách hỗ trợ phân trang; tạo trả 201, đọc/cập nhật tr�
 ## Book — tác phẩm logic
 
 - `POST/GET /api/v1/books`, `GET/PATCH/DELETE /api/v1/books/{bookId}`.
+- GET danh sách kết hợp `query` (tên sách, tối đa 500 ký tự), `authorId`, `categoryId`; count và items dùng cùng điều kiện lọc. Từ khóa được chuẩn hóa NFKC rồi gộp khoảng trắng Unicode; `%`, `_`, `\` là ký tự nguyên văn. UUID sai trả 400; UUID hợp lệ nhưng không khớp trả trang rỗng. Thứ tự cố định theo tên chuẩn hóa rồi UUID.
 - Request gồm `title`, `description` tùy chọn, `authorIds[]` và `categoryIds[]`. Title bắt buộc; tên quan hệ phải tồn tại. ID quan hệ lặp được gộp, không tạo dòng nối trùng.
 - Tạo/cập nhật Book cùng hai bảng nối trong một transaction; lỗi quan hệ làm rollback toàn bộ.
 - Response có `id`, `title`, `description`, `authors[]`, `categories[]`. Không có ISBN, barcode, số bản hoặc availability.
@@ -37,7 +39,7 @@ GET danh sách hỗ trợ phân trang; tạo trả 201, đọc/cập nhật tr�
 ## Branch, Shelf và BookCopy
 
 - Branch: `POST/GET /api/v1/branches`, `GET/PATCH /api/v1/branches/{branchId}`. Mã được trim/viết hoa và unique; tên bắt buộc; status chỉ ACTIVE/DISABLED. Không có API xóa trong phạm vi này.
-- Shelf: `POST/GET /api/v1/shelves`, `GET/PATCH /api/v1/shelves/{shelfId}`. Có thể lọc theo `branchId`; Branch bắt buộc tồn tại; mã Shelf chỉ unique trong một Branch. Có thể chuyển kệ rỗng sang Branch khác; không chuyển khi còn BookCopy. Không có API xóa.
+- Shelf: `POST/GET /api/v1/shelves`, `GET/PATCH /api/v1/shelves/{shelfId}`. Có thể lọc theo `branchId`; Branch bắt buộc tồn tại; mã Shelf chỉ unique trong một Branch. Có thể chuyển kệ rỗng sang Branch khác; không chuyển khi còn BookCopy. Chuyển kệ và tạo/chuyển Copy vào kệ khóa cùng bản ghi Shelf đến cuối giao dịch, tránh kiểm tra rỗng rồi bị thêm sách trước khi ghi. Không có API xóa.
 - BookCopy: `POST/GET /api/v1/copies`, `GET/PATCH /api/v1/copies/{copyId}`. Có thể lọc theo `editionId`, `shelfId`, `status`. Bản mới bắt đầu `IN_PROCESS`, `version=0`; barcode unique.
 - PATCH BookCopy yêu cầu version hiện tại, chỉ sửa Edition/barcode/Shelf và tăng version có điều kiện. Không nhận trường status; bản `ON_LOAN`/`ON_HOLD` không được sửa bảo trì. Chuyển trạng thái lưu thông thuộc command riêng ở phase sau.
 - API bảo trì không tính availability; trạng thái Copy/Loan/Hold mới là nguồn dữ liệu để tính tình trạng sẵn có.

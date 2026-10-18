@@ -35,10 +35,10 @@ public class CategoryService {
         }
     }
 
-    public Category get(UUID actorId, UUID id) { requireStaff(actorId); return find(id); }
+    public Category get(UUID actorId, UUID id) { identity.currentUser(actorId); return find(id); }
 
     public CategoryPage list(UUID actorId, String pageValue, String sizeValue) {
-        requireStaff(actorId);
+        identity.currentUser(actorId);
         int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parse(sizeValue, 20, 100, "size");
         if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");
@@ -82,7 +82,8 @@ public class CategoryService {
     }
     private static String normalizeDisplay(String value) {
         if (value == null || value.isBlank()) throw invalid("Tên thể loại không được để trống.");
-        String name = Normalizer.normalize(value.trim().replaceAll("\\s+", " "), Normalizer.Form.NFKC);
+        String name = Normalizer.normalize(value, Normalizer.Form.NFKC).replaceAll("(?U)\\s+", " ").trim();
+        if (name.isEmpty()) throw invalid("Tên thể loại không được để trống.");
         if (name.length() > 150) throw invalid("Tên thể loại không được vượt quá 150 ký tự.");
         return name;
     }

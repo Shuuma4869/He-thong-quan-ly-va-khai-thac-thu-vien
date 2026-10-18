@@ -45,16 +45,19 @@ public class BookService {
     }
 
     public Book get(UUID actorId, UUID bookId) {
-        requireStaff(actorId);
+        identity.currentUser(actorId);
         return find(bookId);
     }
 
-    public BookPage list(UUID actorId, String pageValue, String sizeValue) {
-        requireStaff(actorId);
+    public BookPage list(UUID actorId, String pageValue, String sizeValue, String query, UUID authorId, UUID categoryId) {
+        identity.currentUser(actorId);
+        String search = query == null ? "" : Normalizer.normalize(query, Normalizer.Form.NFKC)
+                .replaceAll("(?U)\\s+", " ").trim();
+        if (search.length() > 500) throw invalid("Từ khóa không được vượt quá 500 ký tự.");
         int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parse(sizeValue, 20, 100, "size");
         if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");
-        var result = books.list(page, size);
+        var result = books.list(page, size, search.toLowerCase(Locale.ROOT), authorId, categoryId);
         long pages = result.totalElements() == 0 ? 0 : (result.totalElements() + size - 1) / size;
         return new BookPage(result.items(), new PageMetadata(page, size, result.totalElements(), pages));
     }
@@ -113,7 +116,8 @@ public class BookService {
 
     private static String normalizeTitle(String value) {
         if (value == null || value.isBlank()) throw invalid("Tên sách không được để trống.");
-        String title = Normalizer.normalize(value.trim().replaceAll("\\s+", " "), Normalizer.Form.NFKC);
+        String title = Normalizer.normalize(value, Normalizer.Form.NFKC).replaceAll("(?U)\\s+", " ").trim();
+        if (title.isEmpty()) throw invalid("Tên sách không được để trống.");
         if (title.length() > 500) throw invalid("Tên sách không được vượt quá 500 ký tự.");
         return title;
     }

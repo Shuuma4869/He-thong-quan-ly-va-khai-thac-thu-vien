@@ -124,7 +124,7 @@ class AuthorIntegrationTest {
         String readerToken = json.readTree(registration.getResponse().getContentAsString())
                 .path("accessToken").asText();
         mvc.perform(get("/api/v1/authors").header("Authorization", "Bearer " + readerToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test

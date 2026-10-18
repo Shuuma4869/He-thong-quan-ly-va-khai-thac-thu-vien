@@ -97,7 +97,8 @@ public class BookCopyService {
     }
 
     private void requireShelf(UUID id) {
-        if (jdbc.queryForObject("SELECT count(*) FROM shelves WHERE id=?", Integer.class, id) == 0) {
+        if (jdbc.query("SELECT id FROM shelves WHERE id=? FOR UPDATE",
+                (rs, row) -> rs.getObject(1), id).isEmpty()) {
             throw new AuthFailure(404, "Không tìm thấy kệ.");
         }
     }

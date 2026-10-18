@@ -60,6 +60,8 @@ public class ShelfService {
     @Transactional
     public Shelf update(UUID actorId, UUID shelfId, UUID branchId, String code, String label, Integer sortOrder) {
         requireStaff(actorId);
+        // Khóa trước khi đếm; tạo/chuyển Copy cũng khóa cùng kệ đến hết giao dịch.
+        jdbc.query("SELECT id FROM shelves WHERE id=? FOR UPDATE", (rs, row) -> rs.getObject(1), shelfId);
         Shelf current = find(shelfId);
         requireBranch(branchId);
         if (!current.branchId().equals(branchId)

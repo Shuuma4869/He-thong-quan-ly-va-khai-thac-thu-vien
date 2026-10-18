@@ -11,6 +11,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import io.github.shuuma4869.lams.core.inventory.copy.application.BookCopyService;
+import io.github.shuuma4869.lams.core.inventory.shelf.application.ShelfService;
+import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,6 +53,9 @@ class InventoryCatalogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager transactions;
+    @Autowired BookCopyService copies;
+    @Autowired ShelfService shelves;
 
     @BeforeEach
     void clearFixtures() {
@@ -189,5 +201,137 @@ class InventoryCatalogIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("editionId", editionId,"barcode", "BAR-3","shelfId", UUID.randomUUID()))))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void copyCreateAndMoveSerializeWithShelfBranchTransfer() throws Exception {
+        String token = staffToken();
+        UUID actor = UUID.fromString(json.readTree(java.util.Base64.getUrlDecoder()
+                .decode(token.split("\\.")[1])).path("sub").asText());
+        UUID branchA = branch(token, "CON-A", "Chi nhánh A");
+        UUID branchB = branch(token, "CON-B", "Chi nhánh B");
+        UUID destination = shelf(token, branchA, "D", "Kệ đích");
+        UUID source = shelf(token, branchA, "S", "Kệ nguồn");
+        UUID editionId = edition(token);
+
+        assertTransferBlockedByConcurrentCopy(actor, branchB, destination,
+                () -> copies.create(actor, editionId, "CON-NEW", destination));
+        assertThat(jdbc.queryForObject("SELECT branch_id FROM shelves WHERE id=?", UUID.class, destination))
+                .isEqualTo(branchA);
+
+        UUID movingDestination = shelf(token, branchA, "M", "Kệ chuyển tới");
+        var initial = postJson(token, "/api/v1/copies", Map.of("editionId", editionId,
+                "barcode", "CON-MOVE", "shelfId", source), 201);
+        UUID copyId = UUID.fromString(initial.path("id").asText());
+        assertTransferBlockedByConcurrentCopy(actor, branchB, movingDestination,
+                () -> copies.update(actor, copyId, editionId, "CON-MOVE", movingDestination, 0L));
+        assertThat(jdbc.queryForObject("SELECT branch_id FROM shelves WHERE id=?", UUID.class, movingDestination))
+                .isEqualTo(branchA);
+        assertThat(jdbc.queryForObject("SELECT shelf_id FROM book_copies WHERE id=?", UUID.class, copyId))
+                .isEqualTo(movingDestination);
+    }
+
+    @Test
+    void copyRejectsMissingStaleAndConcurrentVersions() throws Exception {
+        String token = staffToken();
+        UUID branchId = branch(token, "VER", "Chi nhánh phiên bản");
+        UUID shelfId = shelf(token, branchId, "V1", "Kệ phiên bản");
+        UUID editionId = edition(token);
+        UUID copyId = UUID.fromString(postJson(token, "/api/v1/copies", Map.of("editionId", editionId,
+                "barcode", "VER-1", "shelfId", shelfId), 201).path("id").asText());
+        String path = "/api/v1/copies/" + copyId;
+        mvc.perform(patch(path).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                                "editionId", editionId, "barcode", "VER-2", "shelfId", shelfId))))
+                .andExpect(status().isUnprocessableEntity());
+        CountDownLatch gate = new CountDownLatch(1);
+        var first = CompletableFuture.supplyAsync(() -> updateStatus(token, path, editionId, shelfId, "VER-A", gate));
+        var second = CompletableFuture.supplyAsync(() -> updateStatus(token, path, editionId, shelfId, "VER-B", gate));
+        gate.countDown();
+        assertThat(java.util.List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)))
+                .containsExactlyInAnyOrder(200, 409);
+        assertThat(jdbc.queryForObject("SELECT version FROM book_copies WHERE id=?", Long.class, copyId)).isOne();
+        mvc.perform(patch(path).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                                "editionId", editionId, "barcode", "VER-STALE", "shelfId", shelfId, "version", 0))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void staffPermissionsRecheckCurrentStatusAndRole() throws Exception {
+        mvc.perform(get("/api/v1/copies")).andExpect(status().isUnauthorized());
+        for (String role : new String[]{"LIBRARIAN", "ADMIN"}) {
+            String token = staffToken();
+            var claims = json.readTree(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]));
+            UUID actor = UUID.fromString(claims.path("sub").asText());
+            if (role.equals("ADMIN")) {
+                jdbc.update("INSERT INTO user_roles(user_id,role_code) VALUES (?, 'ADMIN')", actor);
+                var login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("identifier", claims.path("email").asText(),
+                                "password", "correct-password-123", "remember", false))))
+                        .andExpect(status().isOk()).andReturn();
+                token = json.readTree(login.getResponse().getContentAsString()).path("accessToken").asText();
+            }
+            mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+            jdbc.update("UPDATE users SET status='LOCKED' WHERE id=?", actor);
+            mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isForbidden());
+            jdbc.update("UPDATE users SET status='ACTIVE' WHERE id=?", actor);
+            jdbc.update("DELETE FROM user_roles WHERE user_id=? AND role_code IN ('LIBRARIAN','ADMIN')", actor);
+            mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    private int updateStatus(String token, String path, UUID editionId, UUID shelfId, String barcode,
+                             CountDownLatch gate) {
+        try {
+            gate.await();
+            return mvc.perform(patch(path).header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                            "editionId", editionId, "barcode", barcode, "shelfId", shelfId, "version", 0))))
+                    .andReturn().getResponse().getStatus();
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
+    private void assertTransferBlockedByConcurrentCopy(UUID actor, UUID newBranch, UUID shelfId,
+                                                        Runnable insertOrMoveCopy) throws Exception {
+        CountDownLatch copyWritten = new CountDownLatch(1);
+        CountDownLatch allowCommit = new CountDownLatch(1);
+        var copy = CompletableFuture.runAsync(() -> new TransactionTemplate(transactions).executeWithoutResult(tx -> {
+            insertOrMoveCopy.run();
+            copyWritten.countDown();
+            try {
+                if (!allowCommit.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Chờ commit quá lâu.");
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(error);
+            }
+        }));
+        try {
+            assertThat(copyWritten.await(5, TimeUnit.SECONDS)).isTrue();
+            var transfer = CompletableFuture.supplyAsync(() -> {
+                try {
+                    shelves.update(actor, shelfId, newBranch, "MOVED", "Không được chuyển", 0);
+                    return 200;
+                } catch (AuthFailure conflict) {
+                    return conflict.status();
+                }
+            });
+            try {
+                transfer.get(150, TimeUnit.MILLISECONDS);
+                throw new AssertionError("Chuyển kệ không đợi giao dịch Copy hoàn tất.");
+            } catch (TimeoutException expected) {
+                // Đường chuyển kệ phải chờ khóa cùng kệ với thao tác Copy.
+            }
+            allowCommit.countDown();
+            copy.get(10, TimeUnit.SECONDS);
+            assertThat(transfer.get(10, TimeUnit.SECONDS)).isEqualTo(409);
+        } finally {
+            allowCommit.countDown();
+        }
     }
 }

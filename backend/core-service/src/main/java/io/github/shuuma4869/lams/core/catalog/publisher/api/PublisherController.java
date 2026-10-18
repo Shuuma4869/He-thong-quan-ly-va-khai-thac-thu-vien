@@ -29,11 +29,13 @@ public class PublisherController {
         return PublisherResponse.from(publishers.create(actor(token), request.name()));
     }
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public PublisherService.PublisherPage list(JwtAuthenticationToken token,
             @RequestParam(required = false) String page, @RequestParam(required = false) String size) {
         return publishers.list(actor(token), page, size);
     }
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public PublisherResponse get(JwtAuthenticationToken token, @PathVariable UUID id) {
         return PublisherResponse.from(publishers.get(actor(token), id));
     }

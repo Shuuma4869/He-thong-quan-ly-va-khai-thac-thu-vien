@@ -120,7 +120,7 @@ paths:
       operationId: listAuthors
       tags: [Catalog]
       summary: Lấy danh sách tác giả có phân trang
-      description: LIBRARIAN hoặc ADMIN; sắp xếp ổn định theo tên rồi đến mã định danh.
+      description: Tài khoản ACTIVE đã đăng nhập, gồm READER; sắp xếp ổn định theo tên rồi UUID. Thao tác ghi chỉ dành cho nhân viên.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -207,6 +207,7 @@ paths:
       operationId: listCategories
       tags: [Catalog]
       summary: Lấy danh sách thể loại có phân trang
+      description: Tài khoản ACTIVE đã đăng nhập, gồm READER; các thao tác ghi chỉ dành cho LIBRARIAN/ADMIN.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -282,6 +283,7 @@ paths:
       operationId: listPublishers
       tags: [Catalog]
       summary: Lấy danh sách nhà xuất bản có phân trang
+      description: Tài khoản ACTIVE đã đăng nhập, gồm READER; thao tác ghi chỉ dành cho LIBRARIAN/ADMIN.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -356,8 +358,12 @@ paths:
       operationId: listBooks
       tags: [Catalog]
       summary: Lấy danh sách tác phẩm có phân trang
+      description: Tài khoản ACTIVE đã đăng nhập, gồm READER; các bộ lọc kết hợp với nhau ở máy chủ trước khi phân trang.
       security: [{ bearerAuth: [] }]
       parameters:
+        - { name: query, in: query, required: false, schema: { type: string, maxLength: 500 }, description: Tìm tên sách không phân biệt hoa thường; ký tự phần trăm và gạch dưới được tìm nguyên văn. }
+        - { name: authorId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: categoryId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
         - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
@@ -435,6 +441,7 @@ paths:
       operationId: listEditions
       tags: [Catalog]
       summary: Lấy các ấn bản của một tác phẩm
+      description: Tài khoản ACTIVE đã đăng nhập, gồm READER; các thao tác ghi chỉ dành cho LIBRARIAN/ADMIN.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -684,7 +691,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BookCopyRequest' }
+            schema: { $ref: '#/components/schemas/BookCopyUpdateRequest' }
       responses:
         '200': { description: Bản sách đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
         '401': { $ref: '#/components/responses/Problem' }
@@ -958,6 +965,12 @@ components:
         barcode: { type: string, minLength: 1, maxLength: 100 }
         shelfId: { type: string, format: uuid }
         version: { type: integer, minimum: 0, description: Bắt buộc khi cập nhật; bỏ qua khi tạo mới. }
+    BookCopyUpdateRequest:
+      description: Cập nhật bảo trì cần version hiện tại; không được thay đổi trạng thái bản sách.
+      allOf:
+        - { $ref: '#/components/schemas/BookCopyRequest' }
+        - type: object
+          required: [version]
     BookCopy:
       type: object
       required: [id, editionId, shelfId, branchId, shelfCode, barcode, status, version]

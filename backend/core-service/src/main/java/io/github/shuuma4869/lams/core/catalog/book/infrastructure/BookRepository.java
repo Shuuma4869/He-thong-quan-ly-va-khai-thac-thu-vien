@@ -30,9 +30,23 @@ public class BookRepository {
         return findBooks("WHERE id = ?", new Object[]{id}, null, null).stream().findFirst();
     }
 
-    public BookPage list(int page, int size) {
-        long total = jdbc.queryForObject("SELECT count(*) FROM books", Long.class);
-        var books = findBooks("", new Object[0], size, (long) page * size);
+    public BookPage list(int page, int size, String query, UUID authorId, UUID categoryId) {
+        var args = new ArrayList<Object>();
+        String where = "WHERE TRUE";
+        if (!query.isEmpty()) {
+            where += " AND normalized_title LIKE ? ESCAPE E'\\\\'";
+            args.add("%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+        }
+        if (authorId != null) {
+            where += " AND EXISTS (SELECT 1 FROM book_authors ba WHERE ba.book_id=books.id AND ba.author_id=?)";
+            args.add(authorId);
+        }
+        if (categoryId != null) {
+            where += " AND EXISTS (SELECT 1 FROM book_categories bc WHERE bc.book_id=books.id AND bc.category_id=?)";
+            args.add(categoryId);
+        }
+        long total = jdbc.queryForObject("SELECT count(*) FROM books " + where, Long.class, args.toArray());
+        var books = findBooks(where, args.toArray(), size, (long) page * size);
         return new BookPage(books, total);
     }
 

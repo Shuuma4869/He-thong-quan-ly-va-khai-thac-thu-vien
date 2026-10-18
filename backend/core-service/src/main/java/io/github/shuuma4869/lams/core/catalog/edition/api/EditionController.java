@@ -31,11 +31,13 @@ public class EditionController {
                 request.publicationYear(), request.language()));
     }
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public EditionService.EditionPage list(JwtAuthenticationToken token, @PathVariable UUID bookId,
             @RequestParam(required = false) String page, @RequestParam(required = false) String size) {
         return editions.list(actor(token), bookId, page, size);
     }
     @GetMapping("/{editionId}")
+    @PreAuthorize("isAuthenticated()")
     public EditionResponse get(JwtAuthenticationToken token, @PathVariable UUID bookId,
                                @PathVariable UUID editionId) {
         return EditionResponse.from(editions.get(actor(token), bookId, editionId));

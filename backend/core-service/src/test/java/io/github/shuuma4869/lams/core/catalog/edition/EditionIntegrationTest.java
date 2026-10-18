@@ -47,7 +47,6 @@ class EditionIntegrationTest {
 
     @BeforeEach
     void clearCatalogData() {
-        jdbc.execute("DROP TABLE IF EXISTS edition_reference_fixture");
         if (tableExists("book_copies")) jdbc.update("DELETE FROM book_copies");
         jdbc.update("DELETE FROM editions");
         jdbc.update("DELETE FROM book_authors");
@@ -132,9 +131,14 @@ class EditionIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(request(2022, null, null)))
                 .andExpect(status().isCreated()).andReturn();
         UUID editionId = UUID.fromString(json.readTree(result.getResponse().getContentAsString()).path("id").asText());
-        jdbc.execute("CREATE TABLE edition_reference_fixture (edition_id UUID NOT NULL "
-                + "REFERENCES editions(id) ON DELETE RESTRICT)");
-        jdbc.update("INSERT INTO edition_reference_fixture(edition_id) VALUES (?)", editionId);
+        UUID branchId = UUID.randomUUID();
+        UUID shelfId = UUID.randomUUID();
+        jdbc.update("INSERT INTO branches(id,code,name,status) VALUES (?,?,?,'ACTIVE')",
+                branchId, "ED-" + branchId.toString().substring(0, 8), "Chi nhánh kiểm thử");
+        jdbc.update("INSERT INTO shelves(id,branch_id,code,label) VALUES (?,?,?,?)",
+                shelfId, branchId, "A-1", "Kệ kiểm thử");
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id) VALUES (?,?,?,?)",
+                UUID.randomUUID(), editionId, "ED-" + UUID.randomUUID(), shelfId);
         mvc.perform(delete(path + "/" + editionId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict());
     }

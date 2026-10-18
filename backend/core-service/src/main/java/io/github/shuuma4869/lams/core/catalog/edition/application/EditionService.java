@@ -31,9 +31,9 @@ public class EditionService {
         catch (DataIntegrityViolationException invalid) { throw new AuthFailure(404, "Không tìm thấy sách hoặc nhà xuất bản."); }
         return find(bookId, edition.id());
     }
-    public Edition get(UUID actor, UUID bookId, UUID id) { requireStaff(actor); requireBook(bookId); return find(bookId, id); }
+    public Edition get(UUID actor, UUID bookId, UUID id) { identity.currentUser(actor); requireBook(bookId); return find(bookId, id); }
     public EditionPage list(UUID actor, UUID bookId, String pageValue, String sizeValue) {
-        requireStaff(actor); requireBook(bookId);
+        identity.currentUser(actor); requireBook(bookId);
         int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parse(sizeValue, 20, 100, "size");
         if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");

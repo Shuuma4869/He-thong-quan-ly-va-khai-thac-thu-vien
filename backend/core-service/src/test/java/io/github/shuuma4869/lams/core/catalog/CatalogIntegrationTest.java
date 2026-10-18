@@ -69,6 +69,14 @@ class CatalogIntegrationTest {
             assertThat((Map<String, Object>) book.get("properties")).doesNotContainKeys("barcode", "available", "total");
             var copy = (Map<String, Object>) schemas.get("BookCopy");
             assertThat((Map<String, Object>) copy.get("properties")).containsKeys("editionId", "shelfId", "barcode", "status", "version");
+            var copyPatch = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>)
+                    paths.get("/copies/{copyId}")).get("patch")).get("requestBody");
+            var body = (Map<String, Object>) ((Map<String, Object>) copyPatch.get("content")).get("application/json");
+            assertThat((Map<String, Object>) body.get("schema")).containsEntry("$ref",
+                    "#/components/schemas/BookCopyUpdateRequest");
+            var updateSchema = (Map<String, Object>) schemas.get("BookCopyUpdateRequest");
+            var allOf = (java.util.List<Map<String, Object>>) updateSchema.get("allOf");
+            assertThat(allOf.get(1).get("required")).isEqualTo(java.util.List.of("version"));
         }
     }
 }

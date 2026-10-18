@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -130,7 +132,7 @@ class ReferenceCatalogIntegrationTest {
     void readerCannotManageReferenceCatalogAndBlankNamesAreRejected() throws Exception {
         String readerToken = token(false);
         mvc.perform(get("/api/v1/categories").header("Authorization", "Bearer " + readerToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
         mvc.perform(post("/api/v1/publishers").header("Authorization", "Bearer " + readerToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Nhà xuất bản thử\"}"))
                 .andExpect(status().isForbidden());
@@ -140,5 +142,48 @@ class ReferenceCatalogIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\" \"}"))
                 .andExpect(status().isUnprocessableEntity());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM publishers", Integer.class)).isZero();
+    }
+
+    @Test
+    void unicodeSpacesNormalizeBeforeUniqueConstraintAndConcurrentCreate() throws Exception {
+        String staff = token(true);
+        String marker = UUID.randomUUID().toString();
+        create("/api/v1/categories", staff, "Science " + marker);
+        for (String name : new String[]{"\u00a0Science " + marker + "\u00a0",
+                "\u2003Science " + marker, "\u00a0\u2003"}) {
+            mvc.perform(post("/api/v1/categories").header("Authorization", "Bearer " + staff)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(Map.of("name", name))))
+                    .andExpect(name.contains("Science") ? status().isConflict() : status().isUnprocessableEntity());
+        }
+        var second = create("/api/v1/categories", staff, "Khác " + marker);
+        mvc.perform(patch("/api/v1/categories/{id}", second.path("id").asText())
+                        .header("Authorization", "Bearer " + staff).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("name", "\u00a0Science " + marker + "\u2003"))))
+                .andExpect(status().isConflict());
+        create("/api/v1/categories", staff, "Science Fiction " + marker);
+        mvc.perform(post("/api/v1/categories").header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("name", "Science\u00a0\u2003Fiction " + marker))))
+                .andExpect(status().isConflict());
+        String concurrent = "Song song " + marker;
+        CountDownLatch gate = new CountDownLatch(1);
+        var first = CompletableFuture.supplyAsync(() -> createStatus(staff, concurrent, gate));
+        var duplicate = CompletableFuture.supplyAsync(() -> createStatus(staff, "\u00a0" + concurrent + "\u2003", gate));
+        gate.countDown();
+        assertThat(java.util.List.of(first.get(), duplicate.get())).containsExactlyInAnyOrder(201, 409);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM categories WHERE normalized_name=?", Integer.class,
+                concurrent.toLowerCase(java.util.Locale.ROOT))).isOne();
+    }
+
+    private int createStatus(String token, String name, CountDownLatch gate) {
+        try {
+            gate.await();
+            return mvc.perform(post("/api/v1/categories").header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(Map.of("name", name)))).andReturn().getResponse().getStatus();
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        }
     }
 }
