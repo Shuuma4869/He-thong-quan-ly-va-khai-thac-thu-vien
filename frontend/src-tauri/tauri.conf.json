@@ -10,14 +10,15 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [{
       "label": "main", "title": "LAMS — Quản lý và khai thác thư viện",
       "width": 1280, "height": 840, "minWidth": 390, "minHeight": 600,
       "center": true, "create": false, "devtools": false
     }],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://api.tauri.localhost:8080 http://api.tauri.localhost:3000; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'",
-      "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8080 http://localhost:3000 ws://localhost:5173; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'",
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://api.tauri.localhost:8080 http://api.tauri.localhost:3000; img-src 'self' data: https://covers.openlibrary.org https://books.google.com https://upload.wikimedia.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'",
+      "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:8080 http://localhost:3000 ws://localhost:5173; img-src 'self' data: https://covers.openlibrary.org https://books.google.com https://upload.wikimedia.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'",
       "capabilities": []
     }
   },

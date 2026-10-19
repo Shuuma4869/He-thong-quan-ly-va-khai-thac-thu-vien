@@ -1,5 +1,19 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { configureCoreAuth, coreApi } from './client';
+import { configureCoreAuth, coreApi, insightApi } from './client';
+
+it('Insight gửi access token và dùng chung cơ chế refresh, không chuyển token tới nhà cung cấp ảnh', async () => {
+  let token='expired';
+  const refresh=vi.fn(async()=>{token='current';return true;});
+  const fetchMock=vi.fn((_url:string,init:RequestInit)=>Promise.resolve(Response.json(
+    (init.headers as Record<string,string>).Authorization==='Bearer current'?{candidates:[]}:{detail:'Expired'}, {status:token==='current'?200:401},
+  )));
+  vi.stubGlobal('fetch',fetchMock);
+  configureCoreAuth({token:()=>token,refresh,clear:vi.fn()});
+  expect(await insightApi.get('/metadata/books/9780140328721')).toEqual({candidates:[]});
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls.map(([url,init])=>[new URL(url).host,(init.headers as Record<string,string>).Authorization]))
+    .toEqual([['localhost:3000','Bearer expired'],['localhost:3000','Bearer current']]);
+});
 
 afterEach(() => {
   configureCoreAuth(null);

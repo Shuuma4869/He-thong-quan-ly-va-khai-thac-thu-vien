@@ -22,7 +22,7 @@ export function desktopBuild(environment, config) {
       build: { beforeBuildCommand: `npm run build -- --mode ${stage}` },
       app: {
         windows: config.app.windows.map(window => ({ ...window, useHttpsScheme: true })),
-        security: { csp: `default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost ${origins.join(' ')}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'` },
+        security: { csp: `default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost ${origins.join(' ')}; img-src 'self' data: https://covers.openlibrary.org https://books.google.com https://upload.wikimedia.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'` },
       },
     };
     args.push('--config', JSON.stringify(override));

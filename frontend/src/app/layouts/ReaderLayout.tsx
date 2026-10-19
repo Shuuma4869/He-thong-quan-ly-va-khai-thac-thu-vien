@@ -14,6 +14,7 @@ export function ReaderLayout() {
           <Link to="/"><BrandLogo variant="compact" /></Link>
           <nav aria-label="Điều hướng chính" className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
             <Link className="nav-link" to="/">Trang chủ</Link>
+            <Link className="nav-link" to="/sach">Danh mục sách</Link>
             {auth.user ? <><span className="break-all">{auth.user.fullName} · {auth.user.memberCode}</span>
               <Link className="nav-link" to="/ho-so">Hồ sơ của tôi</Link>
               {auth.user.roles.some(role => role === 'LIBRARIAN' || role === 'ADMIN')

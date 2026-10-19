@@ -84,6 +84,24 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
 .member-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-block: 1.5rem; }
+.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 1.25rem; }
+.catalog-approved-image { display: block; max-width: 100%; width: auto; height: 240px; object-fit: contain; margin-inline: auto; }
+.catalog-filters, .catalog-form-grid { display: grid; gap: 1.25rem; }
+.catalog-form-grid { max-width: 800px; }
+.book-card { min-width: 0; overflow-wrap: anywhere; }
+.book-placeholder { display: flex; flex-direction: column; justify-content: space-between; gap: 1rem; min-height: 190px; border: 1px solid #b9d5cb; border-left: 8px solid #729f8e; border-radius: .3rem; padding: 1.4rem; background: #e6f0eb; color: #285346; }
+.book-placeholder span { font-size: .7rem; letter-spacing: .18em; }
+.book-placeholder strong { font-family: Georgia, serif; font-size: 1.4rem; font-weight: 500; }
+.catalog-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: 1rem; font-size: .875rem; }
+.catalog-facts dt { color: #66736f; }
+.author-heading { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+.author-initials { display: grid; place-items: center; width: 100px; height: 100px; border-radius: 50%; background: #e6f0eb; color: #285346; font-size: 2rem; }
+.reference-picker { min-width: 0; }
+.reference-tag { display: inline-flex; align-items: center; gap: .6rem; background: #f0f4f2; padding: .4rem .65rem; border-radius: .4rem; font-size: .875rem; overflow-wrap: anywhere; }
+.reference-tag button { min-width: 32px; min-height: 32px; }
+.reference-options { border: 1px solid #ccd7d3; border-radius: .7rem; padding: 1rem; margin-top: .75rem; }
+.reference-option { display: flex; gap: .7rem; align-items: center; min-height: 44px; padding: .4rem; }
+.field textarea { width: 100%; border: 1px solid #ccd7d3; border-radius: .7rem; padding: .7rem; font-weight: 400; resize: vertical; }
 .member-filters > .field { min-width: min(100%, 200px); }
 .field select { min-height: 2.9rem; max-width: 100%; border: 1px solid #ccd7d3; border-radius: .7rem; padding: .7rem; background: white; font: inherit; }
 .member-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #e1e8e5; border-radius: .7rem; background: white; }
