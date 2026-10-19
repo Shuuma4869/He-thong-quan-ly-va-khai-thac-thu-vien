@@ -5,12 +5,14 @@
 | Public | Đăng nhập, đăng ký, 404 | Đã có |
 | Reader | Home | Đã có |
 | Reader/Staff/Admin | Profile chỉ đọc | Đã triển khai Phase 1C; API /me/profile |
-| Reader | Discover, Book Detail, Author Detail, My Library, Loans, Holds, History, Favorites, Reviews, Notifications | MVP |
+| Reader/Staff/Admin | Catalog list/filter, Book Detail và Author Detail | Phase 2; đọc API Core thật |
+| Reader | My Library, Loans, Holds, History, Favorites, Reviews, Notifications | Chưa triển khai |
 | Staff | Dashboard | Đã có; yêu cầu quyền nhân viên |
 | Staff | Danh sách thành viên, tìm/lọc/sort/phân trang | Đã triển khai Phase 1C; API /members |
-| Staff | Circulation Desk, Hold Queue, Catalog, Copies, Inventory | MVP |
+| Staff | Catalog quản lý Author/Category/Publisher/Book/Edition/Branch/Shelf/Copy; duyệt ảnh | Phase 2 |
+| Staff | Circulation Desk, Hold Queue, Inventory session | Chưa triển khai |
 | Admin | Users/Roles, Policies, Audit, Settings | MVP |
 | Admin | Analytics, Acquisition | Advanced |
 | Reader | Semantic suggestions, alternative edition ETA | Advanced |
 
-Route hiện có `/`, `/dang-nhap`, `/dang-ky`, `/ho-so`, `/nhan-vien/bang-dieu-khien`, `/nhan-vien/thanh-vien` và trang 404. Profile yêu cầu đăng nhập; route nhân viên chỉ cho `LIBRARIAN` hoặc `ADMIN`. Bộ lọc Member đồng bộ query/status/page/size/sort với URL, hỗ trợ back/forward và reload. Profile không có nút sửa; Member List không có thao tác đổi trạng thái hoặc xóa tài khoản. Những màn hình nghiệp vụ khác vẫn thuộc kế hoạch.
+Route hiện có `/`, `/dang-nhap`, `/dang-ky`, `/ho-so`, `/sach`, `/sach/:bookId`, `/tac-gia/:authorId`, `/nhan-vien/bang-dieu-khien`, `/nhan-vien/thanh-vien`, `/nhan-vien/danh-muc` và trang 404. Profile/Catalog yêu cầu đăng nhập; route nhân viên chỉ cho `LIBRARIAN` hoặc `ADMIN`. Bộ lọc Member/Catalog giữ state trong URL, hỗ trợ back/forward/reload. Book Detail tách Edition; không hiển thị số bản sẵn có giả. Profile vẫn chỉ đọc. Các route nghiệp vụ roadmap khác chưa có trang thực thi.

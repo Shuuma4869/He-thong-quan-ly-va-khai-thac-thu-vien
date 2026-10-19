@@ -55,6 +55,8 @@ erDiagram
 
 ## Quy tắc trọng yếu
 
+Catalog/Inventory hiện có V3–V10; V11 nâng cấp khóa chuẩn hóa; V12 triển khai `catalog_media_references` với Edition hoặc Author (exclusive FK), không phải quan hệ MEDIA_ASSETS–BOOKS trong sơ đồ mục tiêu. Mỗi đối tượng tối đa một ảnh; approved_by tham chiếu USERS. Các entity roadmap khác trong sơ đồ không đồng nghĩa đã có migration.
+
 Phase 1A đã triển khai `USERS`, `ROLES`, `USER_ROLES`, `REFRESH_TOKENS` bằng Flyway V2. `USERS.id` là UUID cho Member/Profile tham chiếu sau này; `member_code` do Identity tạo, duy nhất. Chưa có bảng MemberProfile.
 
 - Book, Edition và Copy là ba aggregate/data concept khác nhau.

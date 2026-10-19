@@ -47,6 +47,41 @@ Toàn bộ roadmap sản phẩm Windows/cloud thuộc Tuan: API/session triển 
 
 Output: thành viên clone đúng nhánh, cài prerequisite theo [chạy desktop](../08-van-hanh/desktop-windows.md), khởi động dịch vụ và mở cửa sổ LAMS bằng lệnh; build tạo EXE/installer. Kiểm cả auth cookie/reload/logout, Profile, staff role/list và các lỗi backend không sẵn sàng. Build thành công chưa đủ để nghiệm thu desktop.
 
+## Phase 2: đầu ra triển khai và nghiệm thu
+
+Catalog/Inventory gốc thuộc Toan. Tuan tiếp nhận sửa lỗi tích hợp trên `Tuan/core-platform` theo thống nhất: không push nhánh Toan, không merge PR còn lỗi chỉ vì CI xanh. Bảng dưới là đường dẫn implementation hiện có, không phải xác nhận đã merge. Trạng thái nghiệm thu của từng commit phải đối chiếu PR, review và CI; không tạo lại các file này từ tên dự kiến trong kế hoạch cũ.
+
+Đường dẫn Core tương đối với `backend/core-service/src/main/java/io/github/shuuma4869/lams/core/`; frontend tương đối với `frontend/src/`; Insight tương đối với `backend/insight-service/src/discovery/metadata/`.
+
+| Task | Output và file chính | Kiểm chứng bắt buộc |
+|---|---|---|
+| P2-D2-01 | Author CRUD: `catalog/author/`; Reader được GET, staff được ghi | AuthorIntegrationTest; Phase2RegressionTest: role hiện tại/401/403/404/422/FK |
+| P2-D2-02 | Category CRUD: `catalog/category/`; NFKC + Unicode whitespace; unique key | ReferenceCatalogIntegrationTest; CatalogTextTest; CatalogMigrationTest: V11/409/collision |
+| P2-D2-03 | Publisher CRUD: `catalog/publisher/`; không tự ép tên unique | ReferenceCatalogIntegrationTest; Phase2RegressionTest: Reader GET, Edition FK |
+| P2-D2-04 | Book và bảng nối: `catalog/book/`; filter/count cùng điều kiện, query bind, transaction | BookIntegrationTest; Phase2RegressionTest: rollback, wildcard, author/category, page |
+| P2-D2-05 | Edition thuộc Book: `catalog/edition/`; ISBN nullable, Publisher FK | EditionIntegrationTest; E2E nhiều ấn bản, 404/422/xóa đang tham chiếu |
+| P2-D2-06 | Branch: `inventory/branch/`; mã unique, ACTIVE/DISABLED | InventoryCatalogIntegrationTest; E2E staff CRUD |
+| P2-D2-07 | Shelf: `inventory/shelf/`; khóa trước chuyển branch/kiểm Copy | InventoryCatalogIntegrationTest; Phase2RegressionTest: hai thứ tự khóa PostgreSQL |
+| P2-D2-08 | Copy: `inventory/copy/`; barcode unique, PATCH bắt buộc version, không sửa circulation status | InventoryCatalogIntegrationTest; Phase2RegressionTest; E2E stale version 409 |
+| P2-D2-09 | Test thật trong `backend/core-service/src/test/java/`; V3–V13, upgrade Unicode/revision media | Maven clean verify với PostgreSQL, không H2; không skip Docker test |
+| P2-D2-10 | `contracts/openapi/core-api.yaml`, Catalog contract, ERD/data dictionary | OpenAPI validator; integration response; UI/API E2E |
+| P2-D1-01 | Route/layout: `app/router/AppRouter.tsx`, `features/catalog/CatalogPage.tsx` | CatalogFlow: guard/loading/error/empty; E2E responsive/reload |
+| P2-D1-02 | Book list phân trang Core: `features/catalog/BookList.tsx`, `catalog-api.ts` | catalog-api/CatalogFlow; E2E page/empty |
+| P2-D1-03 | Query/Author/Category theo URL: `features/catalog/BookFilters.tsx` | debounce/cancel/URL/Back/reset page; E2E filter server |
+| P2-D1-04 | `features/catalog/BookDetailPage.tsx`: Book + Edition, ảnh đã duyệt/fallback | CatalogFlow; E2E nhiều Edition/404/reload; không hiển thị availability giả |
+| P2-D1-05 | `features/catalog/AuthorDetailPage.tsx`: tác giả và Book theo UUID | CatalogFlow; E2E Author detail/filter |
+| P2-D1-06 | Quản trị tám loại dữ liệu theo API: `features/catalog/StaffCatalogPage.tsx`, `CatalogForm.tsx`, `ReferencePicker.tsx`; không thêm xóa Branch/Shelf/Copy ngoài contract | validation/409/422/FK/version, Reader bị chặn; E2E ghi và đọc lại |
+| P2-D1-07 | Provider boundary: `metadata.module.ts`, `metadata.service.ts`, `provider-http.service.ts`, `metadata.guard.ts` | Core auth/me/current role, timeout/cache/rate limit/no redirect; không ghi Catalog |
+| P2-D1-08 | `open-library.service.ts`: ISBN-13 chính xác, provenance; nâng HTTP page link chính chủ sang HTTPS | metadata.spec: match/mismatch/unsafe URL/timeout/not-found; tra cứu live khi mạng cho phép |
+| P2-D1-09 | `google-books.service.ts`: fallback bổ sung, không ghi đè; mặc định tắt | metadata.spec: config/fallback/ambiguity; chưa coi adapter test là nghiệm thu Google live |
+| P2-D1-10 | `wikimedia.service.ts`: OL Author → Wikidata → Commons, đối chiếu định danh hai chiều | metadata.spec: nhầm định danh/thiếu license/attribution; không tìm ảnh bằng tên tương tự |
+| P2-D1-11 | `media-normalizer.service.ts`; Core `catalog/media/`; frontend `CatalogMedia.tsx`, `MediaEditor.tsx` | MediaInspectorTest/MediaIntegrationTest/CatalogMedia: MIME/size/timeout/provenance/duyệt thủ công/version |
+| P2-D1-12 | CatalogFlow/CatalogMedia, Insight metadata tests; `frontend/e2e/phase1.spec.ts` | typecheck/lint/test/build; OpenAPI; E2E web + EXE/WebView2; Rust fmt/test/clippy và Windows CI |
+
+Quyết định phạm vi thay cho tên file/schema dự kiến: Book Detail chỉ hiện Edition và dữ liệu Core cho phép Reader đọc, không mở Inventory cho Reader hoặc suy diễn số bản có thể mượn. Metadata chỉ tra ISBN chính xác/định danh tác giả, chưa tìm gần đúng theo tên. Core lưu tham chiếu ảnh duyệt thủ công cho Edition/Author tại V12, không tải ảnh về MinIO hoặc tự ghi đè tên sách/tác giả. Google Books cần opt-in và API key phía server; thiếu điều kiện thì giữ tắt. Xem [kiến trúc](../02-kien-truc/catalog-media.md) và [chiến lược media](../03-du-lieu/media-strategy.md).
+
+Điều kiện chốt Phase 2: các nhóm kiểm thử trên đạt cho commit bàn giao, tài liệu khớp code, PR được review hợp lệ, CI xanh và merge vào main không bypass. Cloud pilot/Google live/máy Windows thứ hai chưa được nghiệm thu không được ghi thành đã chạy. Không bắt đầu Phase 3 trước khi hoàn tất gate Phase 2.
+
 ## Các phase tiếp theo
 
 | Phase | Tuan | Toan | Điều kiện trước khi làm |
