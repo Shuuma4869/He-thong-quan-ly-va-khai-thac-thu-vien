@@ -31,8 +31,27 @@ public class BookRepository {
     }
 
     public BookPage list(int page, int size) {
-        long total = jdbc.queryForObject("SELECT count(*) FROM books", Long.class);
-        var books = findBooks("", new Object[0], size, (long) page * size);
+        return list(page, size, "", null, null);
+    }
+
+    public BookPage list(int page, int size, String query, UUID authorId, UUID categoryId) {
+        var clauses = new ArrayList<String>();
+        var args = new ArrayList<Object>();
+        if (!query.isEmpty()) {
+            clauses.add("normalized_title LIKE ? ESCAPE '\\'");
+            args.add("%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+        }
+        if (authorId != null) {
+            clauses.add("EXISTS (SELECT 1 FROM book_authors f WHERE f.book_id=books.id AND f.author_id=?)");
+            args.add(authorId);
+        }
+        if (categoryId != null) {
+            clauses.add("EXISTS (SELECT 1 FROM book_categories f WHERE f.book_id=books.id AND f.category_id=?)");
+            args.add(categoryId);
+        }
+        String where = clauses.isEmpty() ? "" : "WHERE " + String.join(" AND ", clauses);
+        long total = jdbc.queryForObject("SELECT count(*) FROM books " + where, Long.class, args.toArray());
+        var books = findBooks(where, args.toArray(), size, (long) page * size);
         return new BookPage(books, total);
     }
 

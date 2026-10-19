@@ -33,7 +33,7 @@ public class BookCopyService {
     public BookCopy create(UUID actorId, UUID editionId, String barcode, UUID shelfId) {
         requireStaff(actorId);
         requireEdition(editionId);
-        requireShelf(shelfId);
+        lockShelf(shelfId);
         var copy = new BookCopy(UUID.randomUUID(), editionId, null, null, shelfId, null, null,
                 normalizeBarcode(barcode), "IN_PROCESS", 0);
         try {
@@ -73,7 +73,9 @@ public class BookCopyService {
         if (version == null || version < 0) throw invalid("Version bản sách không hợp lệ.");
         if (version != current.version()) throw new AuthFailure(409, "Bản sách đã được cập nhật; hãy tải lại dữ liệu.");
         requireEdition(editionId);
-        requireShelf(shelfId);
+        // Lock only the destination; removing a copy cannot make a shelf nonempty.
+        // Each maintenance transaction locks one shelf before updating its copy.
+        lockShelf(shelfId);
         var change = new BookCopy(copyId, editionId, null, null, shelfId, null, null,
                 normalizeBarcode(barcode), current.status(), version);
         try {
@@ -98,6 +100,13 @@ public class BookCopyService {
 
     private void requireShelf(UUID id) {
         if (jdbc.queryForObject("SELECT count(*) FROM shelves WHERE id=?", Integer.class, id) == 0) {
+            throw new AuthFailure(404, "Không tìm thấy kệ.");
+        }
+    }
+
+    private void lockShelf(UUID id) {
+        if (jdbc.query("SELECT id FROM shelves WHERE id=? FOR UPDATE",
+                (rs, row) -> rs.getObject(1, UUID.class), id).isEmpty()) {
             throw new AuthFailure(404, "Không tìm thấy kệ.");
         }
     }

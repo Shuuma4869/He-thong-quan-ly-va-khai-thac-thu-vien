@@ -5,6 +5,8 @@
 - [ ] `npm ci` PASS
 - [ ] Spring test/package PASS
 - [ ] Nest test/build PASS
+- [ ] `python scripts/validate-openapi.py` PASS cho Core và Insight (dependency trong `contracts/openapi/requirements.txt`)
+- [ ] Khi sửa Catalog/Inventory/media: migration upgrade, quyền DB hiện tại, Shelf/Copy concurrency, media timeout/provenance và E2E liên quan PASS
 - [ ] Frontend typecheck/lint/test/build PASS
 - [ ] Khi sửa desktop: Rust fmt/test/clippy, Tauri release/NSIS build và E2E WebView2 với API thật PASS
 - [ ] Tài liệu/API/task output khớp implementation; không thêm audit/PR draft vào repo

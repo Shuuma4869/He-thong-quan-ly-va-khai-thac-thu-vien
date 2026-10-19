@@ -7,8 +7,7 @@ else { Import-LamsEnv (Join-Path $projectRoot '.env.example') }
 
 Push-Location "$projectRoot/backend/core-service"
 try {
-    Invoke-LamsNative '.\mvnw.cmd' @('test') 'Spring test thất bại'
-    Invoke-LamsNative '.\mvnw.cmd' @('-DskipTests', 'package') 'Spring package thất bại'
+    Invoke-LamsNative '.\mvnw.cmd' @('-B', 'clean', 'verify') 'Spring clean verify thất bại'
 } finally { Pop-Location }
 
 Push-Location "$projectRoot/backend/insight-service"
@@ -31,4 +30,4 @@ try {
     Invoke-LamsNative 'docker' @('compose', 'config', '--quiet') 'Docker Compose config không hợp lệ'
 } finally { Pop-Location }
 
-Write-Host 'Kiểm tra chất lượng starter đã hoàn tất.'
+Write-Host 'Kiểm tra chất lượng Core, Insight, frontend và Compose đã hoàn tất. Chạy thêm OpenAPI validator và E2E theo pre-push gate.'

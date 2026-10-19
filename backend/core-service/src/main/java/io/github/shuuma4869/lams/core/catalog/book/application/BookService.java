@@ -5,8 +5,9 @@ import io.github.shuuma4869.lams.core.catalog.book.domain.Book.RelatedItem;
 import io.github.shuuma4869.lams.core.catalog.book.infrastructure.BookRepository;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.identity.application.AuthService;
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogAccess;
 import io.github.shuuma4869.lams.core.identity.domain.RoleCode;
-import java.text.Normalizer;
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogText;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -45,16 +46,24 @@ public class BookService {
     }
 
     public Book get(UUID actorId, UUID bookId) {
-        requireStaff(actorId);
+        CatalogAccess.requireReader(identity, actorId);
         return find(bookId);
     }
 
     public BookPage list(UUID actorId, String pageValue, String sizeValue) {
-        requireStaff(actorId);
+        return list(actorId, pageValue, sizeValue, null, null, null);
+    }
+
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public BookPage list(UUID actorId, String pageValue, String sizeValue, String query,
+                         String authorId, String categoryId) {
+        CatalogAccess.requireReader(identity, actorId);
         int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parse(sizeValue, 20, 100, "size");
         if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");
-        var result = books.list(page, size);
+        String term = CatalogText.key(query);
+        if (term.length() > 500) throw invalid("Từ khóa không được vượt quá 500 ký tự.");
+        var result = books.list(page, size, term, filterId(authorId, "authorId"), filterId(categoryId, "categoryId"));
         long pages = result.totalElements() == 0 ? 0 : (result.totalElements() + size - 1) / size;
         return new BookPage(result.items(), new PageMetadata(page, size, result.totalElements(), pages));
     }
@@ -112,8 +121,8 @@ public class BookService {
     }
 
     private static String normalizeTitle(String value) {
-        if (value == null || value.isBlank()) throw invalid("Tên sách không được để trống.");
-        String title = Normalizer.normalize(value.trim().replaceAll("\\s+", " "), Normalizer.Form.NFKC);
+        String title = CatalogText.display(value);
+        if (title.isEmpty()) throw invalid("Tên sách không được để trống.");
         if (title.length() > 500) throw invalid("Tên sách không được vượt quá 500 ký tự.");
         return title;
     }
@@ -139,4 +148,13 @@ public class BookService {
     }
 
     private static AuthFailure invalid(String message) { return new AuthFailure(422, message); }
+
+    private static UUID filterId(String value, String field) {
+        if (value == null) return null;
+        try {
+            UUID id = UUID.fromString(value);
+            if (!id.toString().equalsIgnoreCase(value)) throw new IllegalArgumentException();
+            return id;
+        } catch (IllegalArgumentException error) { throw invalid(field + " phải là UUID hợp lệ."); }
+    }
 }

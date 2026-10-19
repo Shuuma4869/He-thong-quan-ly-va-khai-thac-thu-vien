@@ -50,7 +50,7 @@ public class BookCopyController {
 
     @PatchMapping("/{copyId}")
     public BookCopyResponse update(JwtAuthenticationToken token, @PathVariable UUID copyId,
-                                  @Valid @RequestBody BookCopyRequest request) {
+                                  @Valid @RequestBody BookCopyUpdateRequest request) {
         return BookCopyResponse.from(copies.update(actorId(token), copyId, request.editionId(), request.barcode(),
                 request.shelfId(), request.version()));
     }

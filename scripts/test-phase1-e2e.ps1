@@ -1,9 +1,9 @@
-param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable)
+param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 $projectRoot = Get-LamsRoot
-if ($Desktop) { $CorePort = 8080 }
-$ports = if ($Desktop) { @($CorePort, $DebugPort) } else { @($CorePort, $FrontendPort) }
+if ($Desktop) { $CorePort = 8080; $InsightPort = 3000 }
+$ports = if ($Desktop) { @($CorePort, $InsightPort, $DebugPort) } else { @($CorePort, $InsightPort, $FrontendPort) }
 foreach ($port in $ports) {
     if (Test-LamsTcpPort -Port $port) { throw "Cổng kiểm thử $port đang được sử dụng." }
 }
@@ -24,6 +24,13 @@ $settings = @{
     AUTH_COOKIE_SECURE = 'false'
     CORS_ALLOWED_ORIGINS = "http://127.0.0.1:$FrontendPort"
     VITE_CORE_API_URL = "http://127.0.0.1:$CorePort/api/v1"
+    CORE_API_URL = "http://127.0.0.1:$CorePort/api/v1"
+    INSIGHT_PORT = "$InsightPort"
+    FRONTEND_ORIGIN = "http://127.0.0.1:$FrontendPort"
+    VITE_INSIGHT_API_URL = "http://127.0.0.1:$InsightPort/api/v1"
+    LAMS_E2E_INSIGHT_URL = "http://127.0.0.1:$InsightPort/api/v1"
+    GOOGLE_BOOKS_ENABLED = 'false'
+    GOOGLE_BOOKS_API_KEY = ''
     LAMS_E2E_CORE_URL = "http://127.0.0.1:$CorePort/api/v1"
     LAMS_E2E_FRONTEND_URL = "http://127.0.0.1:$FrontendPort"
     LAMS_E2E_CONTAINER = $container
@@ -35,6 +42,7 @@ if ($Desktop) {
         else { Join-Path $projectRoot 'frontend\src-tauri\target\release\lams-desktop.exe' }
     if (-not (Test-Path -LiteralPath $desktopExe)) { throw 'Chạy scripts/build-desktop.ps1 trước khi kiểm thử desktop.' }
     $settings.CORS_ALLOWED_ORIGINS = 'http://tauri.localhost'
+    $settings.FRONTEND_ORIGIN = 'http://tauri.localhost'
     $settings.LAMS_E2E_FRONTEND_URL = 'http://tauri.localhost'
     $settings.LAMS_E2E_DESKTOP_CDP = "http://127.0.0.1:$DebugPort"
     # Test-only debug port and isolated WebView profile; never applied by the app launcher.
@@ -88,6 +96,19 @@ try {
     $core = Start-Process @launchCore
     $launched += @{ pid = $core.Id; ticks = $core.StartTime.ToUniversalTime().Ticks }
     Wait-TestHttp "http://127.0.0.1:$CorePort/api/v1/health"
+    Push-Location (Join-Path $projectRoot 'backend\insight-service')
+    try { Invoke-LamsNative 'npm.cmd' @('run', 'build') 'Insight build thất bại' }
+    finally { Pop-Location }
+    $launchInsight = @{
+        FilePath = (Get-Command node.exe).Source; ArgumentList = @('dist/main.js')
+        WorkingDirectory = (Join-Path $projectRoot 'backend\insight-service')
+        WindowStyle = 'Hidden'; PassThru = $true
+        RedirectStandardOutput = (Join-Path $logs 'insight.out.log')
+        RedirectStandardError = (Join-Path $logs 'insight.err.log')
+    }
+    $insight = Start-Process @launchInsight
+    $launched += @{ pid = $insight.Id; ticks = $insight.StartTime.ToUniversalTime().Ticks }
+    Wait-TestHttp "http://127.0.0.1:$InsightPort/api/v1/health"
     if ($Desktop) {
         $desktopProcess = Start-Process -FilePath $desktopExe -WorkingDirectory (Split-Path $desktopExe) -WindowStyle Normal -PassThru
         $launched += @{ pid = $desktopProcess.Id; ticks = $desktopProcess.StartTime.ToUniversalTime().Ticks }
@@ -113,9 +134,9 @@ try {
     Wait-TestHttp "http://127.0.0.1:$FrontendPort/"
     }
     Push-Location (Join-Path $projectRoot 'frontend')
-    try { Invoke-LamsNative 'npm' @('run', 'test:e2e') 'E2E Phase 1 thất bại' }
+    try { Invoke-LamsNative 'npm' @('run', 'test:e2e') 'E2E Auth/Member/Catalog thất bại' }
     finally { Pop-Location }
-    if ($Desktop) { Write-Output 'DESKTOP_E2E_PASS' } else { Write-Output 'PHASE1_E2E_PASS' }
+    if ($Desktop) { Write-Output 'DESKTOP_E2E_PASS' } else { Write-Output 'WEB_E2E_PASS' }
 } finally {
     foreach ($record in $launched) {
         $process = Get-Process -Id $record.pid -ErrorAction SilentlyContinue

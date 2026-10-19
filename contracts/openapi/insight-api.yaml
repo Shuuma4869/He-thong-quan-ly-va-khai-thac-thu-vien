@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: LAMS Insight metadata API
+  version: 0.1.0
+  description: Tra cứu ứng viên từ nhà cung cấp; không ghi Core và không tự duyệt ảnh.
+servers:
+  - url: http://localhost:3000/api/v1
+security: [{ bearerAuth: [] }]
+paths:
+  /metadata/books/{isbn13}:
+    get:
+      operationId: lookupBookMetadata
+      summary: Tra ISBN-13 bằng Open Library và Google Books fallback
+      description: >-
+        Core xác minh tài khoản ACTIVE và role LIBRARIAN/ADMIN hiện tại qua auth/me.
+        Tối đa 10 lượt/phút/tài khoản trong mỗi Insight process. Không ghi Catalog.
+        ISBN-13 phải đúng checksum. Nhà cung cấp lỗi trả status trong attempts;
+        Google Books chưa bật/key chưa có trả not-configured, không làm lỗi Core CRUD.
+      parameters:
+        - { name: isbn13, in: path, required: true, schema: { type: string, pattern: '^\d{13}$' } }
+      responses:
+        '200':
+          description: Kết quả và từng lần thử nguồn; có thể không có ứng viên
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempts, candidates]
+                properties:
+                  attempts:
+                    type: array
+                    items:
+                      type: object
+                      required: [provider, status]
+                      properties:
+                        provider: { type: string, enum: [open-library, google-books] }
+                        status: { $ref: '#/components/schemas/ProviderStatus' }
+                  candidates:
+                    type: array
+                    items: { $ref: '#/components/schemas/BookMetadata' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /metadata/authors/{openLibraryId}:
+    get:
+      operationId: lookupAuthorMedia
+      summary: Tra ảnh tác giả qua chuỗi định danh Open Library và Wikidata
+      description: >-
+        Chỉ nhân viên ACTIVE. Yêu cầu định danh hai chiều Open Library/Wikidata,
+        ảnh Commons có giấy phép và ghi công; không tìm người theo tên gần giống.
+        MIME và kích thước được kiểm trước khi trả ứng viên. verified luôn false;
+        nhân viên còn phải duyệt qua Core trước khi ảnh được hiển thị cho bạn đọc.
+      parameters:
+        - { name: openLibraryId, in: path, required: true, schema: { type: string, pattern: '^OL[1-9]\d*A$' } }
+      responses:
+        '200':
+          description: Ứng viên ảnh chưa được duyệt hoặc danh sách rỗng
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, candidates]
+                properties:
+                  status: { $ref: '#/components/schemas/ProviderStatus' }
+                  candidates:
+                    type: array
+                    items: { $ref: '#/components/schemas/MediaCandidate' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Error:
+      description: Lỗi xác thực, phân quyền, tham số hoặc Core không phản hồi
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [statusCode, message]
+            properties:
+              statusCode: { type: integer }
+              message: { type: string }
+              error: { type: string }
+  schemas:
+    ProviderStatus:
+      type: string
+      enum: [ok, not-found, unavailable, rate-limited, not-configured, invalid]
+    BookMetadata:
+      type: object
+      required: [source, sourceId, sourceUrl, fetchedAt, title, authors, isbn13, media]
+      properties:
+        source: { type: string, enum: [open-library, google-books] }
+        sourceId: { type: string }
+        sourceUrl: { type: string, format: uri }
+        fetchedAt: { type: string, format: date-time }
+        title: { type: string }
+        authors: { type: array, items: { type: string } }
+        isbn13: { type: string, pattern: '^\d{13}$' }
+        media:
+          oneOf:
+            - { $ref: '#/components/schemas/MediaCandidate' }
+            - { type: 'null' }
+    MediaCandidate:
+      type: object
+      required: [source, source_id, source_url, image_url, thumbnail_url, license, attribution, verified, fetched_at, evidence, mime, bytes]
+      properties:
+        source: { type: string, enum: [open-library, google-books, wikimedia] }
+        source_id: { type: string }
+        source_url: { type: string, format: uri }
+        image_url: { type: string, format: uri }
+        thumbnail_url: { type: string, format: uri }
+        license: { type: [string, 'null'] }
+        attribution: { type: [string, 'null'] }
+        verified: { type: boolean, const: false }
+        fetched_at: { type: string, format: date-time }
+        evidence:
+          type: object
+          properties:
+            isbn13: { type: string }
+            openLibraryAuthorId: { type: string }
+            wikidataId: { type: string }
+        mime: { type: [string, 'null'] }
+        bytes: { type: [integer, 'null'], minimum: 0 }

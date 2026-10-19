@@ -54,7 +54,7 @@ export function configureCoreAuth(hooks: AuthHooks | null) { authHooks = hooks; 
 
 async function request<T>(baseUrl: string | undefined, method: Method, path: string, body?: unknown, retry = true, signal?: AbortSignal): Promise<T> {
   if (!baseUrl) throw new ApiError(503, 'Dịch vụ này chưa được cấu hình ở môi trường hiện tại.');
-  const hooks = baseUrl === coreApiUrl ? authHooks : null;
+  const hooks = authHooks;
   const token = hooks?.token();
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-LAMS-Client': '1' };
   if (token) headers.Authorization = `Bearer ${token}`;

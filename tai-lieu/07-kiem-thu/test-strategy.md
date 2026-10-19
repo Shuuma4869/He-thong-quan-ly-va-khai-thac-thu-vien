@@ -6,21 +6,25 @@
 | Slice | controller/security/repository riêng lớp | MockMvc, Spring slice |
 | Integration | migration, constraint, query, Redis/Kafka adapter | Testcontainers PostgreSQL/Redis/Kafka |
 | Contract | OpenAPI/AsyncAPI compatibility, provider/consumer | validator + schema test trong CI |
-| E2E | hành trình thật qua UI/API | Playwright cho Auth, Profile và Member List |
+| E2E | hành trình thật qua UI/API | Playwright cho Auth, Profile, Member, Catalog/Inventory và metadata |
 | Concurrency | double borrow, hold assignment, expiry race | test đa thread + DB thật |
 | Load | P95/error/resource theo workload | chỉ sau khi có traffic model |
 
 Hiện có test health cho Spring/Nest, kiểm thử Auth/Member/Catalog với PostgreSQL qua Testcontainers, kiểm tra OpenAPI Member/Catalog và test giao diện React. Catalog kiểm migration mới, FK/unique, quyền, transaction rollback, phân trang và status Copy; không dùng H2 thay PostgreSQL. `PostgresContainerFoundation` dùng chung cho integration test của Core. Dữ liệu test được tạo trong test và dọn trong database/container thử nghiệm, không seed catalog giả ở runtime.
 
-`scripts/check-quality.ps1` chạy test/build Core, Prisma validate/test/build Insight, typecheck/lint/Vitest/build frontend và kiểm tra cấu hình Compose. CI chạy các bước tương ứng và build Docker image. Kiểm tra Member OpenAPI hiện chỉ bao phủ đường dẫn, quyền khai báo và cấu trúc DTO liên quan, chưa thay thế việc kiểm định toàn bộ OpenAPI.
+`scripts/check-quality.ps1` chạy test/build Core, Prisma validate/test/build Insight, typecheck/lint/Vitest/build frontend và kiểm tra cấu hình Compose. CI chạy các bước tương ứng và build Docker image. `scripts/validate-openapi.py` kiểm định đầy đủ hai tài liệu Core/Insight bằng OpenAPI 3.1 validator trong job `api-contracts`; cài dependency từ `contracts/openapi/requirements.txt` vào môi trường Python riêng. Các contract test Java kiểm thêm đường dẫn, quyền và cấu trúc DTO, không thay thế validator này.
 
-E2E chạy riêng bằng `scripts/test-phase1-e2e.ps1`, yêu cầu Docker Linux, Java 21, Node 22/npm 10, dependencies đã cài và Chromium của Playwright (`cd frontend; npx playwright install chromium`). Script tạo PostgreSQL tạm với mật khẩu ngẫu nhiên và cổng loopback riêng, chạy Core/Vite, rồi dọn đúng container/process do lượt test tạo. Không sử dụng database hoặc volume của môi trường phát triển. Tài khoản staff chỉ được cấp role trong fixture của database tạm; ứng dụng không có API nâng quyền công khai.
+E2E chạy riêng bằng `scripts/test-phase1-e2e.ps1`, yêu cầu Docker Linux, Java 21, Node 22/npm 10, dependencies đã cài và Chromium của Playwright (`cd frontend; npx playwright install chromium`). Script tạo PostgreSQL tạm với mật khẩu ngẫu nhiên và cổng loopback riêng, chạy Core/Insight/Vite, rồi dọn đúng container/process do lượt test tạo. Không sử dụng database hoặc volume của môi trường phát triển. Tài khoản staff chỉ được cấp role trong fixture của database tạm; ứng dụng không có API nâng quyền công khai.
 
 Vitest dùng test doubles ở lớp mạng để kiểm tra các trạng thái lỗi và race condition. E2E dùng API thật, không intercept dữ liệu Member. Kết quả mỗi lượt chạy xem trực tiếp ở terminal/CI; không lưu thêm file báo cáo audit hoặc nội dung PR trong source.
 
 Các regression bắt buộc của Phase 1: principal tự xem hồ sơ, DTO allowlist, GET không ghi dữ liệu, invalid/expired JWT, staff bị khóa hoặc thu hồi role khi JWT còn hạn, query literal `%`/`_`/`\`, SQL injection, phân trang ổn định khi trùng tên, debounce giữ focus, stale response và refresh đến muộn sau logout. UI phải xử lý loading/error/retry/empty, `profile: null`, deep link và reload/Back.
 
-Quality gate dự kiến: compile/typecheck, unit/slice, migration integration, contract validation, lint, secret/dependency scan; E2E chạy khi feature có đường đi hoàn chỉnh.
+Phase 2 bổ sung kiểm role hiện tại trong DB cho Catalog, Publisher read-only với Reader, Unicode NFKC, nâng cấp V11 từ dữ liệu cũ, collision migration không ghi dở, filter/count/pagination và rollback. Test concurrency phối hợp hai transaction PostgreSQL theo cả hai thứ tự khóa Shelf/Copy, không dựa vào sleep để đoán race. Media kiểm quyền, version, MIME/signature, dung lượng, timeout và không ghi dữ liệu khi kiểm nguồn thất bại.
+
+Insight test dùng phản hồi provider kiểm soát được để xác minh ISBN chính xác, fallback, liên kết định danh tác giả hai chiều, provenance/license, timeout/cache/rate limit và quyền từ Core. E2E gọi provider thật nhưng chấp nhận trạng thái unavailable/not-found rõ ràng: provider bên ngoài không phải điều kiện mạng ổn định của CI. Một lượt E2E đi qua fallback không chứng minh provider đã trả metadata thành công. Google Books mặc định tắt; test adapter không đồng nghĩa đã nghiệm thu tích hợp Google với API key thật.
+
+Quality gate: compile/typecheck, unit/integration, migration upgrade, contract validation, lint, review diff/secrets và E2E cho đường đi đã triển khai. Kiểm thử không chứng minh không còn mọi lỗ hổng; cloud, load và nghiệp vụ các phase sau cần nghiệm thu riêng.
 
 Desktop: `scripts/test-phase1-e2e.ps1 -Desktop` chạy cùng kịch bản trên WebView2 thật của EXE release thay vì Vite/Chromium. Rust có test allowlist điều hướng, fmt/clippy; CI Windows build NSIS. Xem [runbook desktop](../08-van-hanh/desktop-windows.md) về cổng, profile test và điều kiện môi trường. CI build không thay cho E2E native local.
 

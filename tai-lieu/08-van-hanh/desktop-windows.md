@@ -55,7 +55,7 @@ Dev dùng `http://localhost:5173`, API localhost 8080/3000. Release dùng origin
 
 Hai origin release local cùng site để refresh cookie `HttpOnly; SameSite=Lax` hoạt động. Không đổi cookie local sang None hoặc tắt bảo mật WebView. CORS chỉ cho phép origin cụ thể, không wildcard credentials. Launcher Core/Insight bổ sung origin desktop ngay cả khi `.env` cũ chưa có; nếu chạy backend bằng Docker/lệnh riêng, đặt `CORS_ALLOWED_ORIGINS` và `FRONTEND_ORIGIN` gồm `http://tauri.localhost`.
 
-`build-desktop.ps1` đặt URL desktop trong phạm vi build và khôi phục biến cũ sau đó. Không đưa secret vào bất cứ biến VITE nào. Giao diện dùng HashRouter trên desktop để reload/deep link không phụ thuộc web server. Rust chặn chuyển cửa sổ ra origin khác; không cấp quyền filesystem/shell hoặc plugin native cho nội dung web.
+`build-desktop.ps1` đặt URL desktop trong phạm vi build và khôi phục biến cũ sau đó. Không đưa secret vào bất cứ biến VITE nào. Giao diện dùng HashRouter trên desktop để reload/deep link không phụ thuộc web server. Rust chặn chuyển cửa sổ ra origin khác; không cấp quyền filesystem/shell tổng quát cho nội dung web. Lệnh native `open_catalog_source` chỉ mở liên kết HTTPS thuộc allowlist nguồn metadata trong trình duyệt ngoài, không nhận lệnh shell hoặc đường dẫn file. CSP giới hạn host ảnh và API; xem [kiến trúc Catalog/media](../02-kien-truc/catalog-media.md).
 
 ## Bản kết nối máy chủ HTTPS
 
@@ -84,7 +84,7 @@ Sau khi cài, có thể mở từ Start Menu/shortcut hoặc PowerShell:
 .\scripts\test-phase1-e2e.ps1 -Desktop
 ```
 
-E2E cần Docker, Chromium của Playwright (`npx playwright install chromium` trong frontend, dùng Node đã pin), cổng trống và bản release mới. Chế độ desktop dùng WebView2 thật của EXE, API thật và PostgreSQL tạm có nhãn riêng; kiểm Reader/Librarian/Admin, reload refresh cookie, logout, quyền, tìm kiếm/lọc/sort/page/Back. Cổng Core 8080 và CDP kiểm thử 19222 phải trống; script không tự dừng tiến trình lạ. Không chạy E2E desktop đồng thời với Core dev. Có thể đổi `-DebugPort`, nhưng Core release vẫn dùng 8080.
+E2E cần Docker, Chromium của Playwright (`npx playwright install chromium` trong frontend, dùng Node đã pin), cổng trống và bản release mới. Chế độ desktop dùng WebView2 thật của EXE, Core/Insight thật và PostgreSQL tạm có nhãn riêng; kiểm Reader/Librarian/Admin, reload refresh cookie, logout, quyền, tìm kiếm/lọc/sort/page/Back, Catalog CRUD, BookCopy version và metadata/fallback. Cổng Core 8080, Insight 3000 và CDP kiểm thử 19222 phải trống; script không tự dừng tiến trình lạ. Không chạy E2E desktop đồng thời với Core/Insight dev. Có thể đổi `-DebugPort`, nhưng Core/Insight release local vẫn dùng 8080/3000. Chế độ web mặc định dùng 18081/13001/15174 và có tham số đổi cổng.
 
 CDP chỉ bật qua biến môi trường của lượt kiểm thử, với profile WebView riêng trong thư mục target bị Git bỏ qua. Launcher thường không bật debug port. Script dừng tiến trình và xóa database tạm do chính nó tạo, không xóa volume dự án. Log/ảnh/report của test là artifact local, không phải tài liệu bàn giao.
 

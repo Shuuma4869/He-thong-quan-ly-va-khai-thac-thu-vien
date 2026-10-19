@@ -7,5 +7,4 @@ import java.util.UUID;
 
 public record BookCopyRequest(@NotNull UUID editionId,
                               @NotBlank @Size(max = 100) String barcode,
-                              @NotNull UUID shelfId,
-                              Long version) {}
+                              @NotNull UUID shelfId) {}

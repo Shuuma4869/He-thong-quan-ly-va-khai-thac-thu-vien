@@ -2,6 +2,7 @@ package io.github.shuuma4869.lams.core.catalog.publisher.application;
 
 import io.github.shuuma4869.lams.core.catalog.publisher.domain.Publisher;
 import io.github.shuuma4869.lams.core.catalog.publisher.infrastructure.PublisherRepository;
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogAccess;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.identity.application.AuthService;
 import io.github.shuuma4869.lams.core.identity.domain.RoleCode;
@@ -27,9 +28,9 @@ public class PublisherService {
         requireStaff(actorId);
         return publishers.create(new Publisher(UUID.randomUUID(), normalizeName(name)));
     }
-    public Publisher get(UUID actorId, UUID id) { requireStaff(actorId); return find(id); }
+    public Publisher get(UUID actorId, UUID id) { CatalogAccess.requireReader(identity, actorId); return find(id); }
     public PublisherPage list(UUID actorId, String pageValue, String sizeValue) {
-        requireStaff(actorId);
+        CatalogAccess.requireReader(identity, actorId);
         int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parse(sizeValue, 20, 100, "size");
         if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");

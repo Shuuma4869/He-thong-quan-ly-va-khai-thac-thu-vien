@@ -5,6 +5,7 @@ import { DiscoveryModule } from './discovery/discovery.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AcquisitionModule } from './acquisition/acquisition.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MetadataModule } from './discovery/metadata/metadata.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     AnalyticsModule,
     AcquisitionModule,
     NotificationsModule,
+    MetadataModule,
   ],
   controllers: [HealthController],
 })

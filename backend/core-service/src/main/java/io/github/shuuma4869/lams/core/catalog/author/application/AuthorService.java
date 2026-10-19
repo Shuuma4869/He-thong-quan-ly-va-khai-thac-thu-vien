@@ -4,6 +4,7 @@ import io.github.shuuma4869.lams.core.catalog.author.domain.Author;
 import io.github.shuuma4869.lams.core.catalog.author.infrastructure.AuthorRepository;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.identity.application.AuthService;
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogAccess;
 import io.github.shuuma4869.lams.core.identity.domain.RoleCode;
 import java.util.List;
 import java.util.UUID;
@@ -32,12 +33,12 @@ public class AuthorService {
     }
 
     public Author get(UUID actorId, UUID authorId) {
-        requireStaff(actorId);
+        CatalogAccess.requireReader(identity, actorId);
         return find(authorId);
     }
 
     public AuthorPage list(UUID actorId, String pageValue, String sizeValue) {
-        requireStaff(actorId);
+        CatalogAccess.requireReader(identity, actorId);
         int page = parseInteger(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parseInteger(sizeValue, 20, 100, "size");
         if (size < 1) throw invalid("size phải nằm trong khoảng 1–100.");

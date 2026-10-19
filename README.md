@@ -6,7 +6,7 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Phạm vi và đầu ra công việc được quản lý trong [hướng dẫn thành viên](tai-lieu/00-bat-dau/huong-dan-thanh-vien.md); kết quả từng lần chạy xem ở CI của PR.
 
-Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Catalog CRUD, mượn/trả và tìm kiếm sách nâng cao chưa triển khai. Đây chưa phải sản phẩm hoàn chỉnh.
+Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Phase 2 có Catalog/Inventory API, giao diện tra cứu và quản trị tám loại dữ liệu, metadata theo ISBN và tham chiếu ảnh duyệt thủ công. Xem [hợp đồng Catalog](tai-lieu/05-api-va-event/catalog-contract.md) và [kiến trúc Catalog/media](tai-lieu/02-kien-truc/catalog-media.md). Mượn/trả, My Library và tìm kiếm nâng cao chưa triển khai; đây chưa phải sản phẩm hoàn chỉnh.
 
 ## Kiến trúc ngắn
 
@@ -54,6 +54,10 @@ Xem [hướng dẫn desktop Windows](tai-lieu/08-van-hanh/desktop-windows.md) đ
 ```powershell
 .\scripts\check-quality.ps1
 ```
+
+E2E Auth/Member/Catalog: `scripts/test-phase1-e2e.ps1`; thêm `-Desktop` để chạy trên EXE/WebView2 sau khi build. Kiểm toàn bộ OpenAPI bằng Python 3.12+ trong môi trường riêng: `python -m pip install -r contracts/openapi/requirements.txt`, rồi `python scripts/validate-openapi.py`. CI có job `api-contracts` riêng, không chỉ parse YAML.
+
+Ảnh chưa duyệt dùng placeholder/initials. Tra cứu metadata cần Insight và Core cùng chạy; Google Books mặc định tắt, chỉ bật khi có server API key và kiểm tra điều kiện sử dụng. Không đưa key vào frontend. [Chiến lược media](tai-lieu/03-du-lieu/media-strategy.md) nêu cấu hình, quyền sử dụng và giới hạn hiện tại.
 
 ## Cấu trúc
 

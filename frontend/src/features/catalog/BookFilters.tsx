@@ -1,0 +1,18 @@
+import { useEffect, useState } from 'react';
+import { ReferencePicker } from './ReferencePicker';
+import type { CatalogQuery } from './catalog-api';
+
+export function BookFilters({ value, onChange }: { value: CatalogQuery; onChange: (patch: Partial<CatalogQuery>) => void }) {
+  const [query, setQuery] = useState(value.query);
+  const [syncedQuery, setSyncedQuery] = useState(value.query);
+  if (syncedQuery !== value.query) { setSyncedQuery(value.query); setQuery(value.query); }
+  useEffect(() => { if (query === value.query) return; const timer = setTimeout(() => onChange({ query, page: 0 }), 350); return () => clearTimeout(timer); }, [query, value.query, onChange]);
+  return <div className="catalog-filters editorial-card my-5">
+    <label className="field">Tìm theo tên sách<input type="search" value={query} maxLength={500} onChange={event => setQuery(event.target.value)} placeholder="Nhập tên tác phẩm…" /></label>
+    <ReferencePicker label="Tác giả" resource="authors" value={value.authorId ? [value.authorId] : []} onChange={ids => onChange({ authorId: ids[0] ?? '', page: 0 })} />
+    <ReferencePicker label="Thể loại" resource="categories" value={value.categoryId ? [value.categoryId] : []} onChange={ids => onChange({ categoryId: ids[0] ?? '', page: 0 })} />
+    <label className="field">Số sách mỗi trang<select value={value.size} onChange={event => onChange({ size: Number(event.target.value), page: 0 })}>{[...new Set([10,20,50,100,value.size])].sort((a,b) => a-b).map(size => <option key={size}>{size}</option>)}</select></label>
+    <p className="text-sm text-muted">Sắp xếp theo tên sách; các sách cùng tên có thứ tự ID ổn định.</p>
+    <button type="button" className="button-secondary" onClick={() => { setQuery(''); onChange({ query: '', authorId: '', categoryId: '', page: 0 }); }}>Xóa bộ lọc</button>
+  </div>;
+}

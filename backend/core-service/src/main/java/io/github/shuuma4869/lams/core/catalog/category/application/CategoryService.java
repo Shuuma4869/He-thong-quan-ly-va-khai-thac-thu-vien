@@ -4,8 +4,9 @@ import io.github.shuuma4869.lams.core.catalog.category.domain.Category;
 import io.github.shuuma4869.lams.core.catalog.category.infrastructure.CategoryRepository;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.identity.application.AuthService;
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogAccess;
 import io.github.shuuma4869.lams.core.identity.domain.RoleCode;
-import java.text.Normalizer;
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogText;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -35,10 +36,10 @@ public class CategoryService {
         }
     }
 
-    public Category get(UUID actorId, UUID id) { requireStaff(actorId); return find(id); }
+    public Category get(UUID actorId, UUID id) { CatalogAccess.requireReader(identity, actorId); return find(id); }
 
     public CategoryPage list(UUID actorId, String pageValue, String sizeValue) {
-        requireStaff(actorId);
+        CatalogAccess.requireReader(identity, actorId);
         int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
         int size = parse(sizeValue, 20, 100, "size");
         if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");
@@ -81,9 +82,10 @@ public class CategoryService {
             throw new AuthFailure(403, "Bạn không có quyền quản lý thể loại.");
     }
     private static String normalizeDisplay(String value) {
-        if (value == null || value.isBlank()) throw invalid("Tên thể loại không được để trống.");
-        String name = Normalizer.normalize(value.trim().replaceAll("\\s+", " "), Normalizer.Form.NFKC);
-        if (name.length() > 150) throw invalid("Tên thể loại không được vượt quá 150 ký tự.");
+        String name = CatalogText.display(value);
+        if (name.isEmpty()) throw invalid("Tên thể loại không được để trống.");
+        if (name.length() > 150 || normalizeKey(name).length() > 150)
+            throw invalid("Tên thể loại không được vượt quá 150 ký tự sau chuẩn hóa.");
         return name;
     }
     private static String normalizeKey(String value) { return value.toLowerCase(Locale.ROOT); }
