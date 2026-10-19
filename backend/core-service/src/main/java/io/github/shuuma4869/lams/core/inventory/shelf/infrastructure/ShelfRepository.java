@@ -17,8 +17,15 @@ public class ShelfRepository {
                 s.id(),s.branchId(),s.code(),s.label(),s.sortOrder()); return s;
     }
     public Optional<Shelf> find(UUID id) {
+        return find(id, false);
+    }
+    public Optional<Shelf> findForUpdate(UUID id) {
+        return find(id, true);
+    }
+    private Optional<Shelf> find(UUID id, boolean lock) {
         return jdbc.query("SELECT s.id,s.branch_id,b.code AS branch_code,s.code,s.label,s.sort_order "
-                        + "FROM shelves s JOIN branches b ON b.id=s.branch_id WHERE s.id=?",
+                        + "FROM shelves s JOIN branches b ON b.id=s.branch_id WHERE s.id=?"
+                        + (lock ? " FOR UPDATE OF s" : ""),
                 (r,n)->map(r),id).stream().findFirst();
     }
     public ShelfPage list(UUID branchId,int page,int size) {

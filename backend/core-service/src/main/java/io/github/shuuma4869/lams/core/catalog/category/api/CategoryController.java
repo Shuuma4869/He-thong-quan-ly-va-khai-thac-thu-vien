@@ -29,11 +29,13 @@ public class CategoryController {
         return CategoryResponse.from(categories.create(actor(token), request.name()));
     }
     @GetMapping
+    @PreAuthorize("hasAnyRole('READER', 'LIBRARIAN', 'ADMIN')")
     public CategoryService.CategoryPage list(JwtAuthenticationToken token,
             @RequestParam(required = false) String page, @RequestParam(required = false) String size) {
         return categories.list(actor(token), page, size);
     }
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('READER', 'LIBRARIAN', 'ADMIN')")
     public CategoryResponse get(JwtAuthenticationToken token, @PathVariable UUID id) {
         return CategoryResponse.from(categories.get(actor(token), id));
     }

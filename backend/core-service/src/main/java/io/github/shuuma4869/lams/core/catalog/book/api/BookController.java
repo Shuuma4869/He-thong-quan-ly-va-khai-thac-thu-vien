@@ -30,11 +30,16 @@ public class BookController {
                 request.authorIds(), request.categoryIds()));
     }
     @GetMapping
+    @PreAuthorize("hasAnyRole('READER', 'LIBRARIAN', 'ADMIN')")
     public BookService.BookPage list(JwtAuthenticationToken token, @RequestParam(required = false) String page,
-                                     @RequestParam(required = false) String size) {
-        return books.list(actor(token), page, size);
+                                     @RequestParam(required = false) String size,
+                                     @RequestParam(required = false) String query,
+                                     @RequestParam(required = false) String authorId,
+                                     @RequestParam(required = false) String categoryId) {
+        return books.list(actor(token), page, size, query, authorId, categoryId);
     }
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('READER', 'LIBRARIAN', 'ADMIN')")
     public BookResponse get(JwtAuthenticationToken token, @PathVariable UUID id) {
         return BookResponse.from(books.get(actor(token), id));
     }

@@ -130,6 +130,9 @@ class ReferenceCatalogIntegrationTest {
     void readerCannotManageReferenceCatalogAndBlankNamesAreRejected() throws Exception {
         String readerToken = token(false);
         mvc.perform(get("/api/v1/categories").header("Authorization", "Bearer " + readerToken))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/categories").header("Authorization", "Bearer " + readerToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Không có quyền\"}"))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/publishers").header("Authorization", "Bearer " + readerToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Nhà xuất bản thử\"}"))

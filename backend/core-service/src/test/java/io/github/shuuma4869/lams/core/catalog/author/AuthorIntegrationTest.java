@@ -124,6 +124,9 @@ class AuthorIntegrationTest {
         String readerToken = json.readTree(registration.getResponse().getContentAsString())
                 .path("accessToken").asText();
         mvc.perform(get("/api/v1/authors").header("Authorization", "Bearer " + readerToken))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/authors").header("Authorization", "Bearer " + readerToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Không có quyền\"}"))
                 .andExpect(status().isForbidden());
     }
 

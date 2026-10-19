@@ -34,6 +34,7 @@ public class AuthorController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('READER', 'LIBRARIAN', 'ADMIN')")
     public AuthorService.AuthorPage list(JwtAuthenticationToken token,
                                          @RequestParam(required = false) String page,
                                          @RequestParam(required = false) String size) {
@@ -41,6 +42,7 @@ public class AuthorController {
     }
 
     @GetMapping("/{authorId}")
+    @PreAuthorize("hasAnyRole('READER', 'LIBRARIAN', 'ADMIN')")
     public AuthorResponse get(JwtAuthenticationToken token, @PathVariable UUID authorId) {
         return AuthorResponse.from(authors.get(actorId(token), authorId));
     }

@@ -60,7 +60,8 @@ public class ShelfService {
     @Transactional
     public Shelf update(UUID actorId, UUID shelfId, UUID branchId, String code, String label, Integer sortOrder) {
         requireStaff(actorId);
-        Shelf current = find(shelfId);
+        Shelf current = shelves.findForUpdate(shelfId)
+                .orElseThrow(() -> new AuthFailure(404, "Không tìm thấy kệ."));
         requireBranch(branchId);
         if (!current.branchId().equals(branchId)
                 && jdbc.queryForObject("SELECT count(*) FROM book_copies WHERE shelf_id=?", Integer.class, shelfId) > 0) {

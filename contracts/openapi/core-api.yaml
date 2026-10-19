@@ -1,12 +1,15 @@
 openapi: 3.1.0
 info:
   title: LAMS Core API
-  version: 0.2.0
+  version: 0.3.0
   description: >-
     Core health, Identity/Auth, Member, Catalog và Inventory API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
     X-LAMS-Client bằng 1; thiếu hoặc sai trả 403. Client trình duyệt tự gửi Origin.
     Local giữ tương thích với cấu hình SameSite=Lax.
+    Catalog GET (Author, Category, Publisher, Book, Edition, media) yêu cầu tài khoản ACTIVE
+    còn READER/LIBRARIAN/ADMIN trong database. Ghi Catalog/media và mọi API Inventory chỉ
+    dành cho LIBRARIAN/ADMIN ACTIVE còn quyền trong database; JWT cũ không giữ quyền đã thu hồi.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
@@ -120,7 +123,7 @@ paths:
       operationId: listAuthors
       tags: [Catalog]
       summary: Lấy danh sách tác giả có phân trang
-      description: LIBRARIAN hoặc ADMIN; sắp xếp ổn định theo tên rồi đến mã định danh.
+      description: READER, LIBRARIAN hoặc ADMIN ACTIVE còn role trong database; sắp xếp ổn định theo tên rồi đến mã định danh.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -356,8 +359,12 @@ paths:
       operationId: listBooks
       tags: [Catalog]
       summary: Lấy danh sách tác phẩm có phân trang
+      description: READER, LIBRARIAN hoặc ADMIN đang ACTIVE. Lọc kết hợp trên server; query tìm chuỗi con của tên đã chuẩn hóa NFKC/Unicode whitespace/lowercase, ký tự % và _ là ký tự thường. Thứ tự normalized_title, id cố định.
       security: [{ bearerAuth: [] }]
       parameters:
+        - { name: query, in: query, required: false, schema: { type: string, maxLength: 500 } }
+        - { name: authorId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: categoryId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
         - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
@@ -395,7 +402,7 @@ paths:
       summary: Lấy thông tin tác phẩm và quan hệ Catalog
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Tác phẩm, tác giả và thể loại, content: { application/json: { schema: { $ref: '#/components/schemas/Book' } } } }
+        '200': { description: 'Tác phẩm, tác giả và thể loại', content: { application/json: { schema: { $ref: '#/components/schemas/Book' } } } }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
@@ -684,7 +691,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BookCopyRequest' }
+            schema: { $ref: '#/components/schemas/BookCopyUpdateRequest' }
       responses:
         '200': { description: Bản sách đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
         '401': { $ref: '#/components/responses/Problem' }
@@ -704,6 +711,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+  /catalog-media/{kind}/{subject}:
+    parameters:
+      - { name: kind, in: path, required: true, schema: { type: string, enum: [authors, editions] } }
+      - { name: subject, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getCatalogMedia
+      tags: [Catalog media]
+      summary: Đọc tham chiếu ảnh đã được nhân viên duyệt
+      description: Tài khoản ACTIVE còn READER/LIBRARIAN/ADMIN. Đối tượng tồn tại nhưng chưa có ảnh trả media null.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Tham chiếu đã duyệt hoặc null
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [media]
+                properties:
+                  media:
+                    oneOf:
+                      - { $ref: '#/components/schemas/CatalogMediaReference' }
+                      - { type: 'null' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: approveCatalogMedia
+      tags: [Catalog media]
+      summary: Nhân viên duyệt hoặc thay tham chiếu ảnh
+      description: >-
+        Chỉ LIBRARIAN/ADMIN ACTIVE. Nhân viên xác nhận đúng định danh và quyền sử dụng;
+        Core kiểm URL HTTPS theo nhà cung cấp, không redirect, MIME/signature, tối đa 2 MiB và 6 giây.
+        Không tải ảnh vào kho lưu trữ. expectedVersion null chỉ tạo khi chưa có ảnh;
+        thay ảnh phải gửi version hiện tại. Quyền được kiểm tra lại sau khi kiểm ảnh.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CatalogMediaRequest' }
+      responses:
+        '200': { description: Tham chiếu đã lưu, content: { application/json: { schema: { $ref: '#/components/schemas/CatalogMediaReference' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: removeCatalogMedia
+      tags: [Catalog media]
+      summary: Gỡ tham chiếu ảnh, không xóa file ở nhà cung cấp
+      description: Chỉ LIBRARIAN/ADMIN ACTIVE; version thiếu hoặc âm trả 422, không khớp trả 409.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: version, in: query, required: true, schema: { type: integer, format: int64, minimum: 0 } }
+      responses:
+        '204': { description: Đã gỡ tham chiếu }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     bearerAuth:
@@ -957,7 +1029,13 @@ components:
         editionId: { type: string, format: uuid }
         barcode: { type: string, minLength: 1, maxLength: 100 }
         shelfId: { type: string, format: uuid }
-        version: { type: integer, minimum: 0, description: Bắt buộc khi cập nhật; bỏ qua khi tạo mới. }
+    BookCopyUpdateRequest:
+      allOf:
+        - { $ref: '#/components/schemas/BookCopyRequest' }
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, format: int64, minimum: 0, description: Version hiện tại; thiếu trả 422, đã cũ trả 409. }
     BookCopy:
       type: object
       required: [id, editionId, shelfId, branchId, shelfCode, barcode, status, version]
@@ -978,6 +1056,42 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/BookCopy' } }
         page: { $ref: '#/components/schemas/PageMetadata' }
+    CatalogMediaRequest:
+      type: object
+      required: [source, sourceId, sourceUrl, imageUrl, license, licenseUrl, attribution, evidence, confirmed]
+      properties:
+        source: { type: string, enum: [open-library, google-books, wikimedia] }
+        sourceId: { type: string, minLength: 1, maxLength: 500 }
+        sourceUrl: { type: string, format: uri, maxLength: 2048 }
+        imageUrl: { type: string, format: uri, maxLength: 2048 }
+        license: { type: string, minLength: 1, maxLength: 500 }
+        licenseUrl: { type: string, format: uri, maxLength: 2048 }
+        attribution: { type: string, minLength: 1, maxLength: 2000 }
+        evidence: { type: string, minLength: 1, maxLength: 2000 }
+        confirmed: { type: boolean, const: true }
+        expectedVersion:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+          description: Null để tạo mới; khi thay ảnh gửi đúng revision đã đọc. Không tự cộng hoặc mặc định 0; revision không tái sử dụng sau xóa/tạo lại.
+    CatalogMediaReference:
+      type: object
+      required: [id, source, sourceId, sourceUrl, imageUrl, license, licenseUrl, attribution, evidence, mime, byteSize, approvedBy, approvedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        source: { type: string, enum: [open-library, google-books, wikimedia] }
+        sourceId: { type: string }
+        sourceUrl: { type: string, format: uri }
+        imageUrl: { type: string, format: uri }
+        license: { type: string }
+        licenseUrl: { type: string, format: uri }
+        attribution: { type: string }
+        evidence: { type: string }
+        mime: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 2097152 }
+        approvedBy: { type: string, format: uuid }
+        approvedAt: { type: string, format: date-time }
+        version: { type: integer, format: int64, minimum: 0 }
     RegisterRequest:
       type: object
       required: [fullName, email, password]
