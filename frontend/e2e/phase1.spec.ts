@@ -123,6 +123,7 @@ test('Phase 2 metadata: quyền thật, tra cứu không ghi đè Catalog và �
   const readerHeaders={Authorization:`Bearer ${(await readerLogin.json()).accessToken}`};
   expect((await request.get(`${insight}/metadata/books/9780140328721`,{headers:readerHeaders})).status()).toBe(403);
   expect((await request.get(`${insight}/metadata/books/not-isbn`,{headers})).status()).toBe(400);
+  expect((await request.get(`${insight}/metadata/books/9780140328722`,{headers})).status()).toBe(400);
   const book=await createCatalog(request,headers,'/books',{title:`A0 Metadata ${suffix}`,authorIds:[],categoryIds:[]});
   const edition=await createCatalog(request,headers,`/books/${book.id}/editions`,{isbn13:'9780140328721'});
   await loginCatalog(page,'LIBRARIAN');await navigate(page,'/nhan-vien/danh-muc');

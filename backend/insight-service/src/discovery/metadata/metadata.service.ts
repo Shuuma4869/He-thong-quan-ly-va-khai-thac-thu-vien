@@ -10,6 +10,8 @@ export class MetadataService {
     private readonly wikimedia:WikimediaProvider,private readonly media:MediaNormalizer) {}
   async book(isbn13:string) {
     if (!/^\d{13}$/.test(isbn13)) throw new BadRequestException('ISBN phải gồm đúng 13 chữ số.');
+    const sum=[...isbn13.slice(0,12)].reduce((total,digit,index)=>total+Number(digit)*(index%2===0?1:3),0);
+    if ((10-sum%10)%10!==Number(isbn13[12])) throw new BadRequestException('Số kiểm tra ISBN-13 không hợp lệ.');
     const first=await this.openLibrary.lookup(isbn13);
     const attempts=[{provider:'open-library',status:first.status}];
     // Keep an existing candidate, including manual staff data in Core. Fallback is supplementary only.

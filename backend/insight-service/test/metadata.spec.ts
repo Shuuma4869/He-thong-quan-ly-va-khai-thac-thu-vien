@@ -58,6 +58,12 @@ test('fallback only fills missing provider results and never overwrites the firs
   const fallback=await service.book(isbn);expect(fallback.candidates).toHaveLength(2);expect(fallback.candidates[0].source).toBe('open-library');
   await expect(service.book('invalid')).rejects.toBeInstanceOf(BadRequestException);
 });
+test('invalid ISBN checksum is rejected before contacting a provider',async()=>{
+  const open={lookup:jest.fn()},google={lookup:jest.fn()};
+  const service=new MetadataService(open as unknown as OpenLibraryProvider,google as unknown as GoogleBooksProvider,{} as WikimediaProvider,{} as MediaNormalizer);
+  await expect(service.book('9780140328722')).rejects.toBeInstanceOf(BadRequestException);
+  expect(open.lookup).not.toHaveBeenCalled();expect(google.lookup).not.toHaveBeenCalled();
+});
 function authorResponses({reverse='OL1A',license='CC BY-SA 4.0'}={}) {
   json.mockResolvedValueOnce({key:'/authors/OL1A',remote_ids:{wikidata:'Q1'}})
     .mockResolvedValueOnce({entities:{Q1:{claims:{P648:[{mainsnak:{datavalue:{value:reverse}}}],P18:[{mainsnak:{datavalue:{value:'Writer.jpg'}}}]}}}})
