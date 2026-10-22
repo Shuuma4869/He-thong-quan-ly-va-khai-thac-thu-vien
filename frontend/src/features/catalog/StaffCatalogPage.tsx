@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { ApiError } from '../../shared/api/client';
@@ -8,13 +8,17 @@ import { CatalogError, Pagination } from './CatalogStates';
 import { CatalogForm } from './CatalogForm';
 import { ReferencePicker } from './ReferencePicker';
 import { MediaEditor } from './MediaEditor';
+const MetadataHistory = lazy(() => import('./MetadataHistory').then(module => ({ default: module.MetadataHistory })));
 
 const labels: Record<Resource,string> = { books:'Tác phẩm',authors:'Tác giả',categories:'Thể loại',publishers:'Nhà xuất bản',editions:'Ấn bản',branches:'Chi nhánh',shelves:'Kệ sách',copies:'Bản sách' };
 export function StaffCatalogPage() {
+  const [historyOpen,setHistoryOpen] = useState(false);
   const [resource,setResource] = useState<Resource>('books');
   return <section><p className="eyebrow">Quản lý thư mục</p><h1 className="page-title">Danh mục thư viện</h1>
     <p className="mt-2 text-muted">Tác phẩm, ấn bản và bản sách được quản lý riêng. Các thay đổi được lưu qua Core API.</p>
     <Link className="text-link inline-block mt-3" to="/sach">Xem danh mục dành cho bạn đọc →</Link>
+    <div><button className="button-secondary my-3" aria-expanded={historyOpen} onClick={()=>setHistoryOpen(!historyOpen)}>Lịch sử tra cứu ISBN</button></div>
+    {historyOpen && <Suspense fallback={<p role="status">Đang mở lịch sử…</p>}><MetadataHistory /></Suspense>}
     <label className="field my-5 max-w-sm">Loại dữ liệu<select value={resource} onChange={event => setResource(event.target.value as Resource)}>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
     <CatalogManager key={resource} resource={resource} />
   </section>;

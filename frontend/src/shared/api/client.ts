@@ -46,7 +46,7 @@ async function send(url: string, init: RequestInit, signal?: AbortSignal) {
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-type AuthHooks = { token: () => string | null; refresh: () => Promise<boolean>; clear: () => void };
+type AuthHooks = { token: () => string | null; refresh: () => Promise<boolean>; clear: () => void; generation?: () => number };
 let authHooks: AuthHooks | null = null;
 let pendingRefresh: Promise<boolean> | null = null;
 
@@ -55,6 +55,7 @@ export function configureCoreAuth(hooks: AuthHooks | null) { authHooks = hooks; 
 async function request<T>(baseUrl: string | undefined, method: Method, path: string, body?: unknown, retry = true, signal?: AbortSignal): Promise<T> {
   if (!baseUrl) throw new ApiError(503, 'Dịch vụ này chưa được cấu hình ở môi trường hiện tại.');
   const hooks = authHooks;
+  const generation = hooks?.generation?.();
   const token = hooks?.token();
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-LAMS-Client': '1' };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -62,6 +63,8 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
     method, headers, credentials: 'include', body: body === undefined ? undefined : JSON.stringify(body),
   }, signal);
   const protectedRequest = !['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path.split('?')[0]);
+  const sameSession = () => authHooks === hooks && hooks?.generation?.() === generation;
+  if (protectedRequest && !sameSession()) throw new ApiError(401, 'Phiên đăng nhập đã thay đổi.');
   if (response.status === 401 && retry && hooks && authHooks === hooks && protectedRequest) {
     signal?.throwIfAborted();
     // A late 401 must not restore a session after logout or refresh a newer login.
@@ -76,7 +79,7 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
       }
       const refreshed = await pendingRefresh;
       signal?.throwIfAborted();
-      if (refreshed && authHooks === hooks && hooks.token()) return request<T>(baseUrl, method, path, body, false, signal);
+      if (refreshed && sameSession() && hooks.token()) return request<T>(baseUrl, method, path, body, false, signal);
       if (authHooks === hooks && hooks.token() === token) hooks.clear();
     }
   }

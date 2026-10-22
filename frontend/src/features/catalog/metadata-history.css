@@ -1,0 +1,17 @@
+/* React-Bootstrap dùng stylesheet riêng trong scope này, không import Bootstrap Reboot toàn cục. */
+.metadata-history { display: grid; gap: 1rem; }
+.metadata-history form { display:flex; flex-wrap:wrap; align-items:end; gap:.75rem; }
+.metadata-history .form-label { display:block; margin-bottom:.4rem; }
+.metadata-history .form-control { border:1px solid #66736f; border-radius:.5rem; padding:.65rem; width:100%; background:white; color:#17211f; }
+.metadata-history .btn { display:inline-block; border:1px solid transparent; border-radius:.5rem; padding:.65rem 1rem; cursor:pointer; background:#0f766e; color:white; font-weight:600; margin:.2rem; }
+.metadata-history .btn-secondary { background:#e6eeeb; color:#17211f; border-color:#66736f; }
+.metadata-history .btn-danger { background:#a12020; }
+.metadata-history .btn:disabled { opacity:.55; cursor:not-allowed; }
+.metadata-history :is(.btn,.form-control):focus-visible { outline:3px solid #b45309; outline-offset:3px; }
+.metadata-history .alert { padding:1rem; border-radius:.5rem; }
+.metadata-history .alert-danger { background:#fff1f0; color:#8b1a1a; border:1px solid #b42318; }
+.metadata-history li { padding:1rem 0; border-bottom:1px solid #d1dcd8; overflow-wrap:anywhere; }
+.metadata-history nav { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.metadata-history .spinner-border { display:inline-block; width:1rem; height:1rem; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:history-spin .8s linear infinite; }
+@keyframes history-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .metadata-history .spinner-border { animation:none; } }
