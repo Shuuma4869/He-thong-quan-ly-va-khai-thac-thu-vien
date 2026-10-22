@@ -49,6 +49,7 @@ test.beforeAll(async ({ request }) => {
 });
 
 test('Phase 2.5 lịch sử ISBN lưu thật, reload và xóa theo owner', async ({page,request})=>{
+  test.setTimeout(60000);
   const insight=process.env.LAMS_E2E_INSIGHT_URL!;
   const historyEmail=`history-${randomUUID()}@example.test`;
   const created=await request.post(`${core}/auth/register`,{data:{fullName:'Thủ thư kiểm thử lịch sử',email:historyEmail,password}});
@@ -75,6 +76,17 @@ test('Phase 2.5 lịch sử ISBN lưu thật, reload và xóa theo owner', async
   await page.reload();
   await page.getByRole('button',{name:'Lịch sử tra cứu ISBN',exact:true}).click();
   await expect(page.getByRole('button',{name:'Mở lại 9780132350884'})).toBeVisible();
+  await page.getByRole('button',{name:'Mở lại 9780132350884'}).click();
+  await expect(page.getByText(/Kết quả tra lại nguồn hiện tại/)).toBeVisible();
+  for (const viewport of [{width:1440,height:900},{width:390,height:844}]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+    await page.getByLabel('ISBN-13 cần tra và lưu').focus();
+    await page.keyboard.press('Tab');
+    // ISBN rỗng sau reload: submit disabled, Tab chuyển tới bộ lọc.
+    await expect(page.getByLabel('Lọc lịch sử theo đầu ISBN')).toBeFocused();
+    await page.screenshot({path:`test-results/history-${viewport.width}.png`,fullPage:true});
+  }
   const staff=await login('HISTORY');
   const list=await request.get(`${insight}/metadata/history`,{headers:{Authorization:`Bearer ${staff}`}});
   expect(list.status()).toBe(200);
