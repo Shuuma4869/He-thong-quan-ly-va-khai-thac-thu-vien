@@ -1,5 +1,7 @@
 # Screen Map
 
+Staff Catalog bổ sung vùng “Lịch sử tra cứu ISBN” (không route mới), owner-scoped list/filter/page/save/replay/delete. React-Bootstrap chỉ trong vùng này, CSS scoped không Reboot toàn cục. [Wireframe W5](wireframes.md) mô tả bố cục; nghiệm thu runtime còn phải kiểm PostgreSQL/E2E.
+
 | Khu vực | Màn hình | Giai đoạn |
 |---|---|---|
 | Public | Đăng nhập, đăng ký, 404 | Đã có |

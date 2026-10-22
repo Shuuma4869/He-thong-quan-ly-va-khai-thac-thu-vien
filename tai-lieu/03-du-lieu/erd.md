@@ -1,5 +1,20 @@
 # ERD mục tiêu
 
+## Insight history đã có schema
+
+```mermaid
+erDiagram
+  METADATA_LOOKUPS {
+    uuid id PK
+    uuid owner_id "Core principal; không FK xuyên database"
+    varchar isbn13
+    jsonb attempts "provider/status, không payload"
+    timestamptz created_at
+  }
+```
+
+Database Insight sở hữu lịch sử tra cứu; không nối Book bằng FK và không sao chép Catalog. Schema đã viết không tự chứng minh migration runtime đã được nghiệm thu.
+
 ## Mục đích
 
 Mô tả target model để thống nhất tên và ownership. Đây không phải khẳng định mọi bảng đã được migration trong Giai đoạn 01.

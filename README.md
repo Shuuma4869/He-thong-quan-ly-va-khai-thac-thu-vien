@@ -10,6 +10,10 @@ Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form s
 
 ## Kiến trúc ngắn
 
+Phase 2.5 đang được kiểm chứng: Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md). Chưa tuyên bố Technical Gate đạt khi các test PostgreSQL/E2E còn bị chặn.
+
+Main đã có backend Favorites/Reviews/Rating từ PR #11; UI My Library và các chức năng này chưa triển khai. Không chuyển chúng sang NestJS trong Phase 2.5.
+
 - `frontend`: Tauri 2 + WebView2 trên Windows; React + TypeScript + Vite dùng chung UI theo feature. Bản release mở cửa sổ riêng, không cần Chrome/Vite.
 - `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.
 - `backend/insight-service`: NestJS + Prisma, dành cho discovery, analytics và tích hợp bất đồng bộ.

@@ -6,7 +6,23 @@ Mở cửa sổ LAMS theo [runbook desktop](../08-van-hanh/desktop-windows.md), 
 
 Với tài khoản Librarian/Admin đã được cấp quyền hợp lệ, mở Thành viên, tìm theo mã/họ tên, lọc trạng thái, sắp xếp, phân trang và reload/Back. Reader không được mở danh sách staff. Ứng dụng không có API công khai tự nâng quyền; fixture E2E staff chỉ thuộc database kiểm thử tạm, không dùng để cấp quyền trên dữ liệu thật.
 
-Catalog vẫn hiển thị chưa có dữ liệu; không trình bày placeholder thành chức năng tìm sách đã hoàn thiện. Không dùng tài khoản hoặc dữ liệu cá nhân thật trong slide/video nếu chưa được phép.
+Catalog đã có API và UI Phase 2. Chuẩn bị dữ liệu minh họa có nguồn rõ trên môi trường demo riêng; không suy database có sẵn dữ liệu. Không dùng tài khoản hoặc dữ liệu cá nhân thật trong slide/video nếu chưa được phép.
+
+## Kịch bản học phần dự kiến 7 phút 20 giây
+
+| Thời gian | Thao tác | Bằng chứng |
+|---|---|---|
+| 0:00–0:35 | Giới thiệu phạm vi, Book/Edition/Copy | Sơ đồ và SHA demo |
+| 0:35–1:20 | Login, Profile, Reader bị chặn staff | UI và response thật |
+| 1:20–2:15 | Tìm/filter sách, xem Edition và Author | API server, không fake availability |
+| 2:15–3:00 | Staff tra Member, pagination | Không lộ dữ liệu ngoài DTO |
+| 3:00–4:00 | Biên mục, Copy/version, duyệt ảnh thủ công | Dữ liệu chuẩn bị minh bạch |
+| 4:00–5:30 | Tra ISBN và lưu history, reload, lọc/mở lại | Insight PostgreSQL; nguồn unavailable hiển thị đúng |
+| 5:30–6:10 | User khác không đọc/xóa; chủ xóa history | 404 và persistence thật |
+| 6:10–6:50 | Test/CI đúng SHA, phân biệt unit/integration/E2E | Không lấy screenshot thay kết quả test |
+| 6:50–7:20 | Phân công, giới hạn, roadmap | Không giới thiệu UI Phase 3 chưa có |
+
+Đây là phân bổ thời gian dự kiến, chưa phải video đã quay hoặc đo thời lượng. Chỉ quay sau khi gate kỹ thuật đạt; không có link video cho đến khi xuất bản thật.
 
 ## Câu chuyện mục tiêu cho các phase sau
 
