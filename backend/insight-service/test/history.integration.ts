@@ -60,6 +60,10 @@ test('filter/pagination ổn định và chỉ dữ liệu chủ sở hữu', as
   expect(second.items).toHaveLength(1);
   expect(first.items.map(item => item.id)).not.toContain(second.items[0].id);
   expect((await repository.list(a, { ...query, isbn: '000' })).items).toEqual([]);
+  const older = await repository.create(a, '9780140328721', []);
+  await db.metadataLookup.update({ where: { id: older.id }, data: { createdAt: new Date('2020-01-01T00:00:00Z') } });
+  expect((await repository.list(a, { ...query, isbn: undefined, sort: 'oldest' })).items[0].id).toBe(older.id);
+  expect((await repository.list(a, { ...query, isbn: undefined, sort: 'newest' })).items[0].id).not.toBe(older.id);
 });
 test('database chặn ISBN không hợp lệ và migration deploy lặp không mất dữ liệu', async () => {
   await expect(repository.create(owner, 'bad', [])).rejects.toThrow();

@@ -1,9 +1,22 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { catalogParams, getBooks, parseCatalogQuery, saveCatalog } from './catalog-api';
+import { bookSchema, editionSchema, schemas, recordLabel, resourcePath, catalogParams, getBooks, parseCatalogQuery, saveCatalog } from './catalog-api';
 import { parseCatalogForm } from './catalog-form';
 import { configureCoreAuth } from '../../shared/api/client';
 
 afterEach(() => { vi.unstubAllGlobals(); configureCoreAuth(null); });
+it('schema tách Book và Edition, không suy ISBN hay availability cho Book', () => {
+  const id='11111111-1111-4111-8111-111111111111';
+  const book={id,title:'Tác phẩm',description:null,authors:[],categories:[]};
+  expect(bookSchema.parse(book)).toEqual(book);
+  expect(editionSchema.safeParse(book).success).toBe(false);
+  expect(resourcePath.bind(null,'editions','wrong')).toThrow();
+  expect(resourcePath('editions',id)).toBe(`/books/${id}/editions`);
+});
+it('tác giả phải có UUID thật, nhãn chỉ dùng tên được trả về', () => {
+  expect(schemas.authors.safeParse({id:'name-as-id',name:'Tác giả'}).success).toBe(false);
+  const author={id:'11111111-1111-4111-8111-111111111111',name:'Tác giả'};
+  expect(recordLabel(schemas.authors.parse(author))).toBe('Tác giả');
+});
 it('kiểm tra URL, giữ filters và chỉ gửi tham số hỗ trợ', () => {
   expect(parseCatalogQuery(new URLSearchParams('page=-1')).success).toBe(false);
   expect(parseCatalogQuery(new URLSearchParams('authorId=invalid')).success).toBe(false);

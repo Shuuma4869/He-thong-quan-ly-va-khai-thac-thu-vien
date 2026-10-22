@@ -80,10 +80,10 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
       const refreshed = await pendingRefresh;
       signal?.throwIfAborted();
       if (refreshed && sameSession() && hooks.token()) return request<T>(baseUrl, method, path, body, false, signal);
-      if (authHooks === hooks && hooks.token() === token) hooks.clear();
+      if (sameSession() && hooks.token() === token) hooks.clear();
     }
   }
-  if (response.status === 401 && !retry && protectedRequest && hooks === authHooks && hooks?.token() === token) hooks?.clear();
+  if (response.status === 401 && !retry && protectedRequest && sameSession() && hooks?.token() === token) hooks?.clear();
   if (!response.ok) {
     let detail = 'Không thể hoàn tất yêu cầu.';
     let requestId = response.headers.get('X-Request-Id') ?? undefined;

@@ -6,6 +6,30 @@ on:
   pull_request:
 
 jobs:
+  web-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.23.3', cache: npm, cache-dependency-path: '**/package-lock.json' }
+      - run: npm ci
+        working-directory: backend/insight-service
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: bash scripts/test-web-e2e-ci.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-e2e-results
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
   api-contracts:
     runs-on: ubuntu-latest
     steps:
