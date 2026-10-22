@@ -14,3 +14,16 @@ model ServiceMetadata {
 
   @@map("service_metadata")
 }
+
+// Dấu vết tra cứu, không phải sách hoặc snapshot nội dung của provider.
+model MetadataLookup {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  isbn13    String   @db.VarChar(13)
+  attempts  Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([ownerId, createdAt, id])
+  @@index([ownerId, isbn13])
+  @@map("metadata_lookups")
+}

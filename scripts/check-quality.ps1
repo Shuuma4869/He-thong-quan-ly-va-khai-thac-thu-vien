@@ -13,7 +13,9 @@ try {
 Push-Location "$projectRoot/backend/insight-service"
 try {
     Invoke-LamsNative 'npm' @('run', 'prisma:validate') 'Prisma validate thất bại'
+    Invoke-LamsNative 'npm' @('run', 'prisma:generate') 'Prisma generate thất bại'
     Invoke-LamsNative 'npm' @('test') 'Nest test thất bại'
+    Invoke-LamsNative 'npm' @('run', 'test:integration') 'Insight PostgreSQL integration thất bại'
     Invoke-LamsNative 'npm' @('run', 'build') 'Nest build thất bại'
 } finally { Pop-Location }
 

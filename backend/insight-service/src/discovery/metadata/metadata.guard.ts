@@ -2,6 +2,8 @@ import { CanActivate, ExecutionContext, ForbiddenException, HttpException, Injec
 import type { Request } from 'express';
 import { array, object, string } from './metadata.types';
 
+export const metadataActor = Symbol('metadataActor');
+
 @Injectable()
 export class MetadataGuard implements CanActivate {
   private readonly windows=new Map<string,{start:number;count:number}>();
@@ -26,6 +28,8 @@ export class MetadataGuard implements CanActivate {
     for (const [key,value] of this.windows) if (now-value.start>=60_000) this.windows.delete(key);
     const window=this.windows.get(id)??{start:now,count:0};
     if (window.count>=10 || (!this.windows.has(id) && this.windows.size>=1000)) throw new HttpException('Đã đạt giới hạn tra cứu, thử lại sau một phút.',429);
-    window.count++; this.windows.set(id,window); return true;
+    window.count++; this.windows.set(id,window);
+    (request as Request & { [metadataActor]?: string })[metadataActor] = id;
+    return true;
   }
 }

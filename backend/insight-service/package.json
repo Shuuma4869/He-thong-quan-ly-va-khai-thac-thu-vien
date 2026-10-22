@@ -12,6 +12,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "test": "jest --runInBand",
+    "test:integration": "prisma generate && jest --runInBand --testRegex=history.integration.ts$",
     "test:watch": "jest --watch",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
