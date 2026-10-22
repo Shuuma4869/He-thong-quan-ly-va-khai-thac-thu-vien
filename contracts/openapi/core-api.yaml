@@ -3,13 +3,13 @@ info:
   title: LAMS Core API
   version: 0.3.0
   description: >-
-    Core health, Identity/Auth, Member, Catalog và Inventory API. Khi bật profile pilot, tất cả
+    Core health, Identity/Auth, Member, Catalog, Inventory và Reader contribution API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
     X-LAMS-Client bằng 1; thiếu hoặc sai trả 403. Client trình duyệt tự gửi Origin.
     Local giữ tương thích với cấu hình SameSite=Lax.
-    Catalog GET (Author, Category, Publisher, Book, Edition, media) yêu cầu tài khoản ACTIVE
-    còn READER/LIBRARIAN/ADMIN trong database. Ghi Catalog/media và mọi API Inventory chỉ
-    dành cho LIBRARIAN/ADMIN ACTIVE còn quyền trong database; JWT cũ không giữ quyền đã thu hồi.
+    Catalog GET (Author, Category, Publisher, Book, Edition, media), Favorites, Reviews và Rating
+    yêu cầu tài khoản ACTIVE còn role hiện hành trong database. Ghi Catalog/media và mọi API Inventory
+    chỉ dành cho LIBRARIAN/ADMIN ACTIVE còn quyền trong database; JWT cũ không giữ quyền đã thu hồi.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
@@ -90,6 +90,167 @@ paths:
               schema: { $ref: '#/components/schemas/CurrentMemberProfile' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+  /me/favorites:
+    get:
+      operationId: listMyFavorites
+      tags: [Favorites]
+      summary: Lấy danh sách sách yêu thích của tài khoản hiện tại
+      description: Scope lấy từ principal; userId không được nhận từ request. Chỉ user ACTIVE có role hiện hành được truy cập. Sort ổn định theo favoritedAt rồi bookId.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            default: favoritedAt,desc
+            enum: ['favoritedAt,asc', 'favoritedAt,desc']
+      responses:
+        '200': { description: Trang Favorites của principal hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/FavoritePage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /me/favorites/{bookId}:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      operationId: addMyFavorite
+      tags: [Favorites]
+      summary: Thêm sách vào Favorites của principal hiện tại
+      description: Không có request body. PUT lặp không tạo duplicate; lần tạo trả 201, lần đã tồn tại trả 200.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Favorite đã tồn tại
+          headers:
+            Location: { schema: { type: string, format: uri-reference } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Favorite' }
+        '201':
+          description: Favorite vừa được tạo
+          headers:
+            Location: { schema: { type: string, format: uri-reference } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Favorite' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: removeMyFavorite
+      tags: [Favorites]
+      summary: Bỏ sách khỏi Favorites của principal hiện tại
+      description: Idempotent; Favorite không tồn tại trả 204 nếu Book vẫn tồn tại.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã bỏ Favorite hoặc Favorite chưa tồn tại }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/reviews:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listBookReviews
+      tags: [Reviews and ratings]
+      summary: Liệt kê Reviews công khai của một sách
+      description: Reviews được công khai ngay sau khi tạo. Response không chứa userId hoặc thông tin định danh người viết; mine chỉ cho biết review có thuộc principal hiện tại không. Sort ổn định theo createdAt rồi reviewId.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            default: createdAt,desc
+            enum: ['createdAt,asc', 'createdAt,desc']
+      responses:
+        '200': { description: Trang reviews, content: { application/json: { schema: { $ref: '#/components/schemas/ReviewPage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBookReview
+      tags: [Reviews and ratings]
+      summary: Tạo review và rating của principal hiện tại cho sách
+      description: Mỗi user chỉ có một review trên mỗi Book. Review được công khai ngay; không có API moderation trong phạm vi này.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewRequest' }
+      responses:
+        '201':
+          description: Review đã tạo
+          headers:
+            Location: { schema: { type: string, format: uri-reference } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Review' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { description: Principal đã có review cho sách này, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/reviews/summary:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getBookRatingSummary
+      tags: [Reviews and ratings]
+      summary: Lấy rating aggregate được tính từ Reviews hiện hành
+      description: Average được làm tròn 2 chữ số bằng HALF_UP; khi chưa có review, average là null và count bằng 0. Aggregate không lưu thành nguồn dữ liệu độc lập.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Average và số reviews, content: { application/json: { schema: { $ref: '#/components/schemas/RatingSummary' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/reviews/{reviewId}:
+    parameters:
+      - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: reviewId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateBookReview
+      tags: [Reviews and ratings]
+      summary: Cập nhật body hoặc rating của review thuộc principal
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewUpdateRequest' }
+      responses:
+        '200': { description: Review đã cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/Review' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBookReview
+      tags: [Reviews and ratings]
+      summary: Xóa review của chính principal
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Review đã xóa }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
   /members:
     get:
       operationId: listMembers
@@ -849,6 +1010,59 @@ components:
           type: array
           items: { $ref: '#/components/schemas/MemberItem' }
         page: { $ref: '#/components/schemas/PageMetadata' }
+    Favorite:
+      type: object
+      required: [bookId, bookTitle, favoritedAt]
+      properties:
+        bookId: { type: string, format: uuid }
+        bookTitle: { type: string }
+        favoritedAt: { type: string, format: date-time }
+    FavoritePage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Favorite' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    ReviewRequest:
+      type: object
+      required: [body, rating]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+    ReviewUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+    Review:
+      type: object
+      required: [reviewId, bookId, body, rating, createdAt, updatedAt, mine]
+      properties:
+        reviewId: { type: string, format: uuid }
+        bookId: { type: string, format: uuid }
+        body: { type: string, maxLength: 5000 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        mine: { type: boolean, description: Review có thuộc principal hiện tại hay không; không tiết lộ userId. }
+    ReviewPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Review' }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    RatingSummary:
+      type: object
+      required: [bookId, average, count]
+      properties:
+        bookId: { type: string, format: uuid }
+        average: { type: [number, 'null'], minimum: 1, maximum: 5, multipleOf: 0.01 }
+        count: { type: integer, minimum: 0 }
     AuthorRequest:
       type: object
       required: [name]
