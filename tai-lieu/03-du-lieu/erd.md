@@ -45,6 +45,8 @@ erDiagram
   USER_ROLES { uuid user_id FK; string role_code FK }
   REFRESH_TOKENS { uuid id PK; uuid user_id FK; uuid family_id; string token_hash UK; datetime expires_at; datetime revoked_at }
   BOOKS { uuid id PK; string title; string normalized_title; datetime created_at }
+  FAVORITES { uuid user_id FK; uuid book_id FK; datetime created_at }
+  REVIEWS { uuid id PK; uuid user_id FK; uuid book_id FK; text body; int rating; datetime created_at; datetime updated_at }
   EDITIONS { uuid id PK; uuid book_id FK; string isbn13; int publication_year; uuid publisher_id FK }
   BOOK_COPIES { uuid id PK; uuid edition_id FK; string barcode UK; string status; uuid shelf_id FK; bigint version }
   LOANS { uuid id PK; uuid copy_id FK; uuid reader_id FK; datetime borrowed_at; datetime due_at; datetime returned_at }
@@ -55,7 +57,7 @@ erDiagram
 
 ## Quy tắc trọng yếu
 
-Catalog/Inventory hiện có V3–V10; V11 nâng cấp khóa chuẩn hóa; V12 triển khai `catalog_media_references` với Edition hoặc Author (exclusive FK), không phải quan hệ MEDIA_ASSETS–BOOKS trong sơ đồ mục tiêu. Mỗi đối tượng tối đa một ảnh; approved_by tham chiếu USERS. Các entity roadmap khác trong sơ đồ không đồng nghĩa đã có migration.
+Catalog/Inventory hiện có V3–V10; V11 nâng cấp khóa chuẩn hóa; V12 triển khai `catalog_media_references` với Edition hoặc Author (exclusive FK), không phải quan hệ MEDIA_ASSETS–BOOKS trong sơ đồ mục tiêu. V14 triển khai Favorites; V15 triển khai Reviews và rating 1–5. Các entity roadmap còn lại trong sơ đồ không đồng nghĩa đã có migration.
 
 Phase 1A đã triển khai `USERS`, `ROLES`, `USER_ROLES`, `REFRESH_TOKENS` bằng Flyway V2. `USERS.id` là UUID cho Member/Profile tham chiếu sau này; `member_code` do Identity tạo, duy nhất. Chưa có bảng MemberProfile.
 
@@ -63,4 +65,5 @@ Phase 1A đã triển khai `USERS`, `ROLES`, `USER_ROLES`, `REFRESH_TOKENS` bằ
 - Chỉ một loan chưa trả được tồn tại cho một copy; thực thi bằng constraint/index cùng transaction.
 - Barcode là duy nhất. ISBN không được giả định luôn có hoặc luôn duy nhất toàn cầu nếu dữ liệu nguồn chưa xác minh.
 - Copy state và active hold assignment quyết định availability; không dùng `books.available/total` làm nguồn thật.
+- Favorites unique theo `(user_id, book_id)`, cascade khi User/Book bị xóa. Reviews unique theo cặp này, restrict xóa User/Book; review hiện công khai ngay, chưa có moderation workflow. Rating nằm trên review; average/count là projection tính từ reviews hiện hành, không phải nguồn dữ liệu riêng.
 - Các entity analytics nằm trong `lams_insight`; Core phát fact qua outbox/event thay vì cho Insight sửa schema Core.

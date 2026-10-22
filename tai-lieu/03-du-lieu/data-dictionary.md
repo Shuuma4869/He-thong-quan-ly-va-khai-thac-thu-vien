@@ -12,6 +12,8 @@
 | Category (`categories`, V4) | Thể loại | UUID `id`; `name` hiển thị; `normalized_name` duy nhất sau chuẩn hóa Unicode NFKC, gộp khoảng trắng và không phân biệt hoa thường | Core/Catalog |
 | Publisher (`publishers`, V5) | Nhà xuất bản | UUID `id`; `name` bắt buộc, tối đa 200 ký tự; index theo tên; không áp đặt tên duy nhất | Core/Catalog |
 | Book (`books`, V6) | Tác phẩm logic | UUID `id`; title và normalized title; description tùy chọn; quan hệ nhiều-nhiều với Author/Category; không chứa barcode hoặc số lượng availability | Core/Catalog |
+| Favorite (`favorites`, V14) | Liên kết sách yêu thích của user | FK `user_id`/`book_id`; unique ghép `(user_id, book_id)`; `created_at` UTC; xóa User hoặc Book sẽ cascade liên kết | Core/Reader contributions |
+| Review (`reviews`, V15) | Review và rating công khai của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `created_at`/`updated_at`; chưa có workflow moderation | Core/Reader contributions |
 | Edition (`editions`, V7) | Ấn bản của Book | UUID `id`; Book FK bắt buộc; Publisher tùy chọn; ISBN-13 tùy chọn, chưa unique; năm và ngôn ngữ tùy chọn | Core/Catalog |
 | Branch (`branches`, V8) | Chi nhánh thư viện | UUID `id`; `code` duy nhất; `name` bắt buộc; trạng thái ACTIVE/DISABLED | Core/Inventory |
 | Shelf (`shelves`, V9) | Kệ thuộc chi nhánh | UUID `id`; Branch FK; mã duy nhất trong Branch; label; thứ tự; không xóa khi còn Copy tham chiếu | Core/Inventory |
@@ -25,12 +27,14 @@
 
 V13 cấp version media bằng `catalog_media_revision_seq` cho mỗi lần tạo/thay ảnh, bắt đầu trên version lớn nhất khi nâng cấp. Không reset khi gỡ ảnh; request cũ không được áp dụng lên tham chiếu tạo lại. Sequence có thể có khoảng trống; không dùng làm số lượng ảnh hoặc số lần chỉnh sửa.
 
+V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book. V15 tạo Reviews, unique một review/user/book; xóa User/Book bị restrict khi còn review. Rating thuộc Review; average/count được tính từ các review hiện hành, không lưu aggregate riêng. Review công khai ngay, chưa có API hoặc trạng thái moderation.
+
 ## Các nhóm còn lại
 
 - Identity: `roles`, `user_roles`, `refresh_tokens`.
 - Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7.
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; `copy_location_history`, `inventory_scans`, `inventory_anomalies` còn chờ triển khai.
-- Circulation/reader: `loan_extensions`, `hold_events`, `favorites`, `reviews`.
+- Circulation/reader còn chờ: `loan_extensions`, `hold_events`.
 - Discovery: `search_documents`, `acquisition_recommendations`.
 - System: `notifications`, `system_policies`, `audit_logs`, `outbox_events`, `media_assets`.
 
