@@ -242,6 +242,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
   await loginCatalog(page, 'LIBRARIAN');
   await navigate(page, '/thu-vien-cua-toi');
   await expect(page.getByText('Chưa có sách yêu thích ở trang này.')).toBeVisible();
@@ -255,7 +256,9 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   expect(entry.mine).toBe(false); expect(entry).not.toHaveProperty('userId');
   expect((await request.patch(`${core}/books/${book.id}/reviews/${entry.reviewId}`, { headers, data: { rating: 1 } })).status()).toBe(403);
   expect((await request.delete(`${core}/books/${book.id}/reviews/${entry.reviewId}`, { headers })).status()).toBe(403);
-  await page.getByRole('button', { name: 'Đăng xuất' }).click(); await loginCatalog(page, 'READER');
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
+  await loginCatalog(page, 'READER');
   await navigate(page, `/sach/${book.id}`);
   await page.getByRole('button', { name: 'Xóa đánh giá của tôi' }).click();
   await page.getByRole('button', { name: 'Giữ đánh giá', exact: true }).click();
