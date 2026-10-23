@@ -2,6 +2,8 @@
 
 Mức ưu tiên: **MVP** cần cho vòng nghiệp vụ đầu; **Advanced** tạo khác biệt sản phẩm; **Future** chỉ định hướng.
 
+Bảng dưới là roadmap sản phẩm, không phải checklist chức năng đã triển khai. Phạm vi học phần hiện thực và mã FR-01–13 nằm trong [User Stories/trace](user-stories.md) và [use case](use-case.md). Availability, loan/hold, quản trị role/policy/audit và analytics chưa được coi là hoàn thành; Member hiện chỉ đọc. Phase 2.5 thêm FR-13 history ISBN owner-only trong Insight, không tự sửa Catalog.
+
 | Actor | MVP | Advanced | Future |
 |---|---|---|---|
 | Reader | Đăng nhập; tìm/xem sách; xem availability; theo dõi loan/hold; quản lý hồ sơ | fuzzy/hybrid search; ETA hold; gợi ý alternative edition | semantic recommendation cá nhân hóa |

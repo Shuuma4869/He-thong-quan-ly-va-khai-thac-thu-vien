@@ -94,6 +94,20 @@ W5 mapping US-13; MetadataHistory dùng React-Bootstrap Form/Button/Alert/Spinne
 
 ## Kiểm tính thuận tiện
 
-Chưa có kết quả đo thao tác runtime cho bản Phase 2.5. Quy ước đo đề xuất: bắt đầu sau đăng nhập tại trang liên quan; ghi riêng click/chọn và nhập liệu; hỏi giảng viên cách đếm trước kết luận “≤4”. Kịch bản: tìm sách→detail; mở history→tra/lưu; lọc→mở lại; xóa→xác nhận; tạo Catalog. Ghi viewport, trạng thái đầu, thao tác, kết quả và điểm vướng. Không suy số bước đo được chỉ từ wireframe.
+Đã kiểm tự động trên Chromium/Linux với API/PostgreSQL thật ở head `0075377`, CI run 39871120289; không phải nghiên cứu với người dùng đại diện. Ảnh [1440/390 px](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) đã đối chiếu W5: đúng thứ tự form → kết quả → history → phân trang, không tràn ngang; Tab từ ISBN rỗng bỏ qua submit disabled và tới bộ lọc, focus nhìn thấy. Profile, Member, Author và Staff Copy trong artifact cũng được đối chiếu W2–W4. W1 được kiểm luồng bằng E2E, chưa chụp/đối chiếu trực quan riêng trong bộ ảnh này.
+
+W1 đã được kiểm trực quan bổ sung trên Chrome Windows qua Vite local ở commit `0075377`, viewport 1440/390: form login/register không tràn ngang, ảnh bên trái trên desktop và form một cột trên mobile. Lượt này không submit tài khoản và không thay E2E Auth/PostgreSQL của CI; ảnh kiểm tạm không phải ảnh cửa sổ EXE.
+
+Số thao tác dưới đây đếm từ lệnh tương tác đã chạy thành công trong E2E, không tính đăng nhập/đợi mạng/scroll tự động; một lần `fill` là một thao tác nhập, không phải một phím. Đây không phải kết luận đạt cách đếm chưa được giảng viên xác nhận.
+
+| Hành trình | Điểm bắt đầu | Thao tác thực hiện | Kết quả / giới hạn |
+|---|---|---|---|
+| Lưu history | Staff Catalog đã đăng nhập | Mở history → nhập ISBN → nhấn tra/lưu: 2 click + 1 nhập | Có bản ghi sau reload; không ghi Core |
+| Replay | History đang mở, có bản ghi | Nhấn Mở lại: 1 click | Có trạng thái nguồn hiện tại; không tạo record mới |
+| Xóa history | Có record thuộc mình | Xóa → xác nhận: 2 click | API 204, list trống; không xóa sách |
+| Xem hồ sơ | Reader vừa đăng ký | Hồ sơ của tôi: 1 click | Hiện dữ liệu tài khoản và profile null |
+| Lọc thành viên | Staff Member list | Nhập từ khóa → chọn status: 1 nhập + 1 chọn | Tổng số/empty do server, không lọc local |
+
+Còn phải đo với người dùng và trên EXE: độ dễ hiểu thông báo, thời gian hoàn thành, focus sau lỗi/xóa và tiêu chí “≤4” theo định nghĩa học phần. Không tuyên bố mọi hành trình Catalog/Inventory đạt bốn tương tác; form nhiều field phải đếm riêng.
 
 Tham khảo Booking.com ở nguyên tắc tìm kiếm nổi bật, lọc sát kết quả và hành động rõ; không dùng logo/ảnh của họ, chưa có đánh giá đối chiếu trực quan chính thức. React-Bootstrap hỗ trợ stylesheet tùy chọn: https://react-bootstrap.github.io/docs/getting-started/introduction/.

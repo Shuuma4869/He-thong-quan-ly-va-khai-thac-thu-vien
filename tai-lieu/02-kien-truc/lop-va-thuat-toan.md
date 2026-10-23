@@ -1,6 +1,6 @@
 # Lớp và thuật toán đang triển khai
 
-Các sơ đồ tách Core khỏi Insight; quan hệ dependency không phải FK xuyên database. Java domain hiện là record, JDBC repository không phải entity JPA. DTO và Prisma persistence model không được đánh đồng.
+Các sơ đồ tách Core khỏi Insight; quan hệ dependency không phải FK xuyên database. Java domain hiện là record, JDBC repository không phải entity JPA. DTO và Prisma persistence model không được đánh đồng. [Container overview](container-diagram.md) nối các bounded context. Năm sơ đồ bên dưới đã render bằng Mermaid CLI 11.12.0 và kiểm chữ/mũi tên; source Mermaid là bản bàn giao, PNG kiểm tạm không lưu vào Git.
 
 ## Core Identity/Catalog
 

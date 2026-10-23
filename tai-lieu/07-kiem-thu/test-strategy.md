@@ -26,6 +26,8 @@ Insight test dùng phản hồi provider kiểm soát được để xác minh I
 
 Phase 2.5: `npm test` ở Insight chạy unit/DTO/provider/guard và HTTP boundary với test doubles. `npm run test:integration` chạy PostgreSQL Docker thật riêng biệt, kiểm fresh migration, nâng cấp từ foundation trong schema riêng, dữ liệu sau reconnect, owner/filter/page và constraints. Không skip suite này khi thiếu Docker. E2E bổ sung lưu history → reload → cross-owner 404 → xác nhận xóa; database Insight tách khỏi Core trong cùng container test. Frontend có regression request đến muộn sau đổi tài khoản, không retry write bằng principal mới. Xem [trace theo AC](../01-yeu-cau/user-stories.md) và [security matrix](security-matrix.md).
 
+[Ma trận từng AC](story-test-matrix.md) phân biệt pure unit, frontend component, HTTP double và PostgreSQL/E2E thật. Job `web-e2e` dùng `scripts/test-web-e2e-ci.sh` trên Ubuntu với cùng suite Playwright; bootstrap test chỉ tạo container gắn nhãn, port loopback và database riêng. Log/build output không được commit; artifact test giữ giới hạn thời gian. Không đưa log chứa URL database vào artifact công khai.
+
 Quality gate: compile/typecheck, unit/integration, migration upgrade, contract validation, lint, review diff/secrets và E2E cho đường đi đã triển khai. Kiểm thử không chứng minh không còn mọi lỗ hổng; cloud, load và nghiệp vụ các phase sau cần nghiệm thu riêng.
 
 Desktop: `scripts/test-phase1-e2e.ps1 -Desktop` chạy cùng kịch bản trên WebView2 thật của EXE release thay vì Vite/Chromium. Rust có test allowlist điều hướng, fmt/clippy; CI Windows build NSIS. Xem [runbook desktop](../08-van-hanh/desktop-windows.md) về cổng, profile test và điều kiện môi trường. CI build không thay cho E2E native local.

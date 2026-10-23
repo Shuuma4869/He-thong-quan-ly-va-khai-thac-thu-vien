@@ -4,44 +4,47 @@
 
 | Tiêu chí | Trọng số | Trạng thái | Thay đổi/bằng chứng và test | Giới hạn/phụ thuộc |
 |---|---|---|---|---|
-| Q1 | 1 | Một phần | user-stories.md: 13 stories/AC/trace | Cần evidence cuối theo từng AC và unit gaps |
+| Q1 | 1 | Đạt, có bằng chứng | 13 stories/AC/FR/UC + story-test-matrix.md | Phạm vi kỹ thuật, không tự quy đổi thành điểm học phần |
 | Q2a | Trong tổng Q2=1 | Một phần | FR/UC mapping, yêu cầu chức năng/phi chức năng | Cần review độ đầy đủ đối tượng/phương thức |
-| Q2b | Trong tổng Q2=1 | Một phần | lop-va-thuat-toan.md; ERD riêng | Cần render/đối chiếu đầy đủ diagram trước bàn giao |
-| Q3a | 0,2 | Một phần | wireframes.md W1–W5 | Bố cục có thật trong tài liệu; chưa kiểm trực quan UI cuối |
-| Q3b | 0,25 | Một phần | system-flow.md, auth sequence, history flow | Cần review current/planned nhất quán toàn bộ diagram |
+| Q2b | Trong tổng Q2=1 | Đạt, có bằng chứng | Class Diagram/flowchart và ERD đã render; sửa cú pháp ERD cũ | Sơ đồ roadmap tách khỏi schema đang có |
+| Q3a | 0,2 | Đạt, có bằng chứng | Wireframe W1–W5 có bố cục, tương tác và trạng thái | Wireframe không phải screenshot runtime |
+| Q3b | 0,25 | Đạt, có bằng chứng | Container/system flow/history flow; ORM thật, Redis/Kafka planned | Môi trường production vẫn chưa nghiệm thu |
 | Q3c | 0,2 | Một phần | Nest history layered, React, LICENSE | Hybrid và chủ thể bản quyền cần xác nhận |
-| Q3d | 0,35 | Một phần | security-matrix.md; guard/session tests | PostgreSQL/E2E và môi trường triển khai chưa chốt |
-| Q4a | 0,5 | Một phần | Core/Insight OpenAPI; HistoryController | HTTP/DB nghiệm thu cuối còn thiếu |
+| Q3d | 0,35 | Một phần | security-matrix.md; Core/Insight/HTTP/owner/session regression CI | Còn E2E EXE và đánh giá môi trường triển khai |
+| Q4a | 0,5 | Đạt, có bằng chứng | Core/Insight OpenAPI validator, HTTP tests, PostgreSQL và E2E web | Đạt phạm vi endpoint triển khai, không bao gồm roadmap |
 | Q4b | 0,2 | Một phần | OpenAPI validator | Mẫu tài liệu API lớp chưa cung cấp |
-| Q4c | 0,3 | Một phần | owner/current-role/bind/ORM | XORs chưa rõ; security test đủ scope chưa chốt |
-| Q5a | 0,3 | Chưa kiểm chứng | wireframes.md | Chưa đối chiếu trực quan web/desktop |
+| Q4c | 0,3 | Một phần | owner/current-role/bind/ORM, input/error và session generation tests | XORs chưa rõ; không khẳng định an toàn tuyệt đối |
+| Q5a | 0,3 | Một phần | W1 kiểm Chrome Windows local; W2–W5 đối chiếu ảnh CI web | Chưa kiểm UI history trong EXE |
 | Q5b | 0,5 | Một phần | React-Bootstrap Form/Button/Alert/Spinner trong MetadataHistory | Booking.com principles có giải thích; mức bao phủ rubric cần xác nhận |
-| Q5c | 0,2 | Chưa kiểm chứng | Kịch bản đo trong wireframe | Chưa đo số thao tác runtime |
-| Q6a | 0,5 | Một phần | MetadataLookup/Prisma/HistoryRepository/migration | Test PostgreSQL hiện bị chặn môi trường, chưa PASS |
-| Q6b | 0,5 | Một phần | metadata-history-orm.md | Bổ sung evidence migration upgrade độc lập/HTTP boundary |
-| Q7.1 | 0,2 | Một phần | Service DB→503, DTO, UI alerts | Cần HTTP negative tests và E2E |
-| Q7.2 | 0,2 | Một phần | history.spec và frontend tests; story trace | Chưa hoàn tất unit mapping mọi story |
-| Q7.3 | 0,2 | Chưa kiểm chứng | E2E mới và script database cô lập | Chưa chạy toàn ứng dụng bản cuối |
+| Q5c | 0,2 | Một phần | wireframes.md ghi số thao tác từ E2E đã chạy | Chưa nghiên cứu người dùng hoặc xác nhận cách đếm ≤4 |
+| Q6a | 0,5 | Đạt, có bằng chứng | Prisma schema, repository, PostgreSQL integration 4 case + E2E thật | CI kiểm database tạm; chưa nâng database dev thật |
+| Q6b | 0,5 | Đạt, có bằng chứng | metadata-history-orm.md; lifecycle/query/transaction/fresh/upgrade | Không phải sự chấp thuận hybrid của giảng viên |
+| Q7.1 | 0,2 | Đạt, có bằng chứng | Unit/HTTP DB→503, DTO400, 401/403/404, UI write failure, E2E | Provider live có thể unavailable; không false success |
+| Q7.2 | 0,2 | Đạt, có bằng chứng | story-test-matrix.md; Auth/Member unit mới, parser/provider/history unit | Component/integration được phân loại riêng; không claim 100% coverage |
+| Q7.3 | 0,2 | Một phần | 8 E2E web trên API/PostgreSQL thật, CI job web-e2e | EXE/WebView2 E2E còn chặn bởi Docker local |
 | Q7.4 | 0,2 | Một phần | positive/negative service/DTO, owner test | Review PATCH race còn ở handoff; chưa runtime repro |
-| Q7.5 | 0,2 | Một phần | MetadataHistory.test, regression frontend | Cần account-switch/race/accessibility cases và E2E cuối |
-| Q8 | 1 | Một phần | bao-cao-nguon.md, demo 7:20 dự kiến | Thiếu mẫu trường/video thật/screenshot và evidence cuối |
-| Q9a | 0,2 | Một phần | phap-luat-va-dao-duc.md: nguồn chính thức, hiệu lực/ngày kiểm tra | Chưa kết luận tuân thủ; cần nguồn sở hữu trí tuệ/điều khoản asset đầy đủ |
+| Q7.5 | 0,2 | Một phần | Frontend unit/component, account-switch/late response; E2E keyboard/responsive | Chưa kiểm trợ năng đầy đủ hoặc EXE thật |
+| Q8 | 1 | Một phần | Báo cáo nguồn, ảnh thật có SHA, demo 7:20 dự kiến | Chưa có mẫu trường/video thật, chưa chốt Academic Gate |
+| Q9a | 0,2 | Một phần | Luật 91/2025 và 07/2022: nguồn chính thức, hiệu lực/ngày kiểm | Cần rà văn bản hiện hành đầy đủ và quyền asset trước phát hành |
 | Q9b | 0,2 | Một phần | Trách nhiệm, AI hỗ trợ, test trung thực | Thành viên xác nhận nội dung và chính sách môn học |
 | Q9c | 0,2 | Một phần | Privacy/accessibility/tác động người dùng | Chưa nghiệm thu accessibility đầy đủ |
 | Q9d | 0,4 tổng | Chưa kiểm chứng | Không có dữ liệu lớp | Bốn buổi thảo luận do giảng viên/thành viên xác nhận |
-| Q10a | 0,25 | Một phần | Git/PR #10/#11 và phân công | Alias tác giả cần xác nhận; không sửa lịch sử |
+| Q10a | 0,25 | Một phần | Báo cáo nguồn: bảng commit/PR #10/#11/#12 và phân công | Alias tác giả cần xác nhận; giữ nguyên Git history |
 | Q10b | 0,25 | Một phần | bao-cao-nguon.md; handoff | Cần xác nhận đóng góp thực tế, không suy từ số commit |
 | Q10c | 0,5 | Chưa kiểm chứng | Không có dữ liệu lớp | Chuyên cần không suy từ Git |
 
 ## Technical Gate
 
-- [ ] CI đúng SHA cuối đạt, local/remote xác minh.
-- [ ] PostgreSQL Core/Insight regression, fresh và upgrade được chạy thực tế.
-- [ ] HTTP guard/owner/DTO/error, frontend và E2E web/EXE đạt.
-- [ ] User Story/AC→unit/integration/contract/UI/E2E→evidence đủ, không gọi integration là unit.
-- [ ] Diagram/wireframe đã render và đối chiếu source/UI; usability đã đo.
-- [ ] Không còn blocker kỹ thuật trong scope; LICENSE/asset status minh bạch.
-- [ ] PR chỉ chờ người review, không tự merge main.
+- [x] CI đủ năm job đạt ở head `0075377`, run `39871120289`; local/remote khớp tại lần kiểm này. Các commit bàn giao tiếp theo phải kiểm CI riêng trước khi nghiệm thu.
+- [x] PostgreSQL Core/Insight regression, fresh và upgrade đã chạy trên CI (xem PR #12).
+- [x] HTTP guard/owner/DTO/error, frontend và E2E web đạt trên các commit kiểm chứng.
+- [ ] E2E EXE/WebView2 của bản cuối: Docker Engine local chưa sẵn sàng; build installer không thay bước này.
+- [x] Có trace từng US/AC sang unit/integration/contract/UI/E2E; phân biệt lớp kiểm thử và giới hạn evidence.
+- [x] Class/flow/ERD render đạt; W2–W5 đối chiếu ảnh web; đo thao tác tự động có định nghĩa.
+- [ ] Bổ sung kiểm EXE; xác nhận usability thực tế nếu học phần yêu cầu người tham gia. W1 đã kiểm trực quan web local.
+- [x] LICENSE trung lập, phân biệt quyền mã nguồn/asset/dependency; chưa cấp OSS license.
+- [ ] Đóng điều kiện môi trường/EXE và xác minh CI của SHA nộp cuối.
+- [x] PR #12 giữ draft chờ kiểm chứng còn lại và người review; không merge main.
 
 ## Academic Final Gate
 

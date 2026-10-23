@@ -22,8 +22,8 @@ flowchart TB
     FE --> Insight
     Core --> PG
     Insight --> PG
-    Core --> Redis
-    Insight --> Kafka
+    Core -.planned.-> Redis
+    Insight -.planned consumer.-> Kafka
   end
   Prod[Production topology: chưa quyết định] -.sau này.-> LB[Reverse proxy / orchestrator / managed data services]
 ```

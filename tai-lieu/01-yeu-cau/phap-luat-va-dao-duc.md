@@ -4,7 +4,7 @@
 
 Đối chiếu ngày 23/10/2026: [Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15](https://vanban.chinhphu.vn/?classid=1&docid=214590&pageid=27160&typegroup=), ban hành 26/06/2025, hiệu lực 01/01/2026. Nguồn chính thức xác nhận văn bản và ngày hiệu lực; tài liệu này không phải kết luận LAMS tuân thủ đầy đủ pháp luật. Phải rà thêm nghĩa vụ cụ thể, văn bản hướng dẫn và quy trình vận hành trước khi dùng dữ liệu thật.
 
-Phần quyền tác giả cần đối chiếu văn bản sở hữu trí tuệ hiện hành và điều khoản từng provider/asset. Chưa có căn cứ cấp lại license cho ảnh hoặc snapshot metadata chỉ vì API truy cập công khai. Lịch sử ISBN vì vậy chỉ lưu thông tin sự kiện tối thiểu, không lưu nội dung bên thứ ba. Google Books vẫn tắt mặc định.
+Về quyền tác giả, đã đối chiếu [Luật 07/2022/QH15 sửa đổi Luật Sở hữu trí tuệ](https://congbao.chinhphu.vn/van-ban/luat-so-07-2022-qh15-37504.htm), ban hành 16/06/2022, ngày hiệu lực chung 01/01/2023 (kiểm tra 23/10/2026). Đây là căn cứ tham khảo, không phải khẳng định đã rà hết các sửa đổi/văn bản hướng dẫn đến ngày nộp; cần kiểm bản hợp nhất hiện hành và điều khoản từng provider/asset trước phát hành. Chưa có căn cứ cấp lại license cho ảnh hoặc snapshot metadata chỉ vì API truy cập công khai. Lịch sử ISBN vì vậy chỉ lưu thông tin sự kiện tối thiểu, không lưu nội dung bên thứ ba. Google Books vẫn tắt mặc định.
 
 ## Áp dụng trong LAMS
 

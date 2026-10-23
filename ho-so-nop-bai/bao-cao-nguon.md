@@ -28,7 +28,7 @@ Spring Boot Java 21 sở hữu Identity/Catalog/Inventory và các giao dịch C
 
 ## 7. Giao diện
 
-Auth, Profile, Member, Catalog/detail/staff theo design system LAMS. History dùng React-Bootstrap Form/Button/Alert/Spinner với CSS scoped không import Reboot toàn cục. Tham khảo nguyên tắc search/filter/action rõ ràng của Booking.com, không sao chép hình ảnh/logo. Wireframe có loading/empty/error/pending. Chưa kết luận tiêu chí số thao tác trước khi đo runtime.
+Auth, Profile, Member, Catalog/detail/staff theo design system LAMS. History dùng React-Bootstrap Form/Button/Alert/Spinner với CSS scoped không import Reboot toàn cục. Tham khảo nguyên tắc search/filter/action rõ ràng của Booking.com, không sao chép hình ảnh/logo. Wireframe có loading/empty/error/pending. [Wireframe và kiểm thao tác](../tai-lieu/06-giao-dien/wireframes.md) ghi điểm bắt đầu, cách đếm và kết quả từ E2E web thật. Chưa kết luận mọi hành trình đạt bốn tương tác hoặc thay thế nghiên cứu với người dùng.
 
 ## 8. Bảo mật
 
@@ -36,7 +36,7 @@ Auth, Profile, Member, Catalog/detail/staff theo design system LAMS. History dù
 
 ## 9. Kiểm thử và kết quả
 
-[Chiến lược](../tai-lieu/07-kiem-thu/test-strategy.md) phân biệt unit/integration/contract/frontend/E2E. Bằng chứng cuối phải là CI đúng SHA và E2E web/EXE tương ứng. Test database tạm, không dùng dev data. Bộ test history đã được thêm; PostgreSQL/E2E chưa nghiệm thu khi Docker không sẵn sàng. Không gọi build thành công là demo persistence thành công.
+[Chiến lược](../tai-lieu/07-kiem-thu/test-strategy.md) và [ma trận AC](../tai-lieu/07-kiem-thu/story-test-matrix.md) phân biệt unit/integration/contract/frontend/E2E. PostgreSQL history (fresh/upgrade/reconnect/owner/query) và E2E web đã chạy đạt trên CI; [ảnh và SHA kiểm UI](minh-chung-giao-dien/README.md) có nguồn rõ. Test database tạm, không dùng dev data. Bằng chứng cuối phải đối chiếu CI đúng SHA bàn giao. Docker local chưa sẵn sàng nên E2E EXE chưa nghiệm thu; không gọi build thành công là demo Tauri persistence thành công.
 
 ## 10. Cài đặt và sử dụng
 
@@ -46,19 +46,27 @@ Theo [README](../README.md), [runbook local](../tai-lieu/08-van-hanh/chay-local.
 
 Tuan phụ trách kiến trúc/frontend/tích hợp/Insight Phase 2.5; Toan phụ trách các module backend được task map giao, gồm PR #11. Không nhận công việc Toan là của Tuan. PR/commit là nguồn truy vết; alias “「锋」Phong” cần xác nhận. Tác giả, committer, reviewer và người hỗ trợ không đồng nghĩa nhau. [Hướng dẫn thành viên](../tai-lieu/00-bat-dau/huong-dan-thanh-vien.md) là phân công, không tự chứng minh mọi task DONE.
 
+| Bằng chứng Git | Tác giả hiển thị | Nội dung kiểm được | Giới hạn diễn giải |
+|---|---|---|---|
+| PR #10, squash 8698405 | Nguyễn Trọng Tuấn | Tích hợp Phase 2 | Không nhận toàn bộ code nền của Toan là của người merge |
+| PR #11, f4dcbcb; merge b8e7bc6 | 23010062-star; merge Nguyễn Trọng Tuấn | Favorites/Reviews/Rating backend | Tách author code khỏi người merge; chưa UI |
+| PR #12, b3b067e | 「锋」Phong | History Nest/Prisma + contract/test | Thực hiện trên nhánh DEV1; alias cần chủ tài khoản xác nhận |
+| PR #12, 160b6b5 | 「锋」Phong | UI history, React-Bootstrap, bảo vệ phiên | Có AI hỗ trợ như mục đạo đức; không giả review của con người |
+| PR #12, 08f5b35 và các commit tiếp | 「锋」Phong | Thiết kế/hồ sơ/test bổ sung | Xem lịch sử PR để lấy SHA nộp cuối; không suy điểm chuyên cần |
+
 ## 12. Pháp luật và đạo đức
 
 [Xem căn cứ và giới hạn](../tai-lieu/01-yeu-cau/phap-luat-va-dao-duc.md). Bảo vệ dữ liệu, nguồn ảnh/metadata, minh bạch AI hỗ trợ, accessibility và test trung thực là nghĩa vụ cần trình bày rõ. LICENSE trung lập không cấp quyền mã nguồn mở. Chuyên cần/thảo luận cần minh chứng thật ngoài repo.
 
 ## 13. Hạn chế và hướng phát triển
 
-Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Chưa nghiệm thu đầy đủ history PostgreSQL/E2E và UI trực quan. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
+Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Web history đã có kiểm thử persistence và ảnh đối chiếu; còn E2E EXE trên Windows, nghiệm thu trợ năng/usability với người dùng, triển khai HTTPS và policy retention trước pilot. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
 
 ## 14. Phụ lục bằng chứng
 
 - Repository: https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien
-- PR #10: Phase 2; PR #11: backend Phase 3. PR Phase 2.5 chỉ ghi khi thực sự tạo.
+- PR #10: Phase 2; PR #11: backend Phase 3; [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Phase 2.5 đang ở draft, chưa merge.
 - SHA, kết quả CI và E2E: lấy từ lần bàn giao cuối; không dùng số test cũ làm bằng chứng bản mới.
-- Screenshot web/desktop: chưa đính kèm cho history.
+- Screenshot web history: [ảnh CI thật](minh-chung-giao-dien/README.md); chưa có ảnh history trong cửa sổ EXE.
 - Video demo: chưa quay, chưa có link.
 - [Kịch bản demo](../tai-lieu/09-demo/kich-ban-demo.md) có thời lượng dự kiến; video thực tế phải <8 phút.

@@ -3,7 +3,7 @@
 | Threat | Endpoint | Control | Negative test | Evidence cần đối chiếu | Rủi ro còn lại |
 |---|---|---|---|---|---|
 | Giả staff bằng JWT cũ | Catalog, metadata/history | Core currentUser/roles; MetadataGuard mỗi request | Phase2RegressionTest; metadata-guard.spec | Core/Insight CI đúng SHA | Có cửa sổ thay đổi quyền sau check; chưa phải atomic xuyên service |
-| Đọc/xóa lịch sử người khác | history/{id}, replay | owner từ Symbol nội bộ; WHERE ownerId | history.spec; history.integration; E2E history | PostgreSQL/E2E chưa nghiệm thu | ADMIN cũng không được vượt owner |
+| Đọc/xóa lịch sử người khác | history/{id}, replay | owner từ Symbol nội bộ; WHERE ownerId | history.spec; history.integration; E2E history | PostgreSQL và E2E web đạt ở CI 39871120289, head 0075377; EXE chưa nghiệm thu | ADMIN cũng không được vượt owner |
 | Chèn ownerId từ client | POST history | DTO whitelist/forbid; không nhận owner field | history.spec; history-http.spec | Unit + HTTP boundary | Không dùng UI ẩn nút thay server |
 | SQL injection | Catalog/member/history filters | JDBC bind + sort allowlist; Prisma typed where | MemberIntegrationTest; BookIntegrationTest; history DTO/integration | CI và DB test | Không suy an toàn mọi query từ một test |
 | Lộ payload/PII | history response/storage | projection không owner; không lưu title/ảnh/token/email | history.spec; integration | Schema/source và DB test | UUID owner vẫn là dữ liệu liên quan người dùng |
