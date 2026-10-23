@@ -51,7 +51,7 @@ erDiagram
   BOOKS ||--o{ REVIEWS : reviewed
 ```
 
-Media reference có đúng một trong hai FK Author/Edition, không phải cả hai cùng lúc; V13 bổ sung revision. Favorites/Reviews đã có schema/backend, chưa UI Phase 3. Chi tiết cột và constraint xem data dictionary và migration, không suy từ sơ đồ roadmap bên dưới.
+Media reference có đúng một trong hai FK Author/Edition, không phải cả hai cùng lúc; V13 bổ sung revision. Favorites/Reviews đã có schema, backend và UI Phase 3; trạng thái kiểm thử và tích hợp xem [bàn giao](../00-bat-dau/handoff-phase3-4.md). Chi tiết cột và constraint xem data dictionary và migration, không suy từ sơ đồ roadmap bên dưới.
 
 ## Mục đích sơ đồ mục tiêu
 
