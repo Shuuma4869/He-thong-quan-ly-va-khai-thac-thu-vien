@@ -141,6 +141,7 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+        '409': { description: Favorite đang được thêm/xóa cạnh tranh; tải lại trước khi thử lại, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } } }
     delete:
       operationId: removeMyFavorite
       tags: [Favorites]
@@ -227,6 +228,11 @@ paths:
       operationId: updateBookReview
       tags: [Reviews and ratings]
       summary: Cập nhật body hoặc rating của review thuộc principal
+      description: >-
+        Field bị bỏ qua giữ nguyên; null tường minh và body trắng trả 422.
+        UPDATE chỉ sửa field được gửi lên. Hai PATCH khác field không ghi đè nhau;
+        cùng field dùng lần ghi được database thực hiện sau, không có optimistic version.
+        Review bị xóa trước UPDATE trả 404, không phục hồi bản ghi.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -1034,6 +1040,7 @@ components:
     ReviewUpdateRequest:
       type: object
       minProperties: 1
+      description: Phải có body hoặc rating không null. Không gửi lại field không định sửa.
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
         rating: { type: integer, minimum: 1, maximum: 5 }

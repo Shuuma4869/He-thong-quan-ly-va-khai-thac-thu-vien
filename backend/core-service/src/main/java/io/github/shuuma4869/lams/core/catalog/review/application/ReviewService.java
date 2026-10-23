@@ -44,7 +44,14 @@ public class ReviewService {
         String normalizedBody = normalizeBody(body);
         validateRating(rating);
         UUID id = UUID.randomUUID();
-        var inserted = reviews.insertIfAbsent(id, actorId, bookId, normalizedBody, rating);
+        java.util.Optional<UUID> inserted;
+        try { inserted = reviews.insertIfAbsent(id, actorId, bookId, normalizedBody, rating); }
+        catch (org.springframework.dao.DataIntegrityViolationException error) {
+            if (error.getMostSpecificCause() instanceof java.sql.SQLException sql && "23503".equals(sql.getSQLState())) {
+                throw notFound("Sách hoặc tài khoản không còn tồn tại.");
+            }
+            throw error;
+        }
         if (inserted.isEmpty()) {
             if (reviews.existsForUserAndBook(actorId, bookId)) {
                 throw new AuthFailure(409, "Bạn đã đánh giá sách này.");
@@ -61,8 +68,8 @@ public class ReviewService {
         if (body == null && rating == null) throw invalid("Cần cung cấp body hoặc rating để cập nhật.");
         Review current = find(bookId, reviewId);
         requireOwner(current, actorId);
-        String nextBody = body == null ? current.body() : normalizeBody(body);
-        int nextRating = rating == null ? current.rating() : validateRating(rating);
+        String nextBody = body == null ? null : normalizeBody(body);
+        Integer nextRating = rating == null ? null : validateRating(rating);
         if (reviews.update(bookId, reviewId, actorId, nextBody, nextRating) != 1) {
             throw notFound("Không tìm thấy đánh giá.");
         }

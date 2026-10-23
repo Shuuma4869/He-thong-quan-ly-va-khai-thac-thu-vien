@@ -54,6 +54,7 @@ class ReviewIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired org.springframework.security.oauth2.jwt.JwtEncoder encoder;
 
     @BeforeEach
     void clearReviews() {
@@ -226,6 +227,19 @@ class ReviewIntegrationTest {
                 .content(json.writeValueAsString(java.util.Map.of("body", body, "rating", rating))));
     }
 
+    @Test
+    void explicitNullIsNotAnOmittedPatchField() throws Exception {
+        UUID owner = user("READER"), book = book("Patch null");
+        var token = token(owner, "READER");
+        UUID id = createAndReadId(token, book, "Giữ nguyên", 3);
+        for (String payload : List.of("{\"body\":null,\"rating\":5}", "{\"body\":\"Mới\",\"rating\":null}",
+                "{}", "{\"body\":\" \"}", "{\"rating\":0}", "{\"rating\":6}")) {
+            mvc.perform(patch("/api/v1/books/{bookId}/reviews/{id}", book, id).with(token)
+                    .contentType(MediaType.APPLICATION_JSON).content(payload)).andExpect(status().isUnprocessableEntity());
+        }
+        assertThat(jdbc.queryForObject("SELECT rating FROM reviews WHERE id=?", Integer.class, id)).isEqualTo(3);
+    }
+
     private int createStatus(RequestPostProcessor token, UUID book, String body, CountDownLatch start) {
         try {
             start.await();
@@ -233,6 +247,36 @@ class ReviewIntegrationTest {
         } catch (Exception error) {
             throw new IllegalStateException(error);
         }
+    }
+
+    @Test
+    void allPhase3RoutesRejectLockedRevokedAndExpiredSessions() throws Exception {
+        UUID owner = user("READER"), book = book("Current permission");
+        UUID review = createAndReadId(token(owner, "READER"), book, "Protected", 3);
+        String reviews = "/api/v1/books/" + book + "/reviews";
+        String favorite = "/api/v1/me/favorites/" + book;
+        var requests = List.of(get(reviews), get(reviews + "/summary"),
+                post(reviews).contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"New\",\"rating\":4}"),
+                patch(reviews + "/" + review).contentType(MediaType.APPLICATION_JSON).content("{\"rating\":5}"),
+                delete(reviews + "/" + review), get("/api/v1/me/favorites"),
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(favorite), delete(favorite));
+        jdbc.update("UPDATE users SET status='LOCKED' WHERE id=?", owner);
+        for (var request : requests) mvc.perform(request.with(token(owner, "READER"))).andExpect(status().isForbidden());
+        jdbc.update("UPDATE users SET status='ACTIVE' WHERE id=?", owner);
+        jdbc.update("DELETE FROM user_roles WHERE user_id=?", owner);
+        for (var request : requests) mvc.perform(request.with(token(owner, "READER"))).andExpect(status().isForbidden());
+        jdbc.update("INSERT INTO user_roles(user_id,role_code) VALUES (?,'READER')", owner);
+        var claims = org.springframework.security.oauth2.jwt.JwtClaimsSet.builder().issuer("lams-core")
+                .subject(owner.toString()).issuedAt(Instant.now().minusSeconds(600)).expiresAt(Instant.now().minusSeconds(300))
+                .claim("roles", List.of("READER")).build();
+        String expired = encoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                org.springframework.security.oauth2.jwt.JwsHeader.with(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        for (String path : List.of(reviews, reviews + "/summary", "/api/v1/me/favorites")) {
+            for (String invalid : List.of("not-a-jwt", expired)) {
+                mvc.perform(get(path).header("Authorization", "Bearer " + invalid)).andExpect(status().isUnauthorized());
+            }
+        }
+        assertThat(jdbc.queryForObject("SELECT rating FROM reviews WHERE id=?", Integer.class, review)).isEqualTo(3);
     }
 
     private UUID createAndReadId(RequestPostProcessor token, UUID book, String body, int rating) throws Exception {

@@ -43,7 +43,14 @@ public class FavoriteService {
         if (!favorites.bookExists(bookId)) throw notFound("Không tìm thấy sách.");
 
         for (int attempt = 0; attempt < 2; attempt++) {
-            var insertedAt = favorites.insertIfAbsent(actorId, bookId);
+            java.util.Optional<java.sql.Timestamp> insertedAt;
+            try { insertedAt = favorites.insertIfAbsent(actorId, bookId); }
+            catch (org.springframework.dao.DataIntegrityViolationException error) {
+                if (error.getMostSpecificCause() instanceof java.sql.SQLException sql && "23503".equals(sql.getSQLState())) {
+                    throw notFound("Sách hoặc tài khoản không còn tồn tại.");
+                }
+                throw error;
+            }
             if (insertedAt.isPresent()) {
                 var favorite = favorites.find(actorId, bookId)
                         .orElseThrow(() -> notFound("Sách không còn tồn tại."));

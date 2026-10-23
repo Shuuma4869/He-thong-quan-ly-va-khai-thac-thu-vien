@@ -61,8 +61,9 @@ public class ReviewRepository {
         return new ReviewPage(items, total);
     }
 
-    public int update(UUID bookId, UUID reviewId, UUID ownerId, String body, int rating) {
-        return jdbc.update("UPDATE reviews SET body=?,rating=?,updated_at=now() "
+    public int update(UUID bookId, UUID reviewId, UUID ownerId, String body, Integer rating) {
+        // Field bị bỏ qua phải lấy giá trị tại lúc UPDATE, không lấy snapshot từ SELECT trước đó.
+        return jdbc.update("UPDATE reviews SET body=COALESCE(?,body),rating=COALESCE(?,rating),updated_at=clock_timestamp() "
                         + "WHERE book_id=? AND id=? AND user_id=?",
                 body, rating, bookId, reviewId, ownerId);
     }
