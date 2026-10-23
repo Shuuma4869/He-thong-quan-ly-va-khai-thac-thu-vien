@@ -1,6 +1,6 @@
 # Đối chiếu rubric và điều kiện bàn giao
 
-Đây là tài liệu nghiệm thu học phần, không phải nhật ký chạy tool. Không tính điểm tổng. Cột trạng thái không thay xác nhận của giảng viên. Q2 chưa có trọng số con nên giữ tổng 1 điểm. Technical Gate hiện chưa đạt; không dùng ma trận này như chứng nhận hoàn thành Phase 2.5.
+Đây là tài liệu nghiệm thu học phần, không phải nhật ký chạy tool. Không tính điểm tổng. Cột trạng thái không thay xác nhận của giảng viên. Q2 chưa có trọng số con nên giữ tổng 1 điểm. Technical Gate của phạm vi đã triển khai đạt tại `ee929cd`: CI và E2E EXE có bằng chứng; các commit bàn giao sau phải đối chiếu CI riêng tại PR #12. Academic Final Gate chưa đóng.
 
 | Tiêu chí | Trọng số | Trạng thái | Thay đổi/bằng chứng và test | Giới hạn/phụ thuộc |
 |---|---|---|---|---|
@@ -10,20 +10,20 @@
 | Q3a | 0,2 | Đạt, có bằng chứng | Wireframe W1–W5 có bố cục, tương tác và trạng thái | Wireframe không phải screenshot runtime |
 | Q3b | 0,25 | Đạt, có bằng chứng | Container/system flow/history flow; ORM thật, Redis/Kafka planned | Môi trường production vẫn chưa nghiệm thu |
 | Q3c | 0,2 | Một phần | Nest history layered, React, LICENSE | Hybrid và chủ thể bản quyền cần xác nhận |
-| Q3d | 0,35 | Một phần | security-matrix.md; Core/Insight/HTTP/owner/session regression CI | Còn E2E EXE và đánh giá môi trường triển khai |
+| Q3d | 0,35 | Một phần | security-matrix.md; Core/Insight/HTTP/owner/session regression; E2E web/EXE | Còn đánh giá môi trường HTTPS triển khai |
 | Q4a | 0,5 | Đạt, có bằng chứng | Core/Insight OpenAPI validator, HTTP tests, PostgreSQL và E2E web | Đạt phạm vi endpoint triển khai, không bao gồm roadmap |
 | Q4b | 0,2 | Một phần | OpenAPI validator | Mẫu tài liệu API lớp chưa cung cấp |
 | Q4c | 0,3 | Một phần | owner/current-role/bind/ORM, input/error và session generation tests | XORs chưa rõ; không khẳng định an toàn tuyệt đối |
-| Q5a | 0,3 | Một phần | W1 kiểm Chrome Windows local; W2–W5 đối chiếu ảnh CI web | Chưa kiểm UI history trong EXE |
+| Q5a | 0,3 | Đạt, có bằng chứng | W1 kiểm Chrome Windows local; W2–W5 đối chiếu ảnh web; W5 EXE 1440/390 | Chưa thay nghiên cứu usability với người dùng |
 | Q5b | 0,5 | Một phần | React-Bootstrap Form/Button/Alert/Spinner trong MetadataHistory | Booking.com principles có giải thích; mức bao phủ rubric cần xác nhận |
 | Q5c | 0,2 | Một phần | wireframes.md ghi số thao tác từ E2E đã chạy | Chưa nghiên cứu người dùng hoặc xác nhận cách đếm ≤4 |
 | Q6a | 0,5 | Đạt, có bằng chứng | Prisma schema, repository, PostgreSQL integration 4 case + E2E thật | CI kiểm database tạm; chưa nâng database dev thật |
 | Q6b | 0,5 | Đạt, có bằng chứng | metadata-history-orm.md; lifecycle/query/transaction/fresh/upgrade | Không phải sự chấp thuận hybrid của giảng viên |
 | Q7.1 | 0,2 | Đạt, có bằng chứng | Unit/HTTP DB→503, DTO400, 401/403/404, UI write failure, E2E | Provider live có thể unavailable; không false success |
 | Q7.2 | 0,2 | Đạt, có bằng chứng | story-test-matrix.md; Auth/Member unit mới, parser/provider/history unit | Component/integration được phân loại riêng; không claim 100% coverage |
-| Q7.3 | 0,2 | Một phần | 8 E2E web trên API/PostgreSQL thật, CI job web-e2e | EXE/WebView2 E2E còn chặn bởi Docker local |
+| Q7.3 | 0,2 | Đạt, có bằng chứng | 8 E2E web CI và 8 E2E EXE/WebView2 local, API/PostgreSQL thật tại ee929cd | Không kiểm bộ cài offline trọn backend hoặc HTTPS production |
 | Q7.4 | 0,2 | Một phần | positive/negative service/DTO, owner test | Review PATCH race còn ở handoff; chưa runtime repro |
-| Q7.5 | 0,2 | Một phần | Frontend unit/component, account-switch/late response; E2E keyboard/responsive | Chưa kiểm trợ năng đầy đủ hoặc EXE thật |
+| Q7.5 | 0,2 | Một phần | Frontend unit/component, account-switch/late response; E2E web/EXE keyboard/responsive | Chưa kiểm trợ năng đầy đủ |
 | Q8 | 1 | Một phần | Báo cáo nguồn, ảnh thật có SHA, demo 7:20 dự kiến | Chưa có mẫu trường/video thật, chưa chốt Academic Gate |
 | Q9a | 0,2 | Một phần | Luật 91/2025 và 07/2022: nguồn chính thức, hiệu lực/ngày kiểm | Cần rà văn bản hiện hành đầy đủ và quyền asset trước phát hành |
 | Q9b | 0,2 | Một phần | Trách nhiệm, AI hỗ trợ, test trung thực | Thành viên xác nhận nội dung và chính sách môn học |
@@ -35,16 +35,16 @@
 
 ## Technical Gate
 
-- [x] CI đủ năm job đạt ở head `0075377`, run `39871120289`; local/remote khớp tại lần kiểm này. Các commit bàn giao tiếp theo phải kiểm CI riêng trước khi nghiệm thu.
+- [x] CI đủ năm job đạt ở head `ee929cd`, run `39907400703`; local/remote khớp tại lần kiểm này. Các commit bàn giao tiếp theo phải kiểm CI riêng trước khi nghiệm thu.
 - [x] PostgreSQL Core/Insight regression, fresh và upgrade đã chạy trên CI (xem PR #12).
 - [x] HTTP guard/owner/DTO/error, frontend và E2E web đạt trên các commit kiểm chứng.
-- [ ] E2E EXE/WebView2 của bản cuối: Docker Engine local chưa sẵn sàng; build installer không thay bước này.
+- [x] E2E EXE/WebView2: 8/8 bài đạt ngày 23/10/2026 tại ee929cd; có process/window handle và kiểm Tauri bridge, database tạm; build installer không thay bước này.
 - [x] Có trace từng US/AC sang unit/integration/contract/UI/E2E; phân biệt lớp kiểm thử và giới hạn evidence.
 - [x] Class/flow/ERD render đạt; W2–W5 đối chiếu ảnh web; đo thao tác tự động có định nghĩa.
-- [ ] Bổ sung kiểm EXE; xác nhận usability thực tế nếu học phần yêu cầu người tham gia. W1 đã kiểm trực quan web local.
+- [x] Đối chiếu EXE history 1440/390 và keyboard; W1 đã kiểm trực quan web local. Không tuyên bố nghiên cứu usability với người tham gia đã hoàn thành.
 - [x] LICENSE trung lập, phân biệt quyền mã nguồn/asset/dependency; chưa cấp OSS license.
-- [ ] Đóng điều kiện môi trường/EXE và xác minh CI của SHA nộp cuối.
-- [x] PR #12 giữ draft chờ kiểm chứng còn lại và người review; không merge main.
+- [x] Docker local và EXE không còn chặn; kiểm thử không thay dữ liệu development thật.
+- [x] PR #12 giữ draft để người dùng review; không merge main. Kết quả SHA bàn giao cuối cập nhật trong PR, không suy từ snapshot này.
 
 ## Academic Final Gate
 
@@ -52,6 +52,7 @@
 - [ ] Mẫu báo cáo Phenikaa được cung cấp và áp dụng.
 - [ ] Chủ thể quyền/license/asset được xác nhận.
 - [ ] Video thật dưới 8 phút và screenshot/evidence có nguồn.
+- [ ] Cách đếm tương tác và yêu cầu usability với người tham gia được xác nhận; không suy từ kiểm thử tự động.
 - [ ] Danh tính/đóng góp/chuyên cần/thảo luận được con người xác nhận.
 
 Tài liệu chính: [báo cáo nguồn](bao-cao-nguon.md), [stories](../tai-lieu/01-yeu-cau/user-stories.md), [ORM](../tai-lieu/02-kien-truc/metadata-history-orm.md), [security](../tai-lieu/07-kiem-thu/security-matrix.md), [handoff](../tai-lieu/00-bat-dau/handoff-phase3-4.md). Kết quả chạy phải lấy từ CI/artifact đúng SHA, không sao chép test count cũ vào báo cáo.

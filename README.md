@@ -10,7 +10,7 @@ Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form s
 
 ## Kiến trúc ngắn
 
-Phase 2.5 đang được kiểm chứng ở [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. PostgreSQL và E2E web đã chạy trên CI; E2E EXE còn cần nghiệm thu trên Windows. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [gate hiện hành](ho-so-nop-bai/doi-chieu-rubric.md). Chưa tuyên bố Phase 2.5 hoàn thành toàn bộ.
+Phase 2.5 được bàn giao ở [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. PostgreSQL, E2E web và EXE/WebView2 đã kiểm thử đạt ở bản `ee929cd`; PR ghi CI của SHA bàn giao cuối. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [gate hiện hành](ho-so-nop-bai/doi-chieu-rubric.md). Academic Final Gate vẫn cần xác nhận bên ngoài; PR chưa merge.
 
 Main đã có backend Favorites/Reviews/Rating từ PR #11; UI My Library và các chức năng này chưa triển khai. Không chuyển chúng sang NestJS trong Phase 2.5.
 

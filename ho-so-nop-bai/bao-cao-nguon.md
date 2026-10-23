@@ -36,7 +36,7 @@ Auth, Profile, Member, Catalog/detail/staff theo design system LAMS. History dù
 
 ## 9. Kiểm thử và kết quả
 
-[Chiến lược](../tai-lieu/07-kiem-thu/test-strategy.md) và [ma trận AC](../tai-lieu/07-kiem-thu/story-test-matrix.md) phân biệt unit/integration/contract/frontend/E2E. PostgreSQL history (fresh/upgrade/reconnect/owner/query) và E2E web đã chạy đạt trên CI; [ảnh và SHA kiểm UI](minh-chung-giao-dien/README.md) có nguồn rõ. Test database tạm, không dùng dev data. Bằng chứng cuối phải đối chiếu CI đúng SHA bàn giao. Docker local chưa sẵn sàng nên E2E EXE chưa nghiệm thu; không gọi build thành công là demo Tauri persistence thành công.
+[Chiến lược](../tai-lieu/07-kiem-thu/test-strategy.md) và [ma trận AC](../tai-lieu/07-kiem-thu/story-test-matrix.md) phân biệt unit/integration/contract/frontend/E2E. PostgreSQL history (fresh/upgrade/reconnect/owner/query) và E2E web đã chạy đạt trên CI; [ảnh và SHA kiểm UI](minh-chung-giao-dien/README.md) có nguồn rõ. Tại `ee929cd`, CI run `39907400703` đạt đủ năm job; E2E Windows local có 8/8 bài đạt trong EXE/WebView2, bao gồm history persistence, reload, replay, ownership và xóa. Test database tạm, không dùng dev data. Bằng chứng của các commit bàn giao tiếp theo phải đối chiếu CI đúng SHA; build thành công không thay E2E.
 
 ## 10. Cài đặt và sử dụng
 
@@ -60,13 +60,13 @@ Tuan phụ trách kiến trúc/frontend/tích hợp/Insight Phase 2.5; Toan ph�
 
 ## 13. Hạn chế và hướng phát triển
 
-Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Web history đã có kiểm thử persistence và ảnh đối chiếu; còn E2E EXE trên Windows, nghiệm thu trợ năng/usability với người dùng, triển khai HTTPS và policy retention trước pilot. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
+Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Web và EXE history đã có kiểm thử persistence và ảnh đối chiếu; còn nghiệm thu trợ năng/usability với người dùng, triển khai HTTPS và policy retention trước pilot. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
 
 ## 14. Phụ lục bằng chứng
 
 - Repository: https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien
 - PR #10: Phase 2; PR #11: backend Phase 3; [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Phase 2.5 đang ở draft, chưa merge.
 - SHA, kết quả CI và E2E: lấy từ lần bàn giao cuối; không dùng số test cũ làm bằng chứng bản mới.
-- Screenshot web history: [ảnh CI thật](minh-chung-giao-dien/README.md); chưa có ảnh history trong cửa sổ EXE.
+- Screenshot history: [ảnh web CI và nội dung WebView2 của EXE thật](minh-chung-giao-dien/README.md), phân biệt rõ môi trường chụp.
 - Video demo: chưa quay, chưa có link.
 - [Kịch bản demo](../tai-lieu/09-demo/kich-ban-demo.md) có thời lượng dự kiến; video thực tế phải <8 phút.

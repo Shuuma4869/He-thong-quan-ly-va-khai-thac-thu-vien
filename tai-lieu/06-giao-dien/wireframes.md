@@ -108,6 +108,8 @@ Số thao tác dưới đây đếm từ lệnh tương tác đã chạy thành 
 | Xem hồ sơ | Reader vừa đăng ký | Hồ sơ của tôi: 1 click | Hiện dữ liệu tài khoản và profile null |
 | Lọc thành viên | Staff Member list | Nhập từ khóa → chọn status: 1 nhập + 1 chọn | Tổng số/empty do server, không lọc local |
 
-Còn phải đo với người dùng và trên EXE: độ dễ hiểu thông báo, thời gian hoàn thành, focus sau lỗi/xóa và tiêu chí “≤4” theo định nghĩa học phần. Không tuyên bố mọi hành trình Catalog/Inventory đạt bốn tương tác; form nhiều field phải đếm riêng.
+Ngày 23/10/2026, cùng tám hành trình đã đạt trên EXE/WebView2 local tại `ee929cd`, qua Core/Insight/PostgreSQL tạm thật. Ảnh nội dung WebView2 1440/390 đã đối chiếu W5, không tràn ngang và focus bộ lọc rõ. Xem [nguồn ảnh desktop](../../ho-so-nop-bai/minh-chung-giao-dien/README.md).
+
+Còn phải đo với người dùng: độ dễ hiểu thông báo, thời gian hoàn thành, focus sau lỗi/xóa và tiêu chí “≤4” theo định nghĩa học phần. Không tuyên bố mọi hành trình Catalog/Inventory đạt bốn tương tác; form nhiều field phải đếm riêng.
 
 Tham khảo Booking.com ở nguyên tắc tìm kiếm nổi bật, lọc sát kết quả và hành động rõ; không dùng logo/ảnh của họ, chưa có đánh giá đối chiếu trực quan chính thức. React-Bootstrap hỗ trợ stylesheet tùy chọn: https://react-bootstrap.github.io/docs/getting-started/introduction/.

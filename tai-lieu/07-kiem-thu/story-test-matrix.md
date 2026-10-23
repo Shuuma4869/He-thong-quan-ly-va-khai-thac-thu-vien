@@ -20,6 +20,8 @@ Mã US/AC theo [User Stories](../01-yeu-cau/user-stories.md). Unit chỉ kiểm 
 
 ## Cách xác nhận kết quả
 
+Snapshot đã xác minh ngày 23/10/2026: CI `39907400703` tại `ee929cd` đạt đủ năm job; local chạy `scripts/test-phase1-e2e.ps1 -Desktop` đạt 8/8 bài. Các yêu cầu “commit cuối” trong bảng là bước phải kiểm lại khi bàn giao một SHA mới, không còn là blocker Docker ở snapshot này. [Nguồn ảnh và kiểm EXE](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) ghi môi trường, hash binary và giới hạn.
+
 - Core: `./mvnw -B clean verify` trên Linux CI hoặc `mvnw.cmd -B clean verify` ở Windows có Docker. Unit AuthServiceTest/MemberServiceTest không khởi động Spring/PostgreSQL, không được dùng để thay full verify.
 - Insight: `npm test`, `npm run test:integration`, `npm run build`. HTTP suite không dùng database thật; suite integration riêng không được skip khi thiếu Docker.
 - Frontend: `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`. Vitest gồm pure unit và component tests; không gọi tất cả là backend unit.
