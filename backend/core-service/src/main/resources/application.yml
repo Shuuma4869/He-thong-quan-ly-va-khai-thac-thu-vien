@@ -36,6 +36,16 @@ server:
   port: ${CORE_PORT:8080}
 
 lams:
+  circulation:
+    policy:
+      # Giá trị phát triển PROVISIONAL; đổi version khi thay chính sách.
+      version: ${CIRCULATION_POLICY_VERSION:dev-provisional-v1}
+      max-active-loans: ${CIRCULATION_MAX_ACTIVE_LOANS:5}
+      loan-duration: ${CIRCULATION_LOAN_DURATION:P14D}
+      max-renewals: ${CIRCULATION_MAX_RENEWALS:1}
+      renewal-duration: ${CIRCULATION_RENEWAL_DURATION:P7D}
+      pickup-duration: ${CIRCULATION_PICKUP_DURATION:PT48H}
+      block-overdue: ${CIRCULATION_BLOCK_OVERDUE:true}
   auth:
     jwt-secret: ${LAMS_JWT_SECRET}
     access-ttl: ${AUTH_ACCESS_TOKEN_TTL:PT15M}

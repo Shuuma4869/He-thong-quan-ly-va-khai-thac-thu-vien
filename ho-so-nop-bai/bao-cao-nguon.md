@@ -53,6 +53,7 @@ Tuan phụ trách kiến trúc/frontend/tích hợp/Insight Phase 2.5; Toan ph�
 | PR #12, b3b067e | 「锋」Phong | History Nest/Prisma + contract/test | Thực hiện trên nhánh DEV1; alias cần chủ tài khoản xác nhận |
 | PR #12, 160b6b5 | 「锋」Phong | UI history, React-Bootstrap, bảo vệ phiên | Có AI hỗ trợ như mục đạo đức; không giả review của con người |
 | PR #12, 08f5b35 và các commit tiếp | 「锋」Phong | Thiết kế/hồ sơ/test bổ sung | Xem lịch sử PR để lấy SHA nộp cuối; không suy điểm chuyên cần |
+| PR #13, fe16d64–6598dd3; merge ea93b7a | 「锋」Phong; merge Nguyễn Trọng Tuấn | Sửa lỗi tích hợp backend, truy vấn cá nhân và UI Favorites/Reviews/Rating/My Library | Backend gốc vẫn thuộc Toan; head PR đạt CI 5/5 tại 40010074211; kết quả EXE phân biệt checkout/binary trong thư mục minh chứng |
 
 ## 12. Pháp luật và đạo đức
 
