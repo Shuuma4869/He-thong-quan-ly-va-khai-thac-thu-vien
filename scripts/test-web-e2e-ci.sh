@@ -23,7 +23,7 @@ created=false
 cleanup() {
   for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done
   if [[ "$created" == true ]] && [[ "$(docker inspect --format '{{index .Config.Labels "lams.phase1-e2e"}}' "$LAMS_E2E_CONTAINER" 2>/dev/null)" == "$run_id" ]]; then
-    docker rm -f "$LAMS_E2E_CONTAINER" >/dev/null
+    docker rm -f -v "$LAMS_E2E_CONTAINER" >/dev/null
   fi
 }
 trap cleanup EXIT

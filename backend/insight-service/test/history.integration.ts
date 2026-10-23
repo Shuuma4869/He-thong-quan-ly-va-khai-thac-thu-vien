@@ -5,7 +5,7 @@ import { PrismaService } from '../src/discovery/metadata/history/prisma.service'
 import { HistoryRepository } from '../src/discovery/metadata/history/history.repository';
 import { HistoryQuery } from '../src/discovery/metadata/history/history.dto';
 
-// Chỉ tạo container tạm không volume, không đọc DATABASE_URL của môi trường dev.
+// Không gắn volume dự án; xóa cả volume ẩn danh của container test, không dùng URL dev.
 const container = `lams-insight-test-${randomUUID()}`;
 const password = randomUUID();
 const previous = process.env.INSIGHT_DATABASE_URL;
@@ -38,7 +38,7 @@ beforeAll(async () => {
 }, 90000);
 afterAll(async () => {
   if (db) await db.onModuleDestroy();
-  if (created && docker('inspect', '--format', '{{index .Config.Labels "lams.test"}}', container) === container) docker('rm', '-f', container);
+  if (created && docker('inspect', '--format', '{{index .Config.Labels "lams.test"}}', container) === container) docker('rm', '-f', '-v', container);
   if (previous === undefined) delete process.env.INSIGHT_DATABASE_URL; else process.env.INSIGHT_DATABASE_URL = previous;
 });
 test('migration sạch, ORM persistence và projection không lộ owner', async () => {
