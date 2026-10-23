@@ -38,7 +38,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const sessionGeneration = generation;
-    configureCoreAuth({ token: () => tokenRef.current, refresh: refreshSession, clear });
+    configureCoreAuth({ token: () => tokenRef.current, refresh: refreshSession, clear, generation: () => generation.current });
     let live = true;
     void refreshSession().finally(() => { if (live) setInitializing(false); });
     return () => { live = false; sessionGeneration.current++; configureCoreAuth(null); };

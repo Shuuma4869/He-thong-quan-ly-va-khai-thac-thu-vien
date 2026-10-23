@@ -19,7 +19,7 @@ Thay/gỡ ảnh phải có version hiện tại; 409 yêu cầu tải lại, kh�
 - Insight chỉ truy cập HTTPS tới các host nhà cung cấp định sẵn; không nhận endpoint tùy ý từ frontend, không theo redirect.
 - Mỗi host cách nhau ít nhất 1,1 giây; tối đa 4 request đồng thời, hàng chờ tối đa 3 giây, deadline 5 giây. Không tự retry vô hạn khi timeout/429. JSON tối đa 1 MiB, ảnh tối đa 2 MiB; đọc stream có giới hạn ngay cả khi thiếu Content-Length.
 - Cache JSON 10 phút, tối đa 200 mục, gộp request trùng đang chạy. Cache/rate limit hiện theo process, không phải giới hạn phân tán trên nhiều replica.
-- Endpoint metadata yêu cầu JWT; Insight gọi Core `auth/me` để kiểm status/role mới nhất, chỉ cho nhân viên, 10 lượt/phút/tài khoản/process. Token chỉ gửi tới Core cấu hình sẵn, không gửi tới nhà cung cấp.
+- Endpoint metadata yêu cầu JWT; Insight gọi Core `auth/me` để kiểm status/role mới nhất, chỉ cho nhân viên. Tra sách/tác giả, lưu history và replay dùng chung 10 request/phút/tài khoản/process; đọc/xóa history có hạn mức riêng 60 request/phút, không làm mất lượt tra nguồn. Token chỉ gửi tới Core cấu hình sẵn, không gửi tới nhà cung cấp.
 - Core kiểm lại URL theo source, chỉ JPEG/PNG/WebP với signature phù hợp; không SVG. Tối đa 2 MiB, 6 giây cho cả response, tối đa 4 lượt kiểm/process. Phân quyền được kiểm lại sau truy cập mạng; không giữ DB transaction trong lúc chờ ảnh.
 - Ảnh ngoài tải trực tiếp tới trình duyệt/WebView: nhà cung cấp có thể nhận IP người xem. Dùng `referrerPolicy=no-referrer`, không kèm JWT ứng dụng. URL có thể đổi hoặc mất sau lần duyệt; fallback là bắt buộc, không cam kết lưu trữ vĩnh viễn.
 

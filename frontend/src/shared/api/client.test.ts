@@ -21,6 +21,21 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+it.each([200, 401])('response %s từ phiên cũ không trả dữ liệu hoặc gửi lại POST bằng tài khoản mới', async status => {
+  let token = 'old-user'; let generation = 1;
+  let finish!: (response: Response) => void;
+  const fetchMock = vi.fn(() => new Promise<Response>(resolve => { finish = resolve; }));
+  const refresh = vi.fn(); const clear = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  configureCoreAuth({ token: () => token, generation: () => generation, refresh, clear });
+  const pending = insightApi.post('/metadata/history', { isbn13: '9780132350884' });
+  token = 'new-user'; generation++;
+  finish(Response.json({ private: 'old-user-result' }, { status }));
+  await expect(pending).rejects.toMatchObject({ status: 401 });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(refresh).not.toHaveBeenCalled(); expect(clear).not.toHaveBeenCalled();
+});
+
 it('gom hai phản hồi 401 thành một lần refresh rồi retry đúng một lần', async () => {
   let token = 'old-access';
   let finish!: (success: boolean) => void;

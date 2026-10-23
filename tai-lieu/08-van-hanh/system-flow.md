@@ -10,9 +10,11 @@ flowchart LR
   R -->|Critical REST| S[Spring Core]
   R -->|Discovery REST| N[Nest Insight]
   S -->|transaction| CDB[(lams_core)]
-  N -->|read model| IDB[(lams_insight)]
-  S --> RC[(Redis)]
-  N --> RC
+  N -->|Prisma: metadata_lookups| IDB[(lams_insight)]
+  N -->|auth/me kiểm principal và role| S
+  N -->|tra ISBN hiện tại, không lưu payload| MP[Metadata provider]
+  S -.cache/coordination planned.-> RC[(Redis)]
+  N -.cache phân tán planned.-> RC
   S -.object storage planned.-> OS[(MinIO)]
   S -.outbox publisher.-> K{{Kafka}}
   K -.domain fact.-> N

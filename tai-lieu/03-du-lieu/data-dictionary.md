@@ -1,5 +1,9 @@
 # Data Dictionary
 
+## Insight: dấu vết tra cứu ISBN
+
+Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (13 chữ số), attempts JSONB chỉ provider/status, created_at timestamptz. Index owner/time/id và owner/ISBN. Không có FK xuyên database, không có title/ảnh/token/email. Xem [ORM](../02-kien-truc/metadata-history-orm.md). Đây không phải bản sao sách chính thức; replay lấy dữ liệu hiện tại.
+
 Đây là dictionary logic; tên cột chi tiết được chốt qua migration của từng feature.
 
 | Entity | Ý nghĩa | Thuộc tính/constraint quan trọng | Owner |

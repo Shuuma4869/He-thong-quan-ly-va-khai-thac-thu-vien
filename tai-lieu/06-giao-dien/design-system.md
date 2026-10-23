@@ -1,5 +1,9 @@
 # Design System Foundation
 
+## React-Bootstrap trong luồng biên mục
+
+MetadataHistory dùng Form/Button/Alert/Spinner thực tế. CSS chỉ dưới `.metadata-history`, không import Bootstrap Reboot để tránh phá Tailwind 4 và Auth layout. Lazy-load vùng này khi mở để không đưa toàn bộ component Bootstrap vào bundle đầu. Kiểm focus-visible, keyboard, reduced motion, wrap trên mobile theo [wireframes](wireframes.md); không tự kết luận nghiệm thu trực quan chỉ từ component tests.
+
 ## Visual language
 
 Modern Editorial + SaaS Dashboard: khoảng thở rõ, surface trắng, border nhẹ; Newsreader chỉ cho tiêu đề mang tính đọc, Inter cho form/dashboard.

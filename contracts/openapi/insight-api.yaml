@@ -13,7 +13,8 @@ paths:
       summary: Tra ISBN-13 bằng Open Library và Google Books fallback
       description: >-
         Core xác minh tài khoản ACTIVE và role LIBRARIAN/ADMIN hiện tại qua auth/me.
-        Tối đa 10 lượt/phút/tài khoản trong mỗi Insight process. Không ghi Catalog.
+        Dùng chung tối đa 10 request/phút/tài khoản/process với tra tác giả, POST history và replay.
+        GET/DELETE history có hạn mức riêng 60 request/phút. Không ghi Catalog.
         ISBN-13 phải đúng checksum. Nhà cung cấp lỗi trả status trong attempts;
         Google Books chưa bật/key chưa có trả not-configured, không làm lỗi Core CRUD.
       parameters:
@@ -41,7 +42,7 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Error' }
   /metadata/authors/{openLibraryId}:
     get:
@@ -52,6 +53,7 @@ paths:
         ảnh Commons có giấy phép và ghi công; không tìm người theo tên gần giống.
         MIME và kích thước được kiểm trước khi trả ứng viên. verified luôn false;
         nhân viên còn phải duyệt qua Core trước khi ảnh được hiển thị cho bạn đọc.
+        Dùng chung hạn mức provider 10 request/phút/tài khoản/process với tra ISBN, POST history và replay.
       parameters:
         - { name: openLibraryId, in: path, required: true, schema: { type: string, pattern: '^OL[1-9]\d*A$' } }
       responses:
@@ -70,12 +72,115 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+  /metadata/history:
+    get:
+      operationId: listMetadataHistory
+      summary: Lịch sử của principal hiện tại, lọc theo đầu ISBN
+      description: GET danh sách, GET chi tiết và DELETE dùng chung 60 request/phút/tài khoản/process, không trừ hạn mức provider.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 1000000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: isbn, in: query, schema: { type: string, pattern: '^[0-9]{1,13}$' } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, oldest], default: newest } }
+      responses:
+        '200': { description: Trang lịch sử, content: { application/json: { schema: { $ref: '#/components/schemas/HistoryPage' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: lookupAndSaveHistory
+      summary: Tra ISBN và lưu dấu vết, không lưu payload provider
+      description: Không idempotent; không tự retry khi timeout. Kiểm tra lịch sử trước khi gửi lại. Dùng chung hạn mức provider 10 request/phút/tài khoản/process với tra sách, tác giả và replay; không dùng hạn mức đọc/xóa history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [isbn13]
+              properties:
+                isbn13: { type: string, pattern: '^[0-9]{13}$' }
+      responses:
+        '201':
+          description: Đã lưu dấu vết tra cứu, không đồng nghĩa có ứng viên hoặc ảnh được duyệt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [record, lookup]
+                properties:
+                  record: { $ref: '#/components/schemas/HistoryRecord' }
+                  lookup: { $ref: '#/components/schemas/BookLookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+  /metadata/history/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getMetadataHistory
+      summary: Đọc bản ghi của chính mình
+      description: Dùng hạn mức đọc/xóa history 60 request/phút/tài khoản/process, tách khỏi provider.
+      responses:
+        '200': { description: Dấu vết, content: { application/json: { schema: { $ref: '#/components/schemas/HistoryRecord' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteMetadataHistory
+      summary: Xóa lịch sử của mình; không xóa Catalog
+      description: Dùng hạn mức đọc/xóa history 60 request/phút/tài khoản/process, tách khỏi provider. Không xóa bản sao lưu; chưa có TTL hoặc tự xóa theo vòng đời tài khoản.
+      responses:
+        '204': { description: Đã xóa }
+        '404': { $ref: '#/components/responses/Error' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+  /metadata/history/{id}/replay:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: replayMetadataHistory
+      summary: Tra lại nguồn hiện tại bằng ISBN thuộc lịch sử của mình, không tạo bản ghi mới
+      description: Dùng chung hạn mức provider 10 request/phút/tài khoản/process với tra sách, tác giả và POST history.
+      responses:
+        '200': { description: Metadata hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/BookLookup' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Error' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   responses:
+    RateLimited:
+      description: Hết hạn mức của nhóm thao tác hoặc đầy bộ nhớ limiter (tối đa 1000 tài khoản mỗi process). Cửa sổ cố định 60 giây; không phải hạn mức phân tán.
+      headers:
+        Retry-After:
+          description: Số giây nên chờ trước khi thử lại; không tự retry POST tạo lịch sử.
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [statusCode, message]
+            properties:
+              statusCode: { type: integer, enum: [429] }
+              message: { type: string }
     Error:
       description: Lỗi xác thực, phân quyền, tham số hoặc Core không phản hồi
       content:
@@ -85,9 +190,45 @@ components:
             required: [statusCode, message]
             properties:
               statusCode: { type: integer }
-              message: { type: string }
+              message:
+                oneOf:
+                  - { type: string }
+                  - { type: array, items: { type: string } }
               error: { type: string }
   schemas:
+    HistoryRecord:
+      type: object
+      required: [id, isbn13, attempts, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        isbn13: { type: string, pattern: '^[0-9]{13}$' }
+        createdAt: { type: string, format: date-time }
+        attempts: { type: array, items: { $ref: '#/components/schemas/LookupAttempt' } }
+    LookupAttempt:
+      type: object
+      required: [provider, status]
+      properties:
+        provider: { type: string, enum: [open-library, google-books] }
+        status: { $ref: '#/components/schemas/ProviderStatus' }
+    BookLookup:
+      type: object
+      required: [attempts, candidates]
+      properties:
+        attempts: { type: array, items: { $ref: '#/components/schemas/LookupAttempt' } }
+        candidates: { type: array, items: { $ref: '#/components/schemas/BookMetadata' } }
+    HistoryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/HistoryRecord' } }
+        page:
+          type: object
+          required: [number, size, totalElements, totalPages]
+          properties:
+            number: { type: integer, minimum: 0 }
+            size: { type: integer, minimum: 1, maximum: 100 }
+            totalElements: { type: integer, minimum: 0 }
+            totalPages: { type: integer, minimum: 0 }
     ProviderStatus:
       type: string
       enum: [ok, not-found, unavailable, rate-limited, not-configured, invalid]

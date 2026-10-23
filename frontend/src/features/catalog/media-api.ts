@@ -16,6 +16,7 @@ const mediaCandidate=z.object({source:z.enum(['open-library','google-books','wik
 export type Candidate=z.infer<typeof mediaCandidate>;
 const bookMetadata=z.object({source:z.string(),sourceId:z.string(),sourceUrl:url,fetchedAt:z.string(),title:z.string(),authors:z.array(z.string()),isbn13:z.string(),media:mediaCandidate.nullable()});
 export type BookMetadata=z.infer<typeof bookMetadata>;
+export const bookLookupSchema=z.object({attempts:z.array(z.object({provider:z.string(),status:z.string()})),candidates:z.array(bookMetadata)});
 export async function getMedia(kind:MediaKind,id:string,signal?:AbortSignal) {
   return z.object({media:mediaSchema.nullable()}).parse(await coreApi.get<unknown>(`/catalog-media/${kind}/${id}`,true,signal)).media;
 }

@@ -71,18 +71,21 @@ try {
     $binding = & docker port $container 5432/tcp
     if ($LASTEXITCODE -ne 0 -or $binding -notmatch '^127\.0\.0\.1:(\d+)$') { throw 'Port database không đúng loopback.' }
     $dbPort = $Matches[1]
-    foreach ($key in @('CORE_DATABASE_URL', 'CORE_DATABASE_PASSWORD')) {
+    foreach ($key in @('CORE_DATABASE_URL', 'CORE_DATABASE_PASSWORD', 'INSIGHT_DATABASE_URL')) {
         $savedEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
     }
     $env:CORE_DATABASE_URL = "jdbc:postgresql://127.0.0.1:$dbPort/lams_core"
     $env:CORE_DATABASE_PASSWORD = $env:POSTGRES_PASSWORD
     $ready = $false
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        & docker exec $container pg_isready -U lams -d lams_core | Out-Null
+        # The temporary initdb server accepts Unix sockets before the final TCP server starts.
+        & docker exec $container pg_isready -h 127.0.0.1 -U lams -d lams_core | Out-Null
         if ($LASTEXITCODE -eq 0) { $ready = $true; break }
         Start-Sleep -Seconds 1
     }
     if (-not $ready) { throw 'Database kiểm thử chưa sẵn sàng.' }
+    Invoke-LamsNative 'docker' @('exec', $container, 'createdb', '-U', 'lams', 'lams_insight_test') 'Không tạo được database Insight tạm'
+    $env:INSIGHT_DATABASE_URL = "postgresql://lams:$($env:POSTGRES_PASSWORD)@127.0.0.1:$dbPort/lams_insight_test"
     Push-Location (Join-Path $projectRoot 'backend\core-service')
     try { Invoke-LamsNative '.\mvnw.cmd' @('-DskipTests', 'package') 'Core package thất bại' }
     finally { Pop-Location }
@@ -97,7 +100,11 @@ try {
     $launched += @{ pid = $core.Id; ticks = $core.StartTime.ToUniversalTime().Ticks }
     Wait-TestHttp "http://127.0.0.1:$CorePort/api/v1/health"
     Push-Location (Join-Path $projectRoot 'backend\insight-service')
-    try { Invoke-LamsNative 'npm.cmd' @('run', 'build') 'Insight build thất bại' }
+    try {
+        Invoke-LamsNative 'npm.cmd' @('run', 'prisma:generate') 'Prisma generate thất bại'
+        Invoke-LamsNative 'npm.cmd' @('run', 'prisma:deploy') 'Insight migration test thất bại'
+        Invoke-LamsNative 'npm.cmd' @('run', 'build') 'Insight build thất bại'
+    }
     finally { Pop-Location }
     $launchInsight = @{
         FilePath = (Get-Command node.exe).Source; ArgumentList = @('dist/main.js')

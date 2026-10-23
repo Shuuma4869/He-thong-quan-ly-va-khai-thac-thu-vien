@@ -13,4 +13,6 @@
 
 Không dùng shared database write. Contract HTTP/event là biên phối hợp. Failure của Insight không được làm rollback giao dịch mượn/trả đã commit ở Core.
 
-Tauri chỉ là desktop shell của frontend trên Windows. Rust không truy cập database, không cấp quyền hoặc giữ secret backend; toàn bộ API/validation nghiệp vụ vẫn ở service theo bảng trên. Xem [ADR desktop](adr/0007-windows-desktop-tauri.md). Bảng là phân công kiến trúc mục tiêu; ngoài Auth/Member, các module nghiệp vụ còn là thiết kế/boundary.
+Tauri chỉ là desktop shell của frontend trên Windows. Rust không truy cập database, không cấp quyền hoặc giữ secret backend; toàn bộ API/validation nghiệp vụ vẫn ở service theo bảng trên. Xem [ADR desktop](adr/0007-windows-desktop-tauri.md). Bảng là phân công kiến trúc mục tiêu, không phải trạng thái hoàn thành.
+
+Hiện có Auth/Member read-only, Catalog/Inventory, metadata/duyệt ảnh và history ISBN. Favorites/Reviews/Rating đã có backend qua PR #11, chưa có UI. Search read model, circulation/hold, anomaly, acquisition và notification vẫn planned. Insight history dùng Prisma/PostgreSQL riêng, chỉ lưu dấu vết tra cứu; không ghi Catalog hoặc sao chép bảng Core. Xem [ORM](metadata-history-orm.md) và [system flow](../08-van-hanh/system-flow.md).

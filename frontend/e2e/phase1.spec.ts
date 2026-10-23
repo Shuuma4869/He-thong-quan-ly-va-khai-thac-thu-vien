@@ -48,6 +48,61 @@ test.beforeAll(async ({ request }) => {
   }
 });
 
+test('Phase 2.5 lịch sử ISBN lưu thật, reload và xóa theo owner', async ({page,request})=>{
+  test.setTimeout(60000);
+  const insight=process.env.LAMS_E2E_INSIGHT_URL!;
+  const historyEmail=`history-${randomUUID()}@example.test`;
+  const created=await request.post(`${core}/auth/register`,{data:{fullName:'Thủ thư kiểm thử lịch sử',email:historyEmail,password}});
+  expect(created.status()).toBe(201);
+  const historyId=String((await created.json()).user.id);
+  if(!/^[a-f0-9-]{36}$/i.test(historyId)) throw new Error('UUID fixture không hợp lệ');
+  execFileSync('docker',['exec',container!,'psql','-U','lams','-d','lams_core','-v','ON_ERROR_STOP=1','-c',`INSERT INTO user_roles(user_id,role_code) VALUES ('${historyId}','LIBRARIAN')`],{stdio:'pipe'});
+  const login=async(role:string)=>{
+    const response=await request.post(`${core}/auth/login`,{data:{identifier:role==='HISTORY'?historyEmail:accounts[role].email,password,remember:false}});
+    expect(response.status()).toBe(200); return (await response.json()).accessToken as string;
+  };
+  const reader=await login('READER');
+  expect((await request.get(`${insight}/metadata/history`,{headers:{Authorization:`Bearer ${reader}`}})).status()).toBe(403);
+  await navigate(page,'/dang-nhap');
+  await page.getByLabel('Email hoặc mã thành viên').fill(historyEmail);
+  await page.getByLabel('Mật khẩu',{exact:true}).fill(password);
+  await page.getByRole('button',{name:'Đăng nhập',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Đăng xuất'})).toBeVisible();
+  await navigate(page,'/nhan-vien/danh-muc');
+  await page.getByRole('button',{name:'Lịch sử tra cứu ISBN',exact:true}).click();
+  await page.getByLabel('ISBN-13 cần tra và lưu').fill('9780132350884');
+  await page.getByRole('button',{name:'Tra cứu và lưu lịch sử'}).click();
+  await expect(page.getByText(/Đã lưu lịch sử tra cứu/)).toBeVisible({timeout:30000});
+  await page.reload();
+  await page.getByRole('button',{name:'Lịch sử tra cứu ISBN',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Mở lại 9780132350884'})).toBeVisible();
+  await page.getByRole('button',{name:'Mở lại 9780132350884'}).click();
+  await expect(page.getByText(/Kết quả tra lại nguồn hiện tại/)).toBeVisible();
+  for (const viewport of [{width:1440,height:900},{width:390,height:844}]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+    await page.getByLabel('ISBN-13 cần tra và lưu').focus();
+    await page.keyboard.press('Tab');
+    // ISBN rỗng sau reload: submit disabled, Tab chuyển tới bộ lọc.
+    await expect(page.getByLabel('Lọc lịch sử theo đầu ISBN')).toBeFocused();
+    await page.screenshot({path:`test-results/history-${viewport.width}.png`,fullPage:true});
+  }
+  const staff=await login('HISTORY');
+  const list=await request.get(`${insight}/metadata/history`,{headers:{Authorization:`Bearer ${staff}`}});
+  expect(list.status()).toBe(200);
+  const record=(await list.json()).items[0];
+  expect(record).not.toHaveProperty('ownerId');
+  const admin=await login('ADMIN');
+  for(const method of ['get','delete'] as const) {
+    const response=await request[method](`${insight}/metadata/history/${record.id}`,{headers:{Authorization:`Bearer ${admin}`}});
+    expect(response.status()).toBe(404);
+  }
+  await page.getByRole('button',{name:'Xóa 9780132350884',exact:true}).click();
+  await page.getByRole('button',{name:'Xác nhận xóa lịch sử'}).click();
+  await expect(page.getByText('Đã xóa bản ghi lịch sử.')).toBeVisible();
+  await expect(page.getByText('Chưa có bản ghi ở trang này.')).toBeVisible();
+});
+
 test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', async ({ page }) => {
   const address = `reader-browser-${suffix}@example.test`;
   await page.setViewportSize({ width: 390, height: 844 });

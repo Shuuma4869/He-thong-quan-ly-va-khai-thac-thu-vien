@@ -33,7 +33,7 @@ try {
     $ownedContainers += $database
     $ready = $false
     for ($attempt = 0; $attempt -lt 40; $attempt++) {
-        & docker exec $database pg_isready -U lams -d lams_core | Out-Null
+        & docker exec $database pg_isready -h 127.0.0.1 -U lams -d lams_core | Out-Null
         if ($LASTEXITCODE -eq 0) { $ready = $true; break }
         Start-Sleep -Seconds 1
     }
@@ -95,7 +95,7 @@ try {
 } finally {
     foreach ($name in $ownedContainers) {
         $owner = & docker inspect --format '{{ index .Config.Labels "lams.pilot-test" }}' $name 2>$null
-        if ($LASTEXITCODE -eq 0 -and $owner -eq $runId) { & docker rm -f $name | Out-Null }
+        if ($LASTEXITCODE -eq 0 -and $owner -eq $runId) { & docker rm -f -v $name | Out-Null }
     }
     if ($networkCreated) {
         $owner = & docker network inspect --format '{{ index .Labels "lams.pilot-test" }}' $network 2>$null

@@ -1,6 +1,59 @@
 # ERD mục tiêu
 
-## Mục đích
+## Insight history đã có schema
+
+```mermaid
+erDiagram
+  METADATA_LOOKUPS {
+    uuid id PK
+    uuid owner_id "Core principal; không FK xuyên database"
+    varchar isbn13
+    jsonb attempts "provider/status, không payload"
+    timestamptz created_at
+  }
+```
+
+Database Insight sở hữu lịch sử tra cứu; không nối Book bằng FK và không sao chép Catalog. Schema đã viết không tự chứng minh migration runtime đã được nghiệm thu.
+
+## Core đã có migration
+
+```mermaid
+erDiagram
+  USERS ||--o{ USER_ROLES : has
+  ROLES ||--o{ USER_ROLES : grants
+  USERS ||--o{ REFRESH_TOKENS : owns
+```
+
+Catalog/Inventory và ảnh tham chiếu:
+
+```mermaid
+erDiagram
+  AUTHORS ||--o{ BOOK_AUTHORS : writes
+  BOOKS ||--o{ BOOK_AUTHORS : credited
+  CATEGORIES ||--o{ BOOK_CATEGORIES : groups
+  BOOKS ||--o{ BOOK_CATEGORIES : classified
+  BOOKS ||--o{ EDITIONS : has
+  PUBLISHERS |o--o{ EDITIONS : optional_publisher
+  EDITIONS ||--o{ BOOK_COPIES : manifests
+  BRANCHES ||--o{ SHELVES : contains
+  SHELVES ||--o{ BOOK_COPIES : locates
+  AUTHORS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_author
+  EDITIONS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_edition
+```
+
+Backend My Library (chưa UI):
+
+```mermaid
+erDiagram
+  USERS ||--o{ FAVORITES : saves
+  BOOKS ||--o{ FAVORITES : saved
+  USERS ||--o{ REVIEWS : writes
+  BOOKS ||--o{ REVIEWS : reviewed
+```
+
+Media reference có đúng một trong hai FK Author/Edition, không phải cả hai cùng lúc; V13 bổ sung revision. Favorites/Reviews đã có schema/backend, chưa UI Phase 3. Chi tiết cột và constraint xem data dictionary và migration, không suy từ sơ đồ roadmap bên dưới.
+
+## Mục đích sơ đồ mục tiêu
 
 Mô tả target model để thống nhất tên và ownership. Đây không phải khẳng định mọi bảng đã được migration trong Giai đoạn 01.
 
@@ -40,19 +93,97 @@ erDiagram
   USERS ||--o{ NOTIFICATIONS : receives
   MEDIA_ASSETS }o--|| BOOKS : may_attach
 
-  USERS { uuid id PK; string member_code UK; string email_normalized UK; string password_hash; string status }
-  ROLES { string code PK }
-  USER_ROLES { uuid user_id FK; string role_code FK }
-  REFRESH_TOKENS { uuid id PK; uuid user_id FK; uuid family_id; string token_hash UK; datetime expires_at; datetime revoked_at }
-  BOOKS { uuid id PK; string title; string normalized_title; datetime created_at }
-  FAVORITES { uuid user_id FK; uuid book_id FK; datetime created_at }
-  REVIEWS { uuid id PK; uuid user_id FK; uuid book_id FK; text body; int rating; datetime created_at; datetime updated_at }
-  EDITIONS { uuid id PK; uuid book_id FK; string isbn13; int publication_year; uuid publisher_id FK }
-  BOOK_COPIES { uuid id PK; uuid edition_id FK; string barcode UK; string status; uuid shelf_id FK; bigint version }
-  LOANS { uuid id PK; uuid copy_id FK; uuid reader_id FK; datetime borrowed_at; datetime due_at; datetime returned_at }
-  HOLDS { uuid id PK; uuid reader_id FK; uuid book_id FK; string status; datetime expires_at }
-  OUTBOX_EVENTS { uuid id PK; string event_type; json payload; datetime occurred_at; datetime published_at }
-  MEDIA_ASSETS { uuid id PK; string source; string source_id; string source_url; string image_url; string thumbnail_url; string license; string attribution; boolean verified; datetime fetched_at }
+  USERS {
+    uuid id PK
+    string member_code UK
+    string email_normalized UK
+    string password_hash
+    string status
+  }
+  ROLES {
+    string code PK
+  }
+  USER_ROLES {
+    uuid user_id FK
+    string role_code FK
+  }
+  REFRESH_TOKENS {
+    uuid id PK
+    uuid user_id FK
+    uuid family_id
+    string token_hash UK
+    datetime expires_at
+    datetime revoked_at
+  }
+  BOOKS {
+    uuid id PK
+    string title
+    string normalized_title
+    datetime created_at
+  }
+  FAVORITES {
+    uuid user_id FK
+    uuid book_id FK
+    datetime created_at
+  }
+  REVIEWS {
+    uuid id PK
+    uuid user_id FK
+    uuid book_id FK
+    text body
+    int rating
+    datetime created_at
+    datetime updated_at
+  }
+  EDITIONS {
+    uuid id PK
+    uuid book_id FK
+    string isbn13
+    int publication_year
+    uuid publisher_id FK
+  }
+  BOOK_COPIES {
+    uuid id PK
+    uuid edition_id FK
+    string barcode UK
+    string status
+    uuid shelf_id FK
+    bigint version
+  }
+  LOANS {
+    uuid id PK
+    uuid copy_id FK
+    uuid reader_id FK
+    datetime borrowed_at
+    datetime due_at
+    datetime returned_at
+  }
+  HOLDS {
+    uuid id PK
+    uuid reader_id FK
+    uuid book_id FK
+    string status
+    datetime expires_at
+  }
+  OUTBOX_EVENTS {
+    uuid id PK
+    string event_type
+    json payload
+    datetime occurred_at
+    datetime published_at
+  }
+  MEDIA_ASSETS {
+    uuid id PK
+    string source
+    string source_id
+    string source_url
+    string image_url
+    string thumbnail_url
+    string license
+    string attribution
+    boolean verified
+    datetime fetched_at
+  }
 ```
 
 ## Quy tắc trọng yếu

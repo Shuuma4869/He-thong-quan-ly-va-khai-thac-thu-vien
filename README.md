@@ -10,11 +10,15 @@ Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form s
 
 ## Kiến trúc ngắn
 
+Phase 2.5 được bàn giao ở [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. PostgreSQL, E2E web và EXE/WebView2 đã kiểm thử đạt ở bản `ee929cd`; PR ghi CI của SHA bàn giao cuối. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [gate hiện hành](ho-so-nop-bai/doi-chieu-rubric.md). Academic Final Gate vẫn cần xác nhận bên ngoài; PR chưa merge.
+
+Main đã có backend Favorites/Reviews/Rating từ PR #11; UI My Library và các chức năng này chưa triển khai. Không chuyển chúng sang NestJS trong Phase 2.5.
+
 - `frontend`: Tauri 2 + WebView2 trên Windows; React + TypeScript + Vite dùng chung UI theo feature. Bản release mở cửa sổ riêng, không cần Chrome/Vite.
 - `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.
 - `backend/insight-service`: NestJS + Prisma, dành cho discovery, analytics và tích hợp bất đồng bộ.
 - `PostgreSQL`: hai database `lams_core`, `lams_insight`; là source of truth.
-- `Redis`, `Kafka`, `MinIO`: cache/coordination, event transport và object storage.
+- `Redis`, `Kafka`, `MinIO`: hạ tầng cho cache/coordination, event transport và object storage theo roadmap; không coi dịch vụ có trong Compose là nghiệp vụ đã tích hợp.
 
 ## Yêu cầu môi trường
 
@@ -67,6 +71,6 @@ E2E Auth/Member/Catalog: `scripts/test-phase1-e2e.ps1`; thêm `-Desktop` để c
 - `infra/`: PostgreSQL init, Nginx, Kafka và monitoring foundation.
 - `tai-lieu/`: yêu cầu, kiến trúc, dữ liệu, workflow, API, UI, test, vận hành, demo.
 - `kiem-thu/`: nơi dành cho kiểm thử xuyên service.
-- `ho-so-nop-bai/`: khung lưu minh chứng ở các giai đoạn sau.
+- `ho-so-nop-bai/`: báo cáo nguồn học phần, ma trận rubric và ảnh minh chứng có nguồn/SHA; mẫu trường và video thật còn cần bổ sung.
 
 Đọc [hướng dẫn chạy local](tai-lieu/08-van-hanh/chay-local.md), [xử lý lỗi môi trường](tai-lieu/08-van-hanh/xu-ly-loi-moi-truong.md) và [pre-push gate](tai-lieu/08-van-hanh/pre-push-gate.md) khi cần chi tiết.
