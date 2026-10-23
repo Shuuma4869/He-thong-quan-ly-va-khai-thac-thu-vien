@@ -17,6 +17,8 @@ PR #11, head f4dcbcb4597a0151e8f55611d627e92be045ddc8, merge b8e7bc616d72b608acd
 
 ## Phase 3 — Tuan
 
+PR #13 đã merge tại `ea93b7ae301389aae983314db56dea9fdb27869c` ngày 24/10/2026 (Asia/Saigon). Head trước merge `6598dd3` đạt CI 5/5 tại run `40010074211`; [minh chứng desktop](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) phân biệt checkout, binary và ảnh. Nhánh Tuan đã fast-forward tới commit merge; nhánh Toan không thay đổi. CI main `40011636146` đạt đủ năm job, đóng Integration Gate Phase 3.
+
 P3-D1-01 Favorites UI phụ thuộc D2-01; D1-02 ReviewSection trong BookDetail phụ thuộc D2-02; D1-03 RatingInput phụ thuộc D1-02/D2-03; D1-04 MyLibrary/Profile integration sau Favorites/Reviews.
 
 | Task | File thực thi | Đầu ra |
@@ -31,6 +33,19 @@ P3-D1-01 Favorites UI phụ thuộc D2-01; D1-02 ReviewSection trong BookDetail 
 Implementation chưa tự động có nghĩa TESTED hoặc INTEGRATED. Gate cần Core clean verify, Insight/Prisma, frontend typecheck/lint/test/build, OpenAPI, web E2E, Rust/Tauri, EXE mới build và CI năm job đúng SHA. Không dùng ảnh/binary `ee929cd` thay bằng chứng Phase 3. Kết quả chạy và merge của bản bàn giao xem PR/CI; Academic Final Gate vẫn cần xác nhận học phần bên ngoài repository.
 
 ## Phase 4 — Tuan
+
+Đăng ký migration V16 `loans` cho P4-D1-01 trên nhánh Tuan sau khi đối chiếu main `ea93b7a`: chưa có PR Phase 4 khác. V1–V15 giữ nguyên. P4-D1-02 dùng policy cấu hình có giá trị phát triển PROVISIONAL; command mượn/trả/gia hạn, Hold và outbox chưa được coi là triển khai chỉ từ schema/policy này.
+
+| Task | Output hiện có hoặc đang chờ | Kiểm chứng / điều kiện nối tiếp |
+|---|---|---|
+| P4-D1-01 | V16, `Loan`, `LoanRepository` | `LoanSchemaTest`, `LoanRepositoryIntegrationTest`; unique active Copy, FK, upgrade V15, transaction |
+| P4-D1-02 | `CirculationPolicy`, `BorrowPolicyService`; cấu hình môi trường | `BorrowPolicyTest`; quota/status/role/overdue, cấu hình sai dừng khởi động; command phải khóa Reader trước khi đếm |
+| P4-D1-03..08 | Borrow/Return/Renew, Copy locking/state và race bản cuối chưa có | Nối schema/policy với transaction, idempotency, Copy version, audit; Renew cần Hold |
+| P4-D1-09..13 | Hold model/queue/allocation/expiry/ETA chưa có | FIFO, assignment unique, pickup TTL, concurrent cancel/expiry; ETA phải nêu độ bất định |
+| P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
+| P4-D1-16..17 | Reader/Staff circulation UI chưa có | Command thật và query P4-D2-01 của Toan; thiếu dependency phải hiện rõ, không tạo dữ liệu giả |
+
+Chi tiết schema, cấu hình, retention và ranh giới kiểm thử ở [kiến trúc lưu thông](../02-kien-truc/circulation.md). Tất cả đường dẫn Java trong bảng tính từ package Core. Bảng này không đánh dấu cả Phase 4 hoàn thành.
 
 Tuan giữ 17 task DEV1: Loan/schema/policy → borrow/return/renew → locking/idempotency → Hold/queue/allocation/expiry/ETA → outbox/Kafka/notification → Reader/Staff UI. Toan giữ P4-D2-01 đến P4-D2-05: query lịch sử, lọc, báo cáo, CSV và kiểm thử query. Không làm thay hoặc đánh dấu DONE phần Toan chưa bàn giao.
 

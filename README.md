@@ -14,7 +14,7 @@ Phase 2.5 được bàn giao ở [PR #12](https://github.com/Shuuma4869/He-thong
 
 Phase 2.5 đã merge qua PR #12 tại `b9cf5f3`, CI main `39985051027` đạt 5/5. Đoạn nghiệm thu EXE phía trên chỉ áp dụng cho SHA `ee929cd`, không thay kiểm thử commit mới.
 
-Phase 3 bổ sung Favorites, Reviews/Rating tại chi tiết sách và `/thu-vien-cua-toi`, dùng Core API thật. Backend nền tảng thuộc Toan (PR #11); Tuan bổ sung UI, truy vấn cá nhân và sửa cạnh tranh PATCH/FK. Xem [cơ chế và giới hạn](tai-lieu/02-kien-truc/favorites-reviews.md) và [bàn giao](tai-lieu/00-bat-dau/handoff-phase3-4.md). Có source không đồng nghĩa đã merge: kết quả tích hợp phải đối chiếu PR/CI của đúng SHA đang dùng.
+Phase 3 đã merge qua [PR #13](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/13) tại `ea93b7a`: Favorites, Reviews/Rating ở chi tiết sách và `/thu-vien-cua-toi` dùng Core API thật. Backend nền tảng thuộc Toan (PR #11); Tuan bổ sung UI, truy vấn cá nhân và sửa cạnh tranh PATCH/FK, validation rating. Xem [cơ chế và giới hạn](tai-lieu/02-kien-truc/favorites-reviews.md) và [bàn giao](tai-lieu/00-bat-dau/handoff-phase3-4.md). Kết quả kiểm thử phải đối chiếu PR/CI của đúng SHA đang dùng.
 
 - `frontend`: Tauri 2 + WebView2 trên Windows; React + TypeScript + Vite dùng chung UI theo feature. Bản release mở cửa sổ riêng, không cần Chrome/Vite.
 - `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.

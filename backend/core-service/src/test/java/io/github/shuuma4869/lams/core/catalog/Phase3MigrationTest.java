@@ -31,7 +31,7 @@ class Phase3MigrationTest {
 
     @Test
     void freshDatabaseAppliesPhase3MigrationsAndConstraints() {
-        migration("phase3_fresh", "latest").migrate();
+        migration("phase3_fresh", "15").migrate();
         var db = jdbc("phase3_fresh");
         assertThat(db.queryForObject("SELECT version::integer FROM flyway_schema_history WHERE success "
                         + "ORDER BY installed_rank DESC LIMIT 1",
@@ -61,7 +61,7 @@ class Phase3MigrationTest {
         db.update("INSERT INTO books(id,title,normalized_title) VALUES (?, 'Favorite book','favorite book'),"
                 + "(?, 'Reviewed book','reviewed book')", favoriteBook, reviewedBook);
 
-        migration(schema, "latest").migrate();
+        migration(schema, "15").migrate();
         assertThat(db.queryForObject("SELECT count(*) FROM users WHERE id IN (?,?)", Integer.class, owner, secondUser)).isEqualTo(2);
         assertThat(db.queryForObject("SELECT count(*) FROM books WHERE id IN (?,?)", Integer.class, favoriteBook, reviewedBook)).isEqualTo(2);
         assertThat(db.queryForObject("SELECT version::integer FROM flyway_schema_history WHERE success "
