@@ -25,7 +25,8 @@ beforeAll(async () => {
   if (!port) throw new Error('Database test phải nằm trên loopback');
   let ready = false;
   for (let attempt = 0; attempt < 40; attempt++) {
-    try { docker('exec', container, 'pg_isready', '-U', 'postgres'); ready = true; break; }
+    // The temporary initdb server is socket-only; wait for the final TCP listener.
+    try { docker('exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres', '-d', 'lams_insight_test'); ready = true; break; }
     catch { await new Promise(resolve => setTimeout(resolve, 500)); }
   }
   if (!ready) throw new Error('PostgreSQL test chưa sẵn sàng');

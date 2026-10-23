@@ -38,7 +38,8 @@ export CORE_DATABASE_URL="jdbc:postgresql://127.0.0.1:$db_port/lams_core"
 export INSIGHT_DATABASE_URL="postgresql://lams:$POSTGRES_PASSWORD@127.0.0.1:$db_port/lams_insight_test"
 ready=false
 for attempt in {1..40}; do
-  if docker exec "$LAMS_E2E_CONTAINER" pg_isready -U lams >/dev/null 2>&1; then ready=true; break; fi
+  # Initdb's temporary server accepts Unix sockets before the final TCP server starts.
+  if docker exec "$LAMS_E2E_CONTAINER" pg_isready -h 127.0.0.1 -U lams -d lams_core >/dev/null 2>&1; then ready=true; break; fi
   sleep 1
 done
 [[ "$ready" == true ]] || exit 1

@@ -33,7 +33,7 @@ try {
     $ownedContainers += $database
     $ready = $false
     for ($attempt = 0; $attempt -lt 40; $attempt++) {
-        & docker exec $database pg_isready -U lams -d lams_core | Out-Null
+        & docker exec $database pg_isready -h 127.0.0.1 -U lams -d lams_core | Out-Null
         if ($LASTEXITCODE -eq 0) { $ready = $true; break }
         Start-Sleep -Seconds 1
     }
