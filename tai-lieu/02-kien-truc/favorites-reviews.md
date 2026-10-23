@@ -8,6 +8,30 @@ Các API yêu cầu phiên đăng nhập hợp lệ. Service đọc lại trạn
 
 ## Persistence và cạnh tranh
 
+```mermaid
+classDiagram
+  FavoriteController --> FavoriteService
+  FavoriteService --> FavoriteRepository
+  ReviewController --> ReviewService
+  MyReviewsController --> ReviewService
+  ReviewService --> ReviewRepository
+  FavoriteService --> AuthService : currentUser
+  ReviewService --> AuthService : currentUser
+  ReviewRepository --> Review : map row
+  FavoriteRepository --> Favorite : map row
+  Review {
+    UUID id
+    UUID userId
+    UUID bookId
+    String body
+    int rating
+    Instant createdAt
+    Instant updatedAt
+  }
+```
+
+Entity nội bộ có userId để kiểm ownership; DTO không xuất trường đó. Service transaction thuộc Core, repository dùng JdbcTemplate và PostgreSQL, không gọi Prisma hoặc ghi database Insight. Sơ đồ này là implementation, tách khỏi Loan/Hold trong ERD mục tiêu.
+
 DEV1 bổ sung hai truy vấn cho UI: GET `/me/favorites/{bookId}` trả `{bookId, saved}`; GET `/me/reviews` phân trang và lọc tùy chọn theo `bookId`. Cả hai chỉ dùng principal, không nhận userId để đổi scope. Bộ lọc review không có kết quả trả trang rỗng; Favorite state kiểm Book tồn tại trước khi trả trạng thái. Không cần migration mới. My Library không tải mọi review công khai để tìm dữ liệu của mình.
 
 - Favorite có khóa `(user_id, book_id)`, FK cascade. PUT tạo mới trả 201, lặp trả 200; DELETE trả 204 kể cả chưa lưu nếu Book tồn tại. Nếu add/remove cạnh tranh liên tục, PUT có thể trả 409 để client tải lại.
@@ -18,6 +42,8 @@ DEV1 bổ sung hai truy vấn cho UI: GET `/me/favorites/{bookId}` trả `{bookI
 ## Partial PATCH
 
 Field không gửi giữ nguyên. `null` tường minh không có nghĩa xóa field, trả 422; body trắng, rating ngoài 1–5 và request không có field cần sửa cũng trả 422.
+
+Rating phải là số nguyên JSON: không nhận chuỗi `"5"` và không cắt `1.9` thành `1`. Kiểu không hợp lệ trả 400 trước service; số nguyên ngoài khoảng vẫn trả 422. Deserializer chỉ áp dụng cho review DTO, không thay cấu hình Jackson toàn hệ thống. Số `1.0` có giá trị nguyên vẫn hợp lệ; không có quy tắc làm tròn input.
 
 Service kiểm owner rồi UPDATE có điều kiện book/review/owner. Giá trị field không gửi được lấy ngay tại câu UPDATE (`COALESCE`), không ghép với bản cũ trong bộ nhớ. Hai PATCH sửa body và rating riêng biệt không ghi đè field của nhau. Hai PATCH cùng sửa body hoặc cùng sửa rating theo quy tắc lần ghi được database thực hiện sau thắng; chưa có optimistic version hoặc cảnh báo xung đột chỉnh sửa trên nhiều thiết bị. `updated_at` lấy thời điểm thực hiện UPDATE thay vì thời điểm mở transaction.
 

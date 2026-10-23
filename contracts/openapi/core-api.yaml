@@ -1070,6 +1070,7 @@ components:
         page: { $ref: '#/components/schemas/PageMetadata' }
     ReviewRequest:
       type: object
+      description: Rating phải là số nguyên JSON; chuỗi hoặc số có phần lẻ trả 400, số nguyên ngoài 1–5 trả 422.
       required: [body, rating]
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
@@ -1077,7 +1078,7 @@ components:
     ReviewUpdateRequest:
       type: object
       minProperties: 1
-      description: Phải có body hoặc rating không null. Không gửi lại field không định sửa.
+      description: Phải có body hoặc rating không null. Không gửi lại field không định sửa. Rating dạng chuỗi hoặc số có phần lẻ trả 400; số nguyên ngoài 1–5 trả 422.
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
         rating: { type: integer, minimum: 1, maximum: 5 }

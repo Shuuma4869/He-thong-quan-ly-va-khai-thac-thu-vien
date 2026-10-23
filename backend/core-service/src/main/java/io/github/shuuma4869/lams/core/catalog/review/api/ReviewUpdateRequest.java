@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.AssertTrue;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 public class ReviewUpdateRequest {
     private String body;
@@ -12,7 +13,8 @@ public class ReviewUpdateRequest {
     private boolean ratingPresent;
 
     @JsonSetter("body") public void setBody(String value) { bodyPresent = true; body = value; }
-    @JsonSetter("rating") public void setRating(Integer value) { ratingPresent = true; rating = value; }
+    @JsonSetter("rating") @JsonDeserialize(using = RatingDeserializer.class)
+    public void setRating(Integer value) { ratingPresent = true; rating = value; }
     public String body() { return body; }
     public Integer rating() { return rating; }
 

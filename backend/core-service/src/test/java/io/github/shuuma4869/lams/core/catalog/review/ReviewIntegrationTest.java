@@ -30,7 +30,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -84,6 +83,24 @@ class ReviewIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].reviewId").value(reviewId.toString()))
                 .andExpect(jsonPath("$.items[0].mine").value(true));
+    }
+
+    @Test
+    void ratingDoesNotSilentlyCoerceFractionOrStringIntoAnInteger() throws Exception {
+        UUID owner = user("READER"), book = book("Strict rating");
+        var token = token(owner, "READER");
+        for (String invalid : List.of("1.9", "\"5\"", "true", "{}", "[]")) {
+            mvc.perform(post("/api/v1/books/{bookId}/reviews", book).with(token)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"Review\",\"rating\":" + invalid + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+        UUID id = createAndReadId(token, book, "Original", 3);
+        for (String invalid : List.of("4.9", "\"1\"", "false", "{}", "[]")) {
+            mvc.perform(patch("/api/v1/books/{bookId}/reviews/{id}", book, id).with(token)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"rating\":" + invalid + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(jdbc.queryForObject("SELECT rating FROM reviews WHERE id=?", Integer.class, id)).isEqualTo(3);
     }
 
     @Test
