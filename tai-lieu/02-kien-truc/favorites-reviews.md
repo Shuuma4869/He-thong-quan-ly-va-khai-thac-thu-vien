@@ -8,6 +8,8 @@ Các API yêu cầu phiên đăng nhập hợp lệ. Service đọc lại trạn
 
 ## Persistence và cạnh tranh
 
+DEV1 bổ sung hai truy vấn cho UI: GET `/me/favorites/{bookId}` trả `{bookId, saved}`; GET `/me/reviews` phân trang và lọc tùy chọn theo `bookId`. Cả hai chỉ dùng principal, không nhận userId để đổi scope. Bộ lọc review không có kết quả trả trang rỗng; Favorite state kiểm Book tồn tại trước khi trả trạng thái. Không cần migration mới. My Library không tải mọi review công khai để tìm dữ liệu của mình.
+
 - Favorite có khóa `(user_id, book_id)`, FK cascade. PUT tạo mới trả 201, lặp trả 200; DELETE trả 204 kể cả chưa lưu nếu Book tồn tại. Nếu add/remove cạnh tranh liên tục, PUT có thể trả 409 để client tải lại.
 - Review có unique user–book, FK restrict, body 1–5000 ký tự Unicode sau strip và rating 1–5. Concurrent create chỉ có một bản ghi; request trùng trả 409.
 - List dùng transaction RepeatableRead để count và items cùng snapshot; thứ tự có UUID tie-break. Không nối giá trị người dùng vào SQL.

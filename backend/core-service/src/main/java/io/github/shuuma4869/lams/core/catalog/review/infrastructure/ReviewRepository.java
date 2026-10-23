@@ -68,6 +68,21 @@ public class ReviewRepository {
                 body, rating, bookId, reviewId, ownerId);
     }
 
+    public ReviewPage listMine(UUID owner, UUID book, int page, int size) {
+        String condition = "user_id=?" + (book == null ? "" : " AND book_id=?");
+        var parameters = new java.util.ArrayList<Object>();
+        parameters.add(owner);
+        if (book != null) parameters.add(book);
+        long total = jdbc.queryForObject("SELECT count(*) FROM reviews WHERE " + condition, Long.class, parameters.toArray());
+        parameters.add(size); parameters.add((long) page * size);
+        var items = jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at FROM reviews WHERE "
+                        + condition + " ORDER BY created_at DESC,id ASC LIMIT ? OFFSET ?",
+                (rs, row) -> map(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class),
+                        rs.getObject("book_id", UUID.class), rs.getString("body"), rs.getInt("rating"),
+                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at")), parameters.toArray());
+        return new ReviewPage(items, total);
+    }
+
     public int delete(UUID bookId, UUID reviewId, UUID ownerId) {
         return jdbc.update("DELETE FROM reviews WHERE book_id=? AND id=? AND user_id=?",
                 bookId, reviewId, ownerId);

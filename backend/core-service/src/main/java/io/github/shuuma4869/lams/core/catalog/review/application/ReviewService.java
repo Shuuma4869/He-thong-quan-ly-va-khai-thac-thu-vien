@@ -61,6 +61,17 @@ public class ReviewService {
         return reviews.find(bookId, id).orElseThrow(() -> notFound("Không tìm thấy đánh giá."));
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ReviewPage listMine(UUID actorId, UUID bookId, String pageValue, String sizeValue) {
+        CatalogAccess.requireReader(identity, actorId);
+        int page = parse(pageValue, 0, Integer.MAX_VALUE, "page");
+        int size = parse(sizeValue, 20, 100, "size");
+        if (size < 1) throw invalid("size phải nằm trong khoảng 1–100.");
+        var result = reviews.listMine(actorId, bookId, page, size);
+        return new ReviewPage(result.items(), new PageMetadata(page, size, result.totalElements(),
+                (result.totalElements() + size - 1) / size));
+    }
+
     @Transactional
     public Review update(UUID actorId, UUID bookId, UUID reviewId, String body, Integer rating) {
         CatalogAccess.requireReader(identity, actorId);

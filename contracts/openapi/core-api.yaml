@@ -116,6 +116,26 @@ paths:
   /me/favorites/{bookId}:
     parameters:
       - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getMyFavoriteState
+      tags: [Favorites]
+      summary: Kiểm trạng thái lưu của principal cho một sách
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Book tồn tại, saved phản ánh Favorites của riêng principal
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bookId, saved]
+                properties:
+                  bookId: { type: string, format: uuid }
+                  saved: { type: boolean }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
     put:
       operationId: addMyFavorite
       tags: [Favorites]
@@ -257,6 +277,23 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+  /me/reviews:
+    get:
+      operationId: listMyReviews
+      tags: [Reviews and ratings]
+      summary: Đánh giá của principal hiện tại
+      description: ACTIVE và role hiện hành; không nhận owner từ client. Sort createdAt DESC rồi reviewId ASC. bookId là bộ lọc, sách chưa có review của mình trả trang rỗng. Không trả PII.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: bookId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Trang review của mình, content: { application/json: { schema: { $ref: '#/components/schemas/ReviewPage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /members:
     get:
       operationId: listMembers
