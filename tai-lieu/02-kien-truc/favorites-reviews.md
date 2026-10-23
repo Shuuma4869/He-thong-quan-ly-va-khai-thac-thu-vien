@@ -29,6 +29,10 @@ Kiểm tồn tại trước INSERT không loại được mọi race. Khi INSERT
 
 ## Kiểm chứng
 
+UI dùng `FavoriteButton`, `ReviewSection`, `RatingInput` và `MyLibraryPage`. Query key chứa userId; đổi tài khoản remount component, AuthProvider xóa cache, shared client bỏ response thuộc session generation cũ. Form PATCH chỉ gửi field đã đổi. Review body render dạng text, không dùng HTML của người viết. Các lỗi 401/403/404/409/422 có thông báo riêng; lỗi không xác định khuyên tải lại vì server có thể đã commit. Chưa có request idempotency cho POST review; unique user–book ngăn tạo hai review nhưng không thay cơ chế đối chiếu request.
+
+Favorite và review cá nhân phân trang độc lập, size 10. Nếu xóa phần tử cuối ở trang cuối, trang đó có thể rỗng và người dùng quay lại trang trước; không tự báo mất toàn bộ dữ liệu. Một client khác sửa cùng field vẫn theo last database write wins, UI không phát hiện version conflict.
+
 `ReviewConcurrencyTest` dùng PostgreSQL Testcontainers, service thật và hai TransactionTemplate độc lập. Điểm đồng bộ chỉ chặn sau SELECT thật để hai PATCH cùng đọc bản cũ. Test khác giữ transaction DELETE Book và xác minh INSERT đang bị chặn bằng `pg_blocking_pids` trước khi commit. Không dùng mock database hoặc sleep ngẫu nhiên làm bằng chứng.
 
 Regression bao gồm hai field độc lập, cùng field, delete/update, xóa Book/insert, current-role/status, token hết hạn, owner, validation, aggregate và migration từ V13. Kết quả từng SHA ở CI/PR; tài liệu này mô tả cơ chế, không thay kết quả kiểm thử.

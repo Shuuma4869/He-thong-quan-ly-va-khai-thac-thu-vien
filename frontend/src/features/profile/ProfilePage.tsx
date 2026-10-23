@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/auth-context';
 import { getProfile, statusLabels } from '../members/member-api';
 import { MemberRequestError } from '../members/MemberRequestError';
+import { Link } from 'react-router-dom';
 
 export function ProfilePage() {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export function ProfilePage() {
     <p className="eyebrow">Tài khoản</p>
     <h1 id="profile-heading" className="page-title">Hồ sơ của tôi</h1>
     <p className="mt-2 text-muted">Thông tin tài khoản hiện chỉ hỗ trợ xem.</p>
+    <Link className="text-link inline-block my-3" to="/thu-vien-cua-toi">Xem sách yêu thích và đánh giá của tôi</Link>
     {profile.isPending ? <p role="status" className="py-8">Đang tải hồ sơ…</p>
       : profile.isError ? <MemberRequestError error={profile.error} retry={() => void profile.refetch()} />
       : <div className="editorial-card mt-6">

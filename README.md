@@ -6,13 +6,15 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Phạm vi và đầu ra công việc được quản lý trong [hướng dẫn thành viên](tai-lieu/00-bat-dau/huong-dan-thanh-vien.md); kết quả từng lần chạy xem ở CI của PR.
 
-Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Phase 2 có Catalog/Inventory API, giao diện tra cứu và quản trị tám loại dữ liệu, metadata theo ISBN và tham chiếu ảnh duyệt thủ công. Xem [hợp đồng Catalog](tai-lieu/05-api-va-event/catalog-contract.md) và [kiến trúc Catalog/media](tai-lieu/02-kien-truc/catalog-media.md). Mượn/trả, My Library và tìm kiếm nâng cao chưa triển khai; đây chưa phải sản phẩm hoàn chỉnh.
+Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Phase 2 có Catalog/Inventory API, giao diện tra cứu và quản trị tám loại dữ liệu, metadata theo ISBN và tham chiếu ảnh duyệt thủ công. Xem [hợp đồng Catalog](tai-lieu/05-api-va-event/catalog-contract.md) và [kiến trúc Catalog/media](tai-lieu/02-kien-truc/catalog-media.md). Mượn/trả và tìm kiếm nâng cao chưa triển khai; đây chưa phải sản phẩm hoàn chỉnh.
 
 ## Kiến trúc ngắn
 
-Phase 2.5 được bàn giao ở [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. PostgreSQL, E2E web và EXE/WebView2 đã kiểm thử đạt ở bản `ee929cd`; PR ghi CI của SHA bàn giao cuối. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [gate hiện hành](ho-so-nop-bai/doi-chieu-rubric.md). Academic Final Gate vẫn cần xác nhận bên ngoài; PR chưa merge.
+Phase 2.5 được bàn giao ở [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. PostgreSQL, E2E web và EXE/WebView2 đã kiểm thử đạt ở bản `ee929cd`; PR ghi CI của SHA bàn giao cuối. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [gate hiện hành](ho-so-nop-bai/doi-chieu-rubric.md). Academic Final Gate vẫn cần xác nhận bên ngoài.
 
-Main đã có backend Favorites/Reviews/Rating từ PR #11; UI My Library và các chức năng này chưa triển khai. Không chuyển chúng sang NestJS trong Phase 2.5.
+Phase 2.5 đã merge qua PR #12 tại `b9cf5f3`, CI main `39985051027` đạt 5/5. Đoạn nghiệm thu EXE phía trên chỉ áp dụng cho SHA `ee929cd`, không thay kiểm thử commit mới.
+
+Phase 3 bổ sung Favorites, Reviews/Rating tại chi tiết sách và `/thu-vien-cua-toi`, dùng Core API thật. Backend nền tảng thuộc Toan (PR #11); Tuan bổ sung UI, truy vấn cá nhân và sửa cạnh tranh PATCH/FK. Xem [cơ chế và giới hạn](tai-lieu/02-kien-truc/favorites-reviews.md) và [bàn giao](tai-lieu/00-bat-dau/handoff-phase3-4.md). Có source không đồng nghĩa đã merge: kết quả tích hợp phải đối chiếu PR/CI của đúng SHA đang dùng.
 
 - `frontend`: Tauri 2 + WebView2 trên Windows; React + TypeScript + Vite dùng chung UI theo feature. Bản release mở cửa sổ riêng, không cần Chrome/Vite.
 - `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.

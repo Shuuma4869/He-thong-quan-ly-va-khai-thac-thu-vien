@@ -13,6 +13,7 @@ import { CatalogPage } from '../../features/catalog/CatalogPage';
 import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
 import { StaffCatalogPage } from '../../features/catalog/StaffCatalogPage';
+import { MyLibraryPage } from '../../features/my-library/MyLibraryPage';
 
 export function AppRouter() {
   return (
@@ -21,6 +22,7 @@ export function AppRouter() {
         <Route index element={<ReaderHomePage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="ho-so" element={<ProfilePage />} />
+          <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
           <Route path="sach" element={<CatalogPage />} />
           <Route path="sach/:bookId" element={<BookDetailPage />} />
           <Route path="tac-gia/:authorId" element={<AuthorDetailPage />} />

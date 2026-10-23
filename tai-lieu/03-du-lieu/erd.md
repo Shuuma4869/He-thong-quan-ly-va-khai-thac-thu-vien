@@ -41,7 +41,7 @@ erDiagram
   EDITIONS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_edition
 ```
 
-Backend My Library (chưa UI):
+My Library: Core API và UI Phase 3:
 
 ```mermaid
 erDiagram

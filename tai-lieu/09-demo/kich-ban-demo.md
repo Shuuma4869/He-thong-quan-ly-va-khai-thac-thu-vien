@@ -20,7 +20,7 @@ Catalog đã có API và UI Phase 2. Chuẩn bị dữ liệu minh họa có ngu
 | 4:00–5:30 | Tra ISBN và lưu history, reload, lọc/mở lại | Insight PostgreSQL; nguồn unavailable hiển thị đúng |
 | 5:30–6:10 | User khác không đọc/xóa; chủ xóa history | 404 và persistence thật |
 | 6:10–6:50 | Test/CI đúng SHA, phân biệt unit/integration/E2E | Không lấy screenshot thay kết quả test |
-| 6:50–7:20 | Phân công, giới hạn, roadmap | Không giới thiệu UI Phase 3 chưa có |
+| 6:50–7:20 | Phân công, giới hạn, roadmap | Phân biệt implementation, bằng chứng SHA và các nghiệp vụ chưa có |
 
 Đây là phân bổ thời gian dự kiến, chưa phải video đã quay hoặc đo thời lượng. Chỉ quay sau khi gate kỹ thuật đạt; không có link video cho đến khi xuất bản thật.
 

@@ -92,6 +92,25 @@ W4 mapping US-09/10/11/12. Pending tránh mutation kép; 409 yêu cầu tải l�
 
 W5 mapping US-13; MetadataHistory dùng React-Bootstrap Form/Button/Alert/Spinner với CSS scoped, không Bootstrap Reboot toàn cục. Thay tài khoản remount theo userId; query key có owner; backend luôn xác thực lại. Mở lại trả nguồn hiện tại, không snapshot. Mobile các control wrap một cột. Error không để kết quả cũ trông như kết quả vừa lưu.
 
+## W6 — Review và Thư viện của tôi
+
+```text
+Book Detail
+  Tiêu đề / mô tả / [Lưu yêu thích hoặc Bỏ yêu thích]
+  Các ấn bản
+  Đánh giá của bạn đọc: trung bình / tổng số
+  Đánh giá của tôi: [Nội dung............]
+                   (1) (2) (3) (4) (5) [Lưu]
+  hoặc [Sửa] [Xóa] → xác nhận / giữ lại
+  Danh sách review (plain text) → phân trang
+
+Thư viện của tôi
+  Sách yêu thích: liên kết sách + [Bỏ yêu thích] → phân trang
+  Đánh giá đã viết: nội dung / điểm / liên kết sách → phân trang
+```
+
+W6 mapping US-14/15/16. Hai danh sách cá nhân dùng pagination độc lập; không có tab Loan/Hold giả. Mobile control wrap, card không có chiều rộng cố định. Rating dùng radio native hỗ trợ phím mũi tên; xác nhận hủy xóa trả focus về nút xóa. Loading/error không thay bằng danh sách rỗng. Ảnh/test W1–W5 dưới đây là bằng chứng các SHA cũ, không phải nghiệm thu W6.
+
 ## Kiểm tính thuận tiện
 
 Đã kiểm tự động trên Chromium/Linux với API/PostgreSQL thật ở head `0075377`, CI run 39871120289; không phải nghiên cứu với người dùng đại diện. Ảnh [1440/390 px](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) đã đối chiếu W5: đúng thứ tự form → kết quả → history → phân trang, không tràn ngang; Tab từ ISBN rỗng bỏ qua submit disabled và tới bộ lọc, focus nhìn thấy. Profile, Member, Author và Staff Copy trong artifact cũng được đối chiếu W2–W4. W1 được kiểm luồng bằng E2E, chưa chụp/đối chiếu trực quan riêng trong bộ ảnh này.

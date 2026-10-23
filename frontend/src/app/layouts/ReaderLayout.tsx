@@ -17,6 +17,7 @@ export function ReaderLayout() {
             <Link className="nav-link" to="/sach">Danh mục sách</Link>
             {auth.user ? <><span className="break-all">{auth.user.fullName} · {auth.user.memberCode}</span>
               <Link className="nav-link" to="/ho-so">Hồ sơ của tôi</Link>
+              <Link className="nav-link" to="/thu-vien-cua-toi">Thư viện của tôi</Link>
               {auth.user.roles.some(role => role === 'LIBRARIAN' || role === 'ADMIN')
                 && <Link className="nav-link" to="/nhan-vien/thanh-vien">Thành viên</Link>}
               <button className="button-secondary" type="button" onClick={() => void signOut()}>Đăng xuất</button></>

@@ -1,6 +1,6 @@
 # Use case và phạm vi hiện thực
 
-UC-01–13 khớp số của [User Stories](user-stories.md); actor, mục tiêu, AC và API nằm tại story tương ứng. Nét liền là chức năng có implementation, không mặc nhiên là đã nghiệm thu; nét đứt là roadmap.
+UC-01–16 khớp số của [User Stories](user-stories.md); actor, mục tiêu, AC và API nằm tại story tương ứng. Nét liền là chức năng có implementation, không mặc nhiên là đã nghiệm thu; nét đứt là roadmap.
 
 ```mermaid
 flowchart LR
@@ -18,11 +18,13 @@ flowchart LR
   S --> U12((UC-12 Duyệt ảnh))
   S --> U13((UC-13 Lịch sử ISBN của mình))
   U13 --> U11
-  R -.-> P3((My Library UI - Phase 3))
+  R --> U14((UC-14 Sách yêu thích))
+  R --> U15((UC-15 Đánh giá của tôi))
+  R --> U16((UC-16 Chấm điểm sách))
   S -.-> P4((Mượn trả / hold - Phase 4))
 ```
 
-Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay authorization. UC-13 lấy owner từ Core principal, kể cả ADMIN không được đọc/xóa history của tài khoản khác. Không có use case công khai tự nâng role. Profile chỉ đọc; mượn/trả và hold chưa phải chức năng chạy được. Backend Favorites/Reviews/Rating hiện có nhưng UI Phase 3 còn thiếu.
+Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay authorization. UC-13 lấy owner từ Core principal, kể cả ADMIN không được đọc/xóa history của tài khoản khác. Không có use case công khai tự nâng role. Profile chỉ đọc; mượn/trả và hold chưa phải chức năng chạy được. Favorites/Reviews/Rating và My Library đã có implementation UI; nghiệm thu cần kết quả test đúng SHA.
 
 | UC | Tiền điều kiện | Luồng chính | Luồng thay thế / hậu điều kiện |
 |---|---|---|---|
@@ -33,3 +35,5 @@ Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay 
 | 09–10 | Staff ACTIVE | Validate → transaction Core → đọc lại | 404/409/422, rollback; Copy version bắt buộc |
 | 11–12 | Staff; nguồn ảnh đủ căn cứ | Tra candidate → đối chiếu → duyệt thủ công | Timeout/unavailable/license thiếu không tự lưu ảnh hay sửa metadata |
 | 13 | Staff ACTIVE, Insight DB sẵn sàng | ISBN → provider → lưu trace → list/replay/delete | 400/401/403/404/429/503; write lỗi không báo thành công; replay không ghi Core |
+| 14 | Thành viên ACTIVE | Lưu/bỏ lưu → reload → danh sách cá nhân | 401/403/404/409; principal từ server, không nhận userId |
+| 15–16 | Thành viên ACTIVE; owner khi sửa/xóa | Nội dung và điểm → transaction → list/summary | 403 cross-owner; 409 duplicate; 422 invalid/null; PATCH độc lập field; xóa cuối trả average null/count 0 |
