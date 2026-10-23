@@ -116,7 +116,7 @@ it('chỉ sửa review của mình, PATCH chỉ gửi trường đổi và xóa 
   expect(writes('DELETE')).toHaveLength(1);
 });
 
-it.each([409, 422, 500])('review lỗi %s giữ nội dung, không báo thành công và không tự gửi lại', async status => {
+it.each([403, 404, 409, 422, 500])('review lỗi %s giữ nội dung, không báo thành công và không tự gửi lại', async status => {
   fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(init.method === 'POST' && url.endsWith('/reviews')
     ? Response.json({ detail: 'internal trace' }, { status }) : result(url, init)));
   app(); fireEvent.change(await screen.findByLabelText('Nội dung đánh giá'), { target: { value: 'Giữ nội dung này' } });
@@ -158,6 +158,8 @@ it('logout rồi đổi tài khoản không hiện favorite/review hay response 
   saved = true; app('/thu-vien-cua-toi');
   await screen.findByRole('link', { name: book.title }); await waitFor(() => expect(late).toBeDefined());
   fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+  await screen.findByRole('heading', { name: /Mỗi cuốn sách mở ra một góc nhìn/ });
+  fireEvent.click(screen.getAllByRole('link', { name: 'Đăng nhập' })[0]);
   await screen.findByLabelText('Email hoặc mã thành viên');
   fireEvent.change(screen.getByLabelText('Email hoặc mã thành viên'), { target: { value: 'other@example.test' } });
   fireEvent.change(screen.getByLabelText('Mật khẩu', { exact: true }), { target: { value: 'Password-test-123' } });

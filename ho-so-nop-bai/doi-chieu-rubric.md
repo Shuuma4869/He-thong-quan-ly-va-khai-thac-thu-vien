@@ -44,7 +44,9 @@
 - [x] Đối chiếu EXE history 1440/390 và keyboard; W1 đã kiểm trực quan web local. Không tuyên bố nghiên cứu usability với người tham gia đã hoàn thành.
 - [x] LICENSE trung lập, phân biệt quyền mã nguồn/asset/dependency; chưa cấp OSS license.
 - [x] Docker local và EXE không còn chặn; kiểm thử không thay dữ liệu development thật.
-- [x] PR #12 tách khỏi main để review. Chỉ chuyển ready khi CI đủ năm job đạt trên head cuối; không tự merge. Kết quả SHA bàn giao cuối cập nhật trong PR, không suy từ snapshot này.
+- [x] PR #12 đã được review và merge theo phê duyệt ngày 24/10/2026 tại b9cf5f3; CI main 39985051027 đạt đủ năm job. Các dòng ee929cd ở trên là snapshot kỹ thuật cũ; không gán kết quả EXE đó cho commit bàn giao mới.
+
+Phase 3 bổ sung US-14/15/16, W6 và minh chứng EXE riêng tại [nguồn ảnh](minh-chung-giao-dien/README.md). Gate tích hợp của Phase 3 phải đối chiếu PR #13/CI đúng head, không tự đóng Academic Final Gate.
 
 ## Academic Final Gate
 
