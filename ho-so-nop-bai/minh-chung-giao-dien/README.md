@@ -13,6 +13,8 @@ CI tại `56049b9` chưa đạt toàn bộ ở thời điểm ghi bằng chứng
 
 ## Phân biệt các mốc kiểm chứng
 
+Kiểm lại ngày 24/10/2026 trên checkout `66ab31e807a96557867be51b4801be23b3e66109`: `scripts/test-phase1-e2e.ps1 -Desktop` đạt 9/9 bài trong 37,2 giây, `DESKTOP_E2E_PASS`; process 23540, window handle 1902322. Backend và bộ test chạy từ checkout này; EXE dùng lại binary build tại `56049b9` với SHA256 nêu trên vì phần production không đổi, chỉ sửa test và tài liệu. Đây không phải lượt build binary mới; ảnh vẫn giữ nhãn `56049b9`.
+
 | Mốc | Bằng chứng | Phạm vi kết luận |
 |---|---|---|
 | `ee929cd` | [CI 39907400703](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/39907400703) đạt 5/5; EXE local 8/8 (24.6s) | Mốc nghiệm thu có ảnh EXE bên dưới, không phải kết quả tự áp dụng cho mọi commit sau |
