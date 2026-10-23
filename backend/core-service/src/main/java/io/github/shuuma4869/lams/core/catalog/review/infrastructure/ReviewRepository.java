@@ -61,10 +61,26 @@ public class ReviewRepository {
         return new ReviewPage(items, total);
     }
 
-    public int update(UUID bookId, UUID reviewId, UUID ownerId, String body, int rating) {
-        return jdbc.update("UPDATE reviews SET body=?,rating=?,updated_at=now() "
+    public int update(UUID bookId, UUID reviewId, UUID ownerId, String body, Integer rating) {
+        // Field bị bỏ qua phải lấy giá trị tại lúc UPDATE, không lấy snapshot từ SELECT trước đó.
+        return jdbc.update("UPDATE reviews SET body=COALESCE(?,body),rating=COALESCE(?,rating),updated_at=clock_timestamp() "
                         + "WHERE book_id=? AND id=? AND user_id=?",
                 body, rating, bookId, reviewId, ownerId);
+    }
+
+    public ReviewPage listMine(UUID owner, UUID book, int page, int size) {
+        String condition = "user_id=?" + (book == null ? "" : " AND book_id=?");
+        var parameters = new java.util.ArrayList<Object>();
+        parameters.add(owner);
+        if (book != null) parameters.add(book);
+        long total = jdbc.queryForObject("SELECT count(*) FROM reviews WHERE " + condition, Long.class, parameters.toArray());
+        parameters.add(size); parameters.add((long) page * size);
+        var items = jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at FROM reviews WHERE "
+                        + condition + " ORDER BY created_at DESC,id ASC LIMIT ? OFFSET ?",
+                (rs, row) -> map(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class),
+                        rs.getObject("book_id", UUID.class), rs.getString("body"), rs.getInt("rating"),
+                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at")), parameters.toArray());
+        return new ReviewPage(items, total);
     }
 
     public int delete(UUID bookId, UUID reviewId, UUID ownerId) {

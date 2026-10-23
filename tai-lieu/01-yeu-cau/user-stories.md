@@ -1,6 +1,6 @@
 # User Stories và truy vết phạm vi học phần
 
-Nhóm hai thành viên; 13 stories không bao gồm UI Phase 3 chưa triển khai. API ở bảng tính từ `/api/v1`; tên test chỉ là vị trí kiểm chứng, không tự đồng nghĩa PASS. Evidence của release phải gắn SHA và CI; E2E cần kết quả riêng. Priority P1 trừ US-08/11/12 là P2.
+Nhóm hai thành viên; 16 stories bao gồm UI Phase 3; tình trạng kiểm thử/tích hợp phải đối chiếu từng SHA. API ở bảng tính từ `/api/v1`; tên test chỉ là vị trí kiểm chứng, không tự đồng nghĩa PASS. Evidence của release phải gắn SHA và CI; E2E cần kết quả riêng. Priority P1 trừ US-08/11/12 là P2.
 
 ## Stories và acceptance criteria
 
@@ -154,6 +154,31 @@ Requirement FR-xx và Use Case UC-xx có cùng số với US-xx trong phạm vi 
 | US-12 → FR-12 → UC-12 | [Class/flow](../02-kien-truc/lop-va-thuat-toan.md), [wireframe](../06-giao-dien/wireframes.md) | /catalog-media/{kind}/{id}; MediaEditor; CatalogMedia; catalog_media_references | [Unit theo AC](../07-kiem-thu/story-test-matrix.md); frontend theo story | MediaInspectorTest; MediaIntegrationTest; CatalogMedia; OpenAPI validator | E2E web/desktop trên SHA bàn giao; chưa chốt toàn bộ |
 | US-13 → FR-13 → UC-13 | [Class/flow](../02-kien-truc/lop-va-thuat-toan.md), [wireframe](../06-giao-dien/wireframes.md) | /metadata/history; /{id}; /{id}/replay; MetadataHistory; Insight.metadata_lookups | history.spec; MetadataHistory.test | history.spec; history.integration; MetadataHistory.test; E2E Phase 2.5; OpenAPI validator | E2E web/desktop trên SHA bàn giao; chưa chốt toàn bộ |
 
-## Roadmap không tính là end-to-end hoàn thành
+## Phase 3 — Favorites, Reviews và Rating
 
-US-14 Favorites, US-15 Reviews và US-16 Rating: backend trong PR #11, V14/V15; UI chưa triển khai. Review concurrent PATCH còn cần kiểm chuyên sâu. Circulation/Hold/Inventory session/advanced search không nằm trong phạm vi hoàn thành hiện tại.
+### US-14 / FR-14 / UC-14
+
+Là thành viên, tôi muốn lưu sách yêu thích và xem lại trong Thư viện của tôi.
+
+- AC-14-01: lưu/bỏ lưu qua Core, giữ sau reload, chỉ dữ liệu principal; empty/error/pagination và đổi tài khoản không hiện cache cũ.
+- API: `/me/favorites`, `/me/favorites/{bookId}`. UI: FavoriteButton, MyLibraryPage. Dữ liệu: V14 favorites.
+- Test: FavoriteIntegrationTest, LibraryFlow, library-api, E2E Phase 3. Trạng thái: IMPLEMENTED; TESTED/INTEGRATED đối chiếu đúng PR/SHA.
+
+### US-15 / FR-15 / UC-15
+
+Là thành viên, tôi muốn viết, sửa hoặc xóa đánh giá của mình tại chi tiết sách.
+
+- AC-15-01: một review/user/book; body 1–5000 ký tự; owner-only; null tường minh bị từ chối; PATCH khác field không làm mất cập nhật; xóa cần xác nhận; lỗi giữ input, không báo thành công giả.
+- API: `/books/{bookId}/reviews`, `/{reviewId}` và `/me/reviews`. UI: ReviewSection/MyLibraryPage. Dữ liệu: V15 reviews.
+- Test: ReviewIntegrationTest, ReviewConcurrencyTest, LibraryFlow, library-api, E2E Phase 3. Trạng thái: IMPLEMENTED; TESTED/INTEGRATED đối chiếu đúng PR/SHA.
+- Giới hạn: không moderation; cùng field theo lần ghi database sau thắng, chưa có optimistic version.
+
+### US-16 / FR-16 / UC-16
+
+Là thành viên, tôi muốn cho điểm 1–5 và xem điểm trung bình của sách.
+
+- AC-16-01: rating gắn review, radio thao tác bằng bàn phím; AVG/COUNT từ database; HALF_UP hai chữ số, rỗng null/0; summary tải lại sau create/update/delete.
+- API: review mutation và `/books/{bookId}/reviews/summary`. UI: RatingInput/ReviewSection. Không có bảng rating riêng.
+- Test: ReviewIntegrationTest, LibraryFlow, library-api, E2E Phase 3. Trạng thái: IMPLEMENTED; TESTED/INTEGRATED đối chiếu đúng PR/SHA.
+
+Thiết kế chung: [Favorites/Reviews](../02-kien-truc/favorites-reviews.md), [W6](../06-giao-dien/wireframes.md), [ma trận test](../07-kiem-thu/story-test-matrix.md). Circulation/Hold/Inventory session/advanced search vẫn là roadmap, không thuộc đầu ra Phase 3.

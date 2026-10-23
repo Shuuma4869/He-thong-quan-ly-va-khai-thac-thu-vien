@@ -30,7 +30,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -54,6 +53,7 @@ class ReviewIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired org.springframework.security.oauth2.jwt.JwtEncoder encoder;
 
     @BeforeEach
     void clearReviews() {
@@ -83,6 +83,24 @@ class ReviewIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].reviewId").value(reviewId.toString()))
                 .andExpect(jsonPath("$.items[0].mine").value(true));
+    }
+
+    @Test
+    void ratingDoesNotSilentlyCoerceFractionOrStringIntoAnInteger() throws Exception {
+        UUID owner = user("READER"), book = book("Strict rating");
+        var token = token(owner, "READER");
+        for (String invalid : List.of("1.9", "\"5\"", "true", "{}", "[]")) {
+            mvc.perform(post("/api/v1/books/{bookId}/reviews", book).with(token)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"Review\",\"rating\":" + invalid + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+        UUID id = createAndReadId(token, book, "Original", 3);
+        for (String invalid : List.of("4.9", "\"1\"", "false", "{}", "[]")) {
+            mvc.perform(patch("/api/v1/books/{bookId}/reviews/{id}", book, id).with(token)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"rating\":" + invalid + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(jdbc.queryForObject("SELECT rating FROM reviews WHERE id=?", Integer.class, id)).isEqualTo(3);
     }
 
     @Test
@@ -226,6 +244,19 @@ class ReviewIntegrationTest {
                 .content(json.writeValueAsString(java.util.Map.of("body", body, "rating", rating))));
     }
 
+    @Test
+    void explicitNullIsNotAnOmittedPatchField() throws Exception {
+        UUID owner = user("READER"), book = book("Patch null");
+        var token = token(owner, "READER");
+        UUID id = createAndReadId(token, book, "Giữ nguyên", 3);
+        for (String payload : List.of("{\"body\":null,\"rating\":5}", "{\"body\":\"Mới\",\"rating\":null}",
+                "{}", "{\"body\":\" \"}", "{\"rating\":0}", "{\"rating\":6}")) {
+            mvc.perform(patch("/api/v1/books/{bookId}/reviews/{id}", book, id).with(token)
+                    .contentType(MediaType.APPLICATION_JSON).content(payload)).andExpect(status().isUnprocessableEntity());
+        }
+        assertThat(jdbc.queryForObject("SELECT rating FROM reviews WHERE id=?", Integer.class, id)).isEqualTo(3);
+    }
+
     private int createStatus(RequestPostProcessor token, UUID book, String body, CountDownLatch start) {
         try {
             start.await();
@@ -233,6 +264,62 @@ class ReviewIntegrationTest {
         } catch (Exception error) {
             throw new IllegalStateException(error);
         }
+    }
+
+    @Test
+    void allPhase3RoutesRejectLockedRevokedAndExpiredSessions() throws Exception {
+        UUID owner = user("READER"), book = book("Current permission");
+        UUID review = createAndReadId(token(owner, "READER"), book, "Protected", 3);
+        String reviews = "/api/v1/books/" + book + "/reviews";
+        String favorite = "/api/v1/me/favorites/" + book;
+        var requests = List.of(get(reviews), get(reviews + "/summary"),
+                get("/api/v1/me/reviews"), get(favorite),
+                post(reviews).contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"New\",\"rating\":4}"),
+                patch(reviews + "/" + review).contentType(MediaType.APPLICATION_JSON).content("{\"rating\":5}"),
+                delete(reviews + "/" + review), get("/api/v1/me/favorites"),
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(favorite), delete(favorite));
+        jdbc.update("UPDATE users SET status='LOCKED' WHERE id=?", owner);
+        for (var request : requests) mvc.perform(request.with(token(owner, "READER"))).andExpect(status().isForbidden());
+        jdbc.update("UPDATE users SET status='ACTIVE' WHERE id=?", owner);
+        jdbc.update("DELETE FROM user_roles WHERE user_id=?", owner);
+        for (var request : requests) mvc.perform(request.with(token(owner, "READER"))).andExpect(status().isForbidden());
+        jdbc.update("INSERT INTO user_roles(user_id,role_code) VALUES (?,'READER')", owner);
+        var claims = org.springframework.security.oauth2.jwt.JwtClaimsSet.builder().issuer("lams-core")
+                .subject(owner.toString()).issuedAt(Instant.now().minusSeconds(600)).expiresAt(Instant.now().minusSeconds(300))
+                .claim("roles", List.of("READER")).build();
+        String expired = encoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                org.springframework.security.oauth2.jwt.JwsHeader.with(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        for (String path : List.of(reviews, reviews + "/summary", "/api/v1/me/favorites", favorite, "/api/v1/me/reviews")) {
+            for (String invalid : List.of("not-a-jwt", expired)) {
+                mvc.perform(get(path).header("Authorization", "Bearer " + invalid)).andExpect(status().isUnauthorized());
+            }
+        }
+        assertThat(jdbc.queryForObject("SELECT rating FROM reviews WHERE id=?", Integer.class, review)).isEqualTo(3);
+    }
+
+    @Test
+    void myLibraryQueriesUsePrincipalAndStablePages() throws Exception {
+        UUID owner = user("READER"), other = user("ADMIN"), book = book("My Library"), second = book("Second");
+        var token = token(owner, "READER");
+        UUID first = createAndReadId(token, book, "Của tôi", 1);
+        createAndReadId(token, second, "Khác", 5);
+        createAndReadId(token(other, "ADMIN"), book, "Không của tôi", 4);
+        mvc.perform(get("/api/v1/me/reviews").with(token).param("bookId", book.toString()).param("userId", other.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].reviewId").value(first.toString()))
+                .andExpect(jsonPath("$.items[0].mine").value(true)).andExpect(jsonPath("$.items[0].userId").doesNotExist());
+        mvc.perform(get("/api/v1/me/reviews").with(token).param("size", "1").param("page", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.page.totalElements").value(2));
+        mvc.perform(get("/api/v1/me/reviews").with(token).param("bookId", "bad")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/me/reviews").with(token).param("size", "0")).andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/api/v1/me/reviews")).andExpect(status().isUnauthorized());
+        String favorite = "/api/v1/me/favorites/" + book;
+        mvc.perform(get(favorite).with(token)).andExpect(status().isOk()).andExpect(jsonPath("$.saved").value(false));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(favorite).with(token)).andExpect(status().isCreated());
+        mvc.perform(get(favorite).with(token)).andExpect(status().isOk()).andExpect(jsonPath("$.saved").value(true));
+        mvc.perform(get(favorite).with(token(other, "ADMIN"))).andExpect(status().isOk()).andExpect(jsonPath("$.saved").value(false));
+        mvc.perform(get("/api/v1/me/favorites/" + UUID.randomUUID()).with(token)).andExpect(status().isNotFound());
     }
 
     private UUID createAndReadId(RequestPostProcessor token, UUID book, String body, int rating) throws Exception {

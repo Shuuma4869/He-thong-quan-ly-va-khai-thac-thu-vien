@@ -16,6 +16,8 @@ function app(path='/sach') { return render(<AppProviders><MemoryRouter initialEn
 function response(url:string) {
   const path=new URL(url).pathname;
   if (path.endsWith('/auth/refresh')) return {...session,user:{...user,roles:[role]}};
+  if (path.endsWith(`/me/favorites/${id}`)) return {bookId:id,saved:false};
+  if (path.endsWith('/reviews/summary')) return {bookId:id,average:null,count:0};
   if (path.endsWith('/editions')) return page([edition,{...edition,id:authorId,isbn13:null,publicationYear:2024}]);
   if (path.endsWith(`/books/${id}`)) return book;
   if (path.endsWith(`/authors/${authorId}`)) return book.authors[0];
@@ -53,6 +55,7 @@ it('loading, lỗi và retry được phân biệt với empty', async () => {
   let finish!:(response:Response)=>void;
   fetchMock.mockImplementation((url:string) => url.includes('/books?')?new Promise(resolve => {finish=resolve;}):Promise.resolve(Response.json(response(url))));
   app(); expect(await screen.findByText('Đang tải sách…')).toBeInTheDocument();
+  await waitFor(() => expect(finish).toBeDefined());
   await act(async () => finish(Response.json({detail:'internal trace'},{status:500})));
   expect(await screen.findByRole('alert')).not.toHaveTextContent('internal trace');
   fetchMock.mockResolvedValue(Response.json(page([])));

@@ -5,6 +5,8 @@ import { useAuth } from '../auth/auth-context';
 import { getBook, getEditions } from './catalog-api';
 import { CatalogError, Pagination } from './CatalogStates';
 import { CatalogMedia } from './CatalogMedia';
+import { FavoriteButton } from '../favorites/FavoriteButton';
+import { ReviewSection } from '../reviews/ReviewSection';
 
 export function BookDetailPage() {
   const { bookId = '' } = useParams();
@@ -20,6 +22,7 @@ function BookDetail({ id }: { id: string }) {
       <p className="my-3">{book.data.authors.map((author,i) => <span key={author.id}>{i > 0 && ' · '}<Link className="text-link" to={`/tac-gia/${author.id}`}>{author.name}</Link></span>)}</p>
       <p className="text-muted">{book.data.categories.map(category => category.name).join(' · ') || 'Chưa phân loại'}</p>
       <p className="my-5 whitespace-pre-wrap">{book.data.description || 'Chưa có mô tả tác phẩm.'}</p>
+      <FavoriteButton bookId={id}/>
       <h2 className="section-title mt-8">Các ấn bản</h2>
       <p className="text-sm text-muted my-3">Mỗi ấn bản có ISBN và thông tin xuất bản riêng. Bản sách vật lý được quản lý riêng; trang này chưa cung cấp thông tin mượn hoặc số bản sẵn có.</p>
       {editions.isPending ? <p role="status">Đang tải ấn bản…</p> : editions.isError ? <CatalogError error={editions.error} retry={() => void editions.refetch()} /> : <>
@@ -31,6 +34,7 @@ function BookDetail({ id }: { id: string }) {
             <dt>Năm xuất bản</dt><dd>{edition.publicationYear ?? 'Chưa có thông tin'}</dd><dt>Ngôn ngữ</dt><dd>{edition.language ?? 'Chưa có thông tin'}</dd></dl>
         </article>)}</div><Pagination page={editions.data.page} onChange={setPage} />
       </>}
+      <ReviewSection bookId={id}/>
     </>}
   </section>;
 }

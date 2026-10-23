@@ -20,7 +20,7 @@ Catalog đã có API và UI Phase 2. Chuẩn bị dữ liệu minh họa có ngu
 | 4:00–5:30 | Tra ISBN và lưu history, reload, lọc/mở lại | Insight PostgreSQL; nguồn unavailable hiển thị đúng |
 | 5:30–6:10 | User khác không đọc/xóa; chủ xóa history | 404 và persistence thật |
 | 6:10–6:50 | Test/CI đúng SHA, phân biệt unit/integration/E2E | Không lấy screenshot thay kết quả test |
-| 6:50–7:20 | Phân công, giới hạn, roadmap | Không giới thiệu UI Phase 3 chưa có |
+| 6:50–7:20 | Phân công, giới hạn, roadmap | Phân biệt implementation, bằng chứng SHA và các nghiệp vụ chưa có |
 
 Đây là phân bổ thời gian dự kiến, chưa phải video đã quay hoặc đo thời lượng. Chỉ quay sau khi gate kỹ thuật đạt; không có link video cho đến khi xuất bản thật.
 
@@ -36,3 +36,9 @@ Tài liệu này mô tả câu chuyện mục tiêu, **không khẳng định fe
 6. Audit cho thấy actor, policy version, request/correlation ID và event liên quan.
 
 Demo chỉ được dùng khi từng bước có test và dữ liệu chuẩn bị minh bạch. Không seed dữ liệu để giả vờ workflow đã hoàn thành.
+
+## Phần bổ sung Phase 3
+
+Sau Catalog, dùng một Book fixture và hai tài khoản được tạo cho demo: Reader lưu yêu thích → viết review điểm 1 → reload → sửa điểm 5 → mở Thư viện của tôi. Đăng xuất và đăng nhập tài khoản khác: danh sách cá nhân rỗng, review công khai vẫn đọc được nhưng không có nút sửa/xóa của tác giả. Trở lại tài khoản đầu, xác nhận xóa review và bỏ yêu thích; summary về null/0. Chỉ trình diễn trên bản đã đạt E2E web/desktop tương ứng; không dùng database đang chứa dữ liệu thật cho bước tạo/xóa fixture.
+
+Hành trình này được tự động hóa trong bài E2E “Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ liệu thật”. Không ghép thời lượng của đoạn bổ sung vào video bảy phút cũ rồi tuyên bố đã quay; cần biên tập và đo lại thời gian thực tế.

@@ -1,6 +1,19 @@
-# Minh chứng giao diện history ISBN
+# Minh chứng giao diện
+
+## Phase 3 — EXE tại 56049b9
+
+Ngày 24/10/2026, build local từ `56049b93f1735b9e7a95a55ac9a2489f00c405b7`, chạy `scripts/test-phase1-e2e.ps1 -Desktop`: 9/9 bài đạt trong 27,4 giây. Core và Insight chạy từ cùng checkout với PostgreSQL test riêng; process EXE 20740, window handle 526592, kết nối WebView2 qua CDP test và xác minh Tauri bridge. Không dùng response mock.
+
+- SHA256 `lams-desktop.exe`: `8305D770E66A93216578E8BB915A028E968DCEB73877206BDCA15F3D7461A6CB`.
+- SHA256 `LAMS_0.1.0_x64-setup.exe`: `C537EB550E8D504B73BDACB55900F2F98BA43BC434076E79ECE66B8FE4511114`.
+- Ảnh nội dung WebView2 [1440 px](phase3-desktop-56049b9-1440.png) và [390 px](phase3-desktop-56049b9-390.png), chụp sau sửa điểm 1→5. Đã đối chiếu bố cục W6, text/nút không tràn ngang. Không phải ảnh toàn màn hình Windows hoặc bằng chứng đã chạy trình cài/gỡ.
+- Hành trình Phase 3: save favorite/reload, tạo và sửa review bằng bàn phím, My Library/reload, đổi tài khoản, chặn cross-owner bằng API, xóa review và favorite. Các bài còn lại kiểm Auth/Member/Catalog/Inventory/history.
+
+CI tại `56049b9` chưa đạt toàn bộ ở thời điểm ghi bằng chứng: component test đổi tài khoản còn race điều hướng và đang được sửa. EXE PASS không thay CI. Khi bàn giao commit sau, xem kết quả chính xác trong [PR #13](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/13); không đổi nhãn các ảnh này thành ảnh SHA mới. Chưa nghiệm thu máy Windows thứ hai, cài/gỡ installer hoặc HTTPS pilot.
 
 ## Phân biệt các mốc kiểm chứng
+
+Kiểm lại ngày 24/10/2026 trên checkout `66ab31e807a96557867be51b4801be23b3e66109`: `scripts/test-phase1-e2e.ps1 -Desktop` đạt 9/9 bài trong 37,2 giây, `DESKTOP_E2E_PASS`; process 23540, window handle 1902322. Backend và bộ test chạy từ checkout này; EXE dùng lại binary build tại `56049b9` với SHA256 nêu trên vì phần production không đổi, chỉ sửa test và tài liệu. Đây không phải lượt build binary mới; ảnh vẫn giữ nhãn `56049b9`.
 
 | Mốc | Bằng chứng | Phạm vi kết luận |
 |---|---|---|

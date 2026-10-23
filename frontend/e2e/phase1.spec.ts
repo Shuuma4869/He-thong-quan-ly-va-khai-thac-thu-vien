@@ -208,6 +208,70 @@ async function loginCatalog(page: Page, role: string) {
   await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
 }
 
+test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ liệu thật', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Review ${suffix}`, authorIds: [], categoryIds: [] });
+  await loginCatalog(page, 'READER');
+  await navigate(page, `/sach/${book.id}`);
+  await page.getByRole('button', { name: 'Lưu yêu thích', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Bỏ yêu thích' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('Nội dung đánh giá').fill('Nội dung review đầu tiên');
+  await page.getByRole('radio', { name: '1 sao', exact: true }).check();
+  await page.getByRole('button', { name: 'Lưu đánh giá', exact: true }).click();
+  await expect(page.getByLabel('Điểm trung bình')).toHaveText('1.00/5 · 1 đánh giá');
+  await page.reload();
+  await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bỏ yêu thích' })).toBeVisible();
+  await page.getByRole('button', { name: 'Sửa đánh giá của tôi' }).click();
+  await page.getByRole('radio', { name: '1 sao', exact: true }).focus();
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', { name: '5 sao' })).toBeChecked();
+  const patch = page.waitForRequest(req => req.method() === 'PATCH' && req.url().includes('/reviews/'));
+  await page.getByRole('button', { name: 'Lưu đánh giá', exact: true }).click();
+  expect((await patch).postDataJSON()).toEqual({ rating: 5 });
+  await expect(page.getByLabel('Điểm trung bình')).toHaveText('5.00/5 · 1 đánh giá');
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/reviews-${viewport.width}.png`, fullPage: true });
+  }
+  await navigate(page, '/thu-vien-cua-toi');
+  await expect(page.getByRole('link', { name: book.title, exact: true })).toBeVisible();
+  await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
+  await page.reload(); await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/thu-vien-cua-toi');
+  await expect(page.getByText('Chưa có sách yêu thích ở trang này.')).toBeVisible();
+  await expect(page.getByText('Bạn chưa có đánh giá ở trang này.')).toBeVisible();
+  await navigate(page, `/sach/${book.id}`);
+  await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Nội dung đánh giá')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sửa đánh giá của tôi' })).toHaveCount(0);
+  const publicReviews = await request.get(`${core}/books/${book.id}/reviews`, { headers });
+  const entry = (await publicReviews.json()).items[0];
+  expect(entry.mine).toBe(false); expect(entry).not.toHaveProperty('userId');
+  expect((await request.patch(`${core}/books/${book.id}/reviews/${entry.reviewId}`, { headers, data: { rating: 1 } })).status()).toBe(403);
+  expect((await request.delete(`${core}/books/${book.id}/reviews/${entry.reviewId}`, { headers })).status()).toBe(403);
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
+  await loginCatalog(page, 'READER');
+  await navigate(page, `/sach/${book.id}`);
+  await page.getByRole('button', { name: 'Xóa đánh giá của tôi' }).click();
+  await page.getByRole('button', { name: 'Giữ đánh giá', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Xóa đánh giá của tôi' })).toBeFocused();
+  await page.getByRole('button', { name: 'Xóa đánh giá của tôi' }).click();
+  await page.getByRole('button', { name: 'Xác nhận xóa đánh giá', exact: true }).click();
+  await expect(page.getByLabel('Điểm trung bình')).toHaveText('Chưa có điểm đánh giá.');
+  await page.getByRole('button', { name: 'Bỏ yêu thích' }).click();
+  await navigate(page, '/thu-vien-cua-toi');
+  await expect(page.getByText('Chưa có sách yêu thích ở trang này.')).toBeVisible();
+  await expect(page.getByText('Bạn chưa có đánh giá ở trang này.')).toBeVisible();
+});
+
 test('Phase 2 Reader: lọc server, nhiều ấn bản, Author, reload và chặn ghi', async ({ page, request }) => {
   const headers=await staffApi(request);
   const author=await createCatalog(request,headers,'/authors',{name:`Author ${suffix}`});

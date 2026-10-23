@@ -86,7 +86,7 @@ Quyết định phạm vi thay cho tên file/schema dự kiến: Book Detail ch�
 
 Tuan triển khai history ISBN trong Nest/Prisma/PostgreSQL Insight, UI React-Bootstrap, contract/test và hồ sơ. Không chuyển Auth/Catalog/Favorites/Reviews sang Nest, không đổi task của Toan. Đầu ra gồm migration mới, các API owner-only, UI lưu/lọc/replay/xóa, kiểm PostgreSQL/E2E, 13 stories/AC, UML/wireframe và matrix Q1–Q10. Trạng thái nghiệm thu lấy từ [rubric/gate](../../ho-so-nop-bai/doi-chieu-rubric.md), không suy DONE từ việc có đủ file.
 
-PR #11 đã đưa backend Phase 3 vào main; điều này không có nghĩa UI hoặc review concurrency đã hoàn thành. [Handoff Phase 3/4](handoff-phase3-4.md) giữ nguyên ownership và dependency. Phase 2.5 không bắt đầu triển khai UI My Library hay circulation.
+PR #11 đưa backend Phase 3 của Toan vào main. DEV1 đã sửa lỗi concurrency, bổ sung truy vấn cá nhân và UI My Library/Favorites/Reviews/Rating. [Handoff Phase 3/4](handoff-phase3-4.md) ghi file thực tế, ownership và gate; phải đối chiếu PR/CI để xác định đã tích hợp, không dùng số test cũ thay SHA mới. Circulation vẫn thuộc Phase 4.
 
 ## Các phase tiếp theo
 

@@ -116,6 +116,26 @@ paths:
   /me/favorites/{bookId}:
     parameters:
       - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getMyFavoriteState
+      tags: [Favorites]
+      summary: Kiểm trạng thái lưu của principal cho một sách
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Book tồn tại, saved phản ánh Favorites của riêng principal
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bookId, saved]
+                properties:
+                  bookId: { type: string, format: uuid }
+                  saved: { type: boolean }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
     put:
       operationId: addMyFavorite
       tags: [Favorites]
@@ -141,6 +161,7 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+        '409': { description: Favorite đang được thêm/xóa cạnh tranh; tải lại trước khi thử lại, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetail' } } } }
     delete:
       operationId: removeMyFavorite
       tags: [Favorites]
@@ -227,6 +248,11 @@ paths:
       operationId: updateBookReview
       tags: [Reviews and ratings]
       summary: Cập nhật body hoặc rating của review thuộc principal
+      description: >-
+        Field bị bỏ qua giữ nguyên; null tường minh và body trắng trả 422.
+        UPDATE chỉ sửa field được gửi lên. Hai PATCH khác field không ghi đè nhau;
+        cùng field dùng lần ghi được database thực hiện sau, không có optimistic version.
+        Review bị xóa trước UPDATE trả 404, không phục hồi bản ghi.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -251,6 +277,23 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+  /me/reviews:
+    get:
+      operationId: listMyReviews
+      tags: [Reviews and ratings]
+      summary: Đánh giá của principal hiện tại
+      description: ACTIVE và role hiện hành; không nhận owner từ client. Sort createdAt DESC rồi reviewId ASC. bookId là bộ lọc, sách chưa có review của mình trả trang rỗng. Không trả PII.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: bookId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Trang review của mình, content: { application/json: { schema: { $ref: '#/components/schemas/ReviewPage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /members:
     get:
       operationId: listMembers
@@ -1027,6 +1070,7 @@ components:
         page: { $ref: '#/components/schemas/PageMetadata' }
     ReviewRequest:
       type: object
+      description: Rating phải là số nguyên JSON; chuỗi hoặc số có phần lẻ trả 400, số nguyên ngoài 1–5 trả 422.
       required: [body, rating]
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
@@ -1034,6 +1078,7 @@ components:
     ReviewUpdateRequest:
       type: object
       minProperties: 1
+      description: Phải có body hoặc rating không null. Không gửi lại field không định sửa. Rating dạng chuỗi hoặc số có phần lẻ trả 400; số nguyên ngoài 1–5 trả 422.
       properties:
         body: { type: string, minLength: 1, maxLength: 5000 }
         rating: { type: integer, minimum: 1, maximum: 5 }

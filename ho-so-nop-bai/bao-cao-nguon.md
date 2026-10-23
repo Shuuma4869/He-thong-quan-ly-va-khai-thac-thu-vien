@@ -65,7 +65,7 @@ Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền b�
 ## 14. Phụ lục bằng chứng
 
 - Repository: https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien
-- PR #10: Phase 2; PR #11: backend Phase 3; [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Phase 2.5 đang ở draft, chưa merge.
+- PR #10: Phase 2; PR #11: backend Phase 3; [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Phase 2.5 đã merge tại b9cf5f3, CI main 39985051027 đạt 5/5.
 - SHA, kết quả CI và E2E: lấy từ lần bàn giao cuối; không dùng số test cũ làm bằng chứng bản mới.
 - Screenshot history: [ảnh web CI và nội dung WebView2 của EXE thật](minh-chung-giao-dien/README.md), phân biệt rõ môi trường chụp.
 - Video demo: chưa quay, chưa có link.

@@ -20,6 +20,14 @@ Mã US/AC theo [User Stories](../01-yeu-cau/user-stories.md). Unit chỉ kiểm 
 
 ## Cách xác nhận kết quả
 
+| Phase 3 / AC | Backend PostgreSQL | Frontend/client | E2E thật | Giới hạn |
+|---|---|---|---|---|
+| 14-01 Favorites | FavoriteIntegrationTest: principal, duplicate, race, pagination, current role/status | LibraryFlow: pending/error/reload/account switch; library-api | Phase 3 save/reload/remove/My Library | Chưa kiểm trên máy Windows thứ hai |
+| 15-01 Reviews | ReviewIntegrationTest + ReviewConcurrencyTest: owner/null/duplicate/FK/partial PATCH | LibraryFlow: owner control, lỗi giữ input, xác nhận, plain text; library-api | Phase 3 create/PATCH/delete, cross-owner403 | Cùng field vẫn last database write wins |
+| 16-01 Rating | ReviewIntegrationTest: 1–5, average/count/rounding | LibraryFlow: keyboard 1/5, summary; library-api schema | Phase 3 điểm 1→5→xóa, average null/0 | Không thêm persistence rating thứ hai |
+
+Core clean verify tại `ff054c4` đạt 121 test; đây là mốc backend, không thay frontend/EXE của commit mới. Các suite nêu trên phải chạy ở SHA bàn giao và đối chiếu CI/PR trước khi đóng Gate.
+
 Snapshot đã xác minh ngày 23/10/2026: CI `39907400703` tại `ee929cd` đạt đủ năm job; local chạy `scripts/test-phase1-e2e.ps1 -Desktop` đạt 8/8 bài. Các yêu cầu “commit cuối” trong bảng là bước phải kiểm lại khi bàn giao một SHA mới, không còn là blocker Docker ở snapshot này. [Nguồn ảnh và kiểm EXE](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) ghi môi trường, hash binary và giới hạn.
 
 - Core: `./mvnw -B clean verify` trên Linux CI hoặc `mvnw.cmd -B clean verify` ở Windows có Docker. Unit AuthServiceTest/MemberServiceTest không khởi động Spring/PostgreSQL, không được dùng để thay full verify.

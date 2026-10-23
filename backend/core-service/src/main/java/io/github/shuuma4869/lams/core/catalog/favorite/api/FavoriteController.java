@@ -46,6 +46,11 @@ public class FavoriteController {
                 .location(location).body(response);
     }
 
+    @GetMapping("/{bookId}")
+    public FavoriteService.FavoriteState state(JwtAuthenticationToken token, @PathVariable("bookId") String bookId) {
+        return favorites.state(actor(token), uuid("bookId", bookId));
+    }
+
     @DeleteMapping("/{bookId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(JwtAuthenticationToken token, @PathVariable("bookId") String bookIdValue) {

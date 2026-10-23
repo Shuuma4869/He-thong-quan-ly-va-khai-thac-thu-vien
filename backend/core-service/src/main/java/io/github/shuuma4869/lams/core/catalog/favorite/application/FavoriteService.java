@@ -16,6 +16,7 @@ public class FavoriteService {
     public record PageMetadata(int number, int size, long totalElements, long totalPages) {}
     public record FavoritePage(List<Favorite> items, PageMetadata page) {}
     public record AddResult(Favorite favorite, boolean created) {}
+    public record FavoriteState(UUID bookId, boolean saved) {}
 
     private final FavoriteRepository favorites;
     private final AuthService identity;
@@ -43,7 +44,14 @@ public class FavoriteService {
         if (!favorites.bookExists(bookId)) throw notFound("Không tìm thấy sách.");
 
         for (int attempt = 0; attempt < 2; attempt++) {
-            var insertedAt = favorites.insertIfAbsent(actorId, bookId);
+            java.util.Optional<java.sql.Timestamp> insertedAt;
+            try { insertedAt = favorites.insertIfAbsent(actorId, bookId); }
+            catch (org.springframework.dao.DataIntegrityViolationException error) {
+                if (error.getMostSpecificCause() instanceof java.sql.SQLException sql && "23503".equals(sql.getSQLState())) {
+                    throw notFound("Sách hoặc tài khoản không còn tồn tại.");
+                }
+                throw error;
+            }
             if (insertedAt.isPresent()) {
                 var favorite = favorites.find(actorId, bookId)
                         .orElseThrow(() -> notFound("Sách không còn tồn tại."));
@@ -54,6 +62,13 @@ public class FavoriteService {
             if (!favorites.bookExists(bookId)) throw notFound("Không tìm thấy sách.");
         }
         throw new AuthFailure(409, "Favorite đang thay đổi; vui lòng thử lại.");
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public FavoriteState state(UUID actorId, UUID bookId) {
+        CatalogAccess.requireReader(identity, actorId);
+        if (!favorites.bookExists(bookId)) throw notFound("Không tìm thấy sách.");
+        return new FavoriteState(bookId, favorites.find(actorId, bookId).isPresent());
     }
 
     @Transactional
