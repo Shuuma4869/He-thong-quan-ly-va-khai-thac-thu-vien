@@ -1,12 +1,13 @@
 import { CanActivate, ExecutionContext, ForbiddenException, HttpException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response as ExpressResponse } from 'express';
 import { array, object, string } from './metadata.types';
+import { metadataRateGroup } from './metadata-rate-limit';
 
 export const metadataActor = Symbol('metadataActor');
 
 @Injectable()
 export class MetadataGuard implements CanActivate {
-  private readonly windows=new Map<string,{start:number;count:number}>();
+  private readonly windows=new Map<string,{start:number;provider:number;history:number}>();
   async canActivate(context:ExecutionContext):Promise<boolean> {
     const request=context.switchToHttp().getRequest<Request>();
     const authorization=request.headers.authorization;
@@ -26,9 +27,17 @@ export class MetadataGuard implements CanActivate {
     const id=string(user.id); if (!id) throw new UnauthorizedException('Phiên đăng nhập không hợp lệ.');
     const now=Date.now();
     for (const [key,value] of this.windows) if (now-value.start>=60_000) this.windows.delete(key);
-    const window=this.windows.get(id)??{start:now,count:0};
-    if (window.count>=10 || (!this.windows.has(id) && this.windows.size>=1000)) throw new HttpException('Đã đạt giới hạn tra cứu, thử lại sau một phút.',429);
-    window.count++; this.windows.set(id,window);
+    const group = Reflect.getMetadata(metadataRateGroup, context.getHandler()) === 'history' ? 'history' : 'provider';
+    const limit = group === 'history' ? 60 : 10;
+    const window=this.windows.get(id)??{start:now,provider:0,history:0};
+    if (window[group]>=limit || (!this.windows.has(id) && this.windows.size>=1000)) {
+      const retryAfter = Math.max(1, Math.ceil((60_000 - (now - window.start)) / 1000));
+      context.switchToHttp().getResponse<ExpressResponse>().setHeader('Retry-After', String(retryAfter));
+      throw new HttpException(group === 'history'
+        ? 'Đã đạt giới hạn đọc/xóa lịch sử. Vui lòng thử lại sau.'
+        : 'Đã đạt giới hạn tra cứu nguồn metadata. Vui lòng thử lại sau.',429);
+    }
+    window[group]++; this.windows.set(id,window);
     (request as Request & { [metadataActor]?: string })[metadataActor] = id;
     return true;
   }

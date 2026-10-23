@@ -60,7 +60,7 @@ Tuan phụ trách kiến trúc/frontend/tích hợp/Insight Phase 2.5; Toan ph�
 
 ## 13. Hạn chế và hướng phát triển
 
-Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Web và EXE history đã có kiểm thử persistence và ảnh đối chiếu; còn nghiệm thu trợ năng/usability với người dùng, triển khai HTTPS và policy retention trước pilot. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
+Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Web và EXE history đã có kiểm thử persistence và ảnh đối chiếu; còn nghiệm thu trợ năng/usability với người dùng và triển khai HTTPS. [Chính sách vòng đời history](../tai-lieu/03-du-lieu/vong-doi-lich-su-isbn.md) đã phân biệt hành vi hiện tại với đề xuất trước pilot; mốc lưu giữ, xử lý tài khoản ngừng dùng/bị xóa và backup chưa được code tự động thực thi. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
 
 ## 14. Phụ lục bằng chứng
 

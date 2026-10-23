@@ -1,6 +1,6 @@
 # Đối chiếu rubric và điều kiện bàn giao
 
-Đây là tài liệu nghiệm thu học phần, không phải nhật ký chạy tool. Không tính điểm tổng. Cột trạng thái không thay xác nhận của giảng viên. Q2 chưa có trọng số con nên giữ tổng 1 điểm. Technical Gate của phạm vi đã triển khai đạt tại `ee929cd`: CI và E2E EXE có bằng chứng; các commit bàn giao sau phải đối chiếu CI riêng tại PR #12. Academic Final Gate chưa đóng.
+Đây là tài liệu nghiệm thu học phần, không phải nhật ký chạy tool. Không tính điểm tổng. Cột trạng thái không thay xác nhận của giảng viên. Q2 chưa có trọng số con nên giữ tổng 1 điểm. Technical Gate có mốc ảnh tại `ee929cd` và lượt kiểm lại tại `dc65064` (CI 5/5, EXE 8/8). [Bảng bằng chứng](minh-chung-giao-dien/README.md) phân biệt hai mốc này với commit sau vòng review hạn mức. Các ô bên dưới ghi bằng chứng đã có, không tự chứng nhận head mới của PR #12. Academic Final Gate chưa đóng.
 
 | Tiêu chí | Trọng số | Trạng thái | Thay đổi/bằng chứng và test | Giới hạn/phụ thuộc |
 |---|---|---|---|---|
@@ -44,7 +44,7 @@
 - [x] Đối chiếu EXE history 1440/390 và keyboard; W1 đã kiểm trực quan web local. Không tuyên bố nghiên cứu usability với người tham gia đã hoàn thành.
 - [x] LICENSE trung lập, phân biệt quyền mã nguồn/asset/dependency; chưa cấp OSS license.
 - [x] Docker local và EXE không còn chặn; kiểm thử không thay dữ liệu development thật.
-- [x] PR #12 giữ draft để người dùng review; không merge main. Kết quả SHA bàn giao cuối cập nhật trong PR, không suy từ snapshot này.
+- [x] PR #12 tách khỏi main để review. Chỉ chuyển ready khi CI đủ năm job đạt trên head cuối; không tự merge. Kết quả SHA bàn giao cuối cập nhật trong PR, không suy từ snapshot này.
 
 ## Academic Final Gate
 
@@ -54,5 +54,9 @@
 - [ ] Video thật dưới 8 phút và screenshot/evidence có nguồn.
 - [ ] Cách đếm tương tác và yêu cầu usability với người tham gia được xác nhận; không suy từ kiểm thử tự động.
 - [ ] Danh tính/đóng góp/chuyên cần/thảo luận được con người xác nhận.
+
+## Điều kiện trước pilot có dữ liệu thật
+
+[Chính sách history](../tai-lieu/03-du-lieu/vong-doi-lich-su-isbn.md) đã mô tả dữ liệu, tài khoản ngừng dùng/bị xóa và quy trình được ủy quyền. Các mốc 90 ngày cho history và 30 ngày cho yêu cầu xóa/backup là đề xuất cần chốt; chưa có TTL, cascade hoặc cơ chế thực thi tự động. Đây là việc cần hoàn tất trước pilot, không phải bằng chứng hệ thống đã xóa dữ liệu. HTTPS, bảo vệ ingress và limiter nhiều replica vẫn cần nghiệm thu trên môi trường triển khai.
 
 Tài liệu chính: [báo cáo nguồn](bao-cao-nguon.md), [stories](../tai-lieu/01-yeu-cau/user-stories.md), [ORM](../tai-lieu/02-kien-truc/metadata-history-orm.md), [security](../tai-lieu/07-kiem-thu/security-matrix.md), [handoff](../tai-lieu/00-bat-dau/handoff-phase3-4.md). Kết quả chạy phải lấy từ CI/artifact đúng SHA, không sao chép test count cũ vào báo cáo.

@@ -16,7 +16,7 @@ Mã US/AC theo [User Stories](../01-yeu-cau/user-stories.md). Unit chỉ kiểm 
 | 10 / AC-10-01 | catalog-api.test: Copy payload version/form | InventoryCatalogIntegrationTest; Phase2RegressionTest locks | Core OpenAPI | CatalogFlow: Copy conflict, đổi Edition | Staff Inventory + stale 409 | Concurrency phải đọc kết quả PostgreSQL, không dùng UI test thay |
 | 11 / AC-11-01 | metadata.spec; metadata-guard.spec | HTTP provider doubles trong unit; quyền thật qua E2E | Insight OpenAPI | CatalogMedia: metadata không ảnh/không ghi Core | Metadata quyền/live fallback | Không bảo đảm provider live luôn trả candidate; Google tắt |
 | 12 / AC-12-01 | MediaInspectorTest: URL/MIME/size/redirect | MediaIntegrationTest | Core OpenAPI | CatalogMedia: duyệt, version409/license/fallback | Metadata + ảnh chưa duyệt | Quyền sử dụng asset cần căn cứ riêng |
-| 13 / AC-13-01 | history.spec: save/get/replay/remove/error/DTO | history.integration: fresh/upgrade/reconnect/owner/filter/sort/page; history-http.spec: 400/401/403/404/503 | Insight OpenAPI | MetadataHistory: empty/filter/save503/delete/replay/page/account switch; client.test late200/401 | History save/reload/cross-owner404/delete | Web/desktop cuối; retention cần policy trước pilot |
+| 13 / AC-13-01 | history.spec: save/get/replay/remove/error/DTO; metadata-guard: hai quota, reset/cap, thu hồi quyền | history.integration: fresh/upgrade/reconnect/owner/filter/sort/page; history-http.spec: 400/401/403/404/429/503 | Insight OpenAPI, Retry-After | MetadataHistory: empty/filter/save503/delete/replay/page/account switch; client.test late200/401 | History save/reload/cross-owner404/delete | Web/desktop đúng SHA cuối; policy retention đã viết, cần chốt và thực thi trước pilot |
 
 ## Cách xác nhận kết quả
 

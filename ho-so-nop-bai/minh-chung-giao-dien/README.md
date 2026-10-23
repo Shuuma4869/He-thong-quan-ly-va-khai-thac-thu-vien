@@ -1,5 +1,17 @@
 # Minh chứng giao diện history ISBN
 
+## Phân biệt các mốc kiểm chứng
+
+| Mốc | Bằng chứng | Phạm vi kết luận |
+|---|---|---|
+| `ee929cd` | [CI 39907400703](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/39907400703) đạt 5/5; EXE local 8/8 (24.6s) | Mốc nghiệm thu có ảnh EXE bên dưới, không phải kết quả tự áp dụng cho mọi commit sau |
+| `dc65064ac3f4dac0c3222241ff0fcb85519e2b7d` | [CI 39909236154](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/39909236154) đạt 5/5; EXE local chạy lại 8/8 (26.3s) | Bản bàn giao trước vòng review hạn mức; vẫn dùng binary local build tại `0075377`, không có bộ ảnh mới trong thư mục này |
+| Commit sau vòng review hạn mức | Xem head SHA và CI tương ứng trong [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12) | Chỉ nghiệm thu sau CI đủ năm job và lượt EXE kiểm backend mới. PR ghi riêng SHA nguồn, hash binary và kết quả chạy; không đổi nhãn ảnh cũ |
+
+CI Windows build bộ cài không đồng nghĩa đã chạy E2E trong EXE. Kết quả EXE local cũng không chứng minh đã kiểm cài/gỡ bộ cài hoặc vận hành HTTPS.
+
+## Ảnh web tại `0075377`
+
 Hai ảnh được chụp bằng Playwright trong [CI run 39871120289](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/39871120289), head commit `0075377995ea9bcd313d15cd0e147b58279d1718`, artifact `web-e2e-results`. Không chỉnh sửa nội dung ảnh. Ngày kiểm tra 23/10/2026 theo giờ Việt Nam; timestamp trên ảnh dùng timezone trình duyệt CI (UTC).
 
 Luồng thật: Core tạo tài khoản fixture → cấp role trong database test → đăng nhập UI → lưu history qua Nest/Prisma/PostgreSQL → reload → replay → kiểm bàn phím → chụp ảnh. Sau đó test chặn cross-owner 404 và xóa. Không intercept response để tạo dữ liệu history. Dữ liệu là fixture, không phải thông tin thành viên thật.

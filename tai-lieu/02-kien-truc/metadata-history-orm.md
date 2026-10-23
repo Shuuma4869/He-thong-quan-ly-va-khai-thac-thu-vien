@@ -10,11 +10,17 @@ Prisma `MetadataLookup`: UUID id, ownerId, isbn13, attempts (chỉ provider/stat
 
 `StaffCatalogPage → MetadataHistory → history-api → MetadataGuard → HistoryController → HistoryService → HistoryRepository → PrismaService → PostgreSQL`.
 
-Guard gọi Core `/auth/me`, kiểm role hiện tại, gắn actor bằng Symbol nội bộ. Mỗi request dùng chung limiter metadata 10 request/phút/actor/process; limiter chưa phân tán qua Redis. Principal không phải chủ sở hữu nhận 404 khi get/delete/replay, kể cả ADMIN. DELETE không ảnh hưởng sách.
+Guard gọi Core `/auth/me`, kiểm role hiện tại, gắn actor bằng Symbol nội bộ. Tra sách/tác giả, POST tạo history và replay dùng chung hạn mức provider **10 request/phút/actor/process**. GET danh sách, GET chi tiết và DELETE history dùng hạn mức riêng **60 request/phút/actor/process**; tải lại danh sách sau khi lưu không làm mất lượt tra provider. Route mới mặc định dùng nhóm provider, chỉ handler đọc/xóa được gắn metadata nội bộ để đổi nhóm; client không chọn được nhóm.
+
+Hai bộ đếm dùng cùng cửa sổ cố định 60 giây cho từng actor, lưu tối đa 1000 actor mỗi process và dọn cửa sổ hết hạn. HTTP 429 kèm `Retry-After` tính bằng giây; hết hạn mức đọc/xóa không khóa tra provider và ngược lại. Hạn mức tính request vào route, không phải số HTTP call đến nhà cung cấp; validation thất bại sau guard vẫn tính lượt. Limiter chưa phân tán qua Redis, mất bộ đếm khi restart và chưa chặn tải lên Core `/auth/me` trước bước xác thực. Trước triển khai nhiều replica cần chốt limiter dùng chung và bảo vệ ở ingress. Principal không phải chủ sở hữu nhận 404 khi get/delete/replay, kể cả ADMIN. DELETE không ảnh hưởng sách.
 
 POST `/metadata/history` tra provider trước, sau đó lưu dấu vết. Không giữ DB transaction khi chờ HTTP. Write thất bại trả 503, không trả thông báo đã lưu. Replay chỉ dùng ISBN của bản ghi thuộc owner để tra lại nguồn hiện tại, không tạo snapshot hoặc tự sửa Core. GET cũ `/metadata/books/{isbn13}` vẫn không ghi dữ liệu.
 
 POST tạo lịch sử không idempotent. Khi mất response/timeout, tải lại danh sách trước khi gửi lại. Một request đã commit có thể hoàn thành dù client ngắt kết nối. Không tự retry POST vì lỗi mạng. Provider unavailable/not-found có thể được lưu như một sự kiện không có kết quả, không phải sách đã xác minh.
+
+## Lưu giữ và vòng đời tài khoản
+
+Hiện chưa có TTL, quota số hàng hoặc tự xóa history khi tài khoản ngừng dùng/bị xóa. Core từ chối tài khoản không hợp lệ nhưng hàng trong Insight vẫn còn; UUID owner không phải dữ liệu ẩn danh. [Chính sách lưu giữ và xóa](../03-du-lieu/vong-doi-lich-su-isbn.md) phân biệt hành vi hiện tại, mốc đề xuất cần phê duyệt trước pilot và quy trình xử lý được ủy quyền. Tài liệu không tự thực hiện xóa production.
 
 ## Lifecycle, query và transaction
 
