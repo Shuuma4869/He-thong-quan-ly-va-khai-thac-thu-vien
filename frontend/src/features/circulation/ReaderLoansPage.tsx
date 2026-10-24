@@ -69,7 +69,7 @@ function HoldCard({ owner, view, reload }: { owner: string; view: HoldView; relo
     <p className="my-2">{view.branchName} · {holdLabels[hold.status]}</p>
     <p>{hold.editionId ? 'Giữ đúng ấn bản đã chọn.' : 'Bạn đã chọn nhận bất kỳ ấn bản nào của đầu sách này.'}</p>
     {view.queuePosition && <p className="my-2">Vị trí trong hàng chờ đầu sách tại chi nhánh: {view.queuePosition}. Thứ tự nhận còn phụ thuộc ấn bản và điều kiện mượn; chưa có ngày dự kiến.</p>}
-    {hold.expiresAt && <p className="my-2">Hạn nhận: <strong>{formatTime(hold.expiresAt)}</strong>. Vui lòng tải lại khi đến quầy.</p>}
+    {hold.status === 'READY' && hold.expiresAt && <p className="my-2">Hạn nhận: <strong>{formatTime(hold.expiresAt)}</strong>. Vui lòng tải lại khi đến quầy.</p>}
     {(hold.status === 'WAITING' || hold.status === 'READY') && !confirm && <button className="button-secondary mt-3" onClick={() => setConfirm(true)}>Hủy giữ chỗ</button>}
     {confirm && <div role="group" aria-label="Xác nhận hủy giữ chỗ"><p className="my-3">Hủy yêu cầu này? Nếu đặt lại, bạn sẽ vào cuối hàng chờ phù hợp.</p>
       <button className="button-primary" disabled={command.busy || !!command.result} onClick={() => void command.run()}>{command.busy ? 'Đang hủy…' : command.uncertain ? 'Thử lại yêu cầu hủy' : 'Xác nhận hủy giữ chỗ'}</button>

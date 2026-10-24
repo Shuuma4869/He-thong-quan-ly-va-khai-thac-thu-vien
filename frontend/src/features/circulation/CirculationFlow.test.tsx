@@ -123,3 +123,12 @@ it('URL không hợp lệ không gửi query, chưa đăng nhập không đọc 
   app(); expect(await screen.findByLabelText('Email hoặc mã thành viên')).toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([url]) => url.includes('/me/holds'))).toBe(false);
 });
+
+it.each(['READY', 'FULFILLED', 'CANCELLED', 'EXPIRED'])('chỉ nhắc đến quầy khi còn sẵn sàng nhận: %s', async status => {
+  fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(new URL(url).pathname.endsWith('/me/holds')
+    ? Response.json(page([{ hold: { ...hold, status, expiresAt: '2026-10-27T00:00:00Z' }, queuePosition: null,
+      bookTitle: book.title, branchName: 'Chi nhánh A' }])) : result(url, init)));
+  app(); await screen.findByText('Giữ đúng ấn bản đã chọn.');
+  if (status === 'READY') expect(screen.getByText(/Hạn nhận:/)).toBeInTheDocument();
+  else expect(screen.queryByText(/Hạn nhận:/)).not.toBeInTheDocument();
+});
