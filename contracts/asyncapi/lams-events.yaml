@@ -1,12 +1,12 @@
 asyncapi: 3.0.0
 info:
-  title: LAMS Planned Events
+  title: LAMS Events
   version: 0.1.0
-  description: Contract định hướng; toàn bộ message trong tài liệu này là planned và chưa có producer/consumer nghiệp vụ.
+  description: COPY_BORROWED/COPY_RETURNED đã được Core ghi outbox cùng giao dịch; Kafka delivery và consumer chưa triển khai. Các event khác vẫn planned.
 defaultContentType: application/json
 servers:
   localKafka:
-    host: localhost:9092
+    host: localhost:19092
     protocol: kafka
 channels:
   circulationEvents:
@@ -58,10 +58,11 @@ components:
         aggregateId: { type: string }
         correlationId: { type: string }
         version: { type: integer, minimum: 1 }
+        aggregateVersion: { type: integer, minimum: 0, description: Version nghiệp vụ của aggregate; Loan bắt đầu từ 0, khác version envelope. }
         data: { type: object, additionalProperties: true }
   messages:
-    COPY_BORROWED: { name: COPY_BORROWED, title: Bản sách đã được mượn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
-    COPY_RETURNED: { name: COPY_RETURNED, title: Bản sách đã được trả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    COPY_BORROWED: { name: COPY_BORROWED, title: Bản sách đã được mượn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
+    COPY_RETURNED: { name: COPY_RETURNED, title: Bản sách đã được trả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
     HOLD_CREATED: { name: HOLD_CREATED, title: Yêu cầu giữ chỗ đã tạo, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
     HOLD_READY: { name: HOLD_READY, title: Yêu cầu giữ chỗ sẵn sàng nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
     HOLD_EXPIRED: { name: HOLD_EXPIRED, title: Yêu cầu giữ chỗ hết hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }

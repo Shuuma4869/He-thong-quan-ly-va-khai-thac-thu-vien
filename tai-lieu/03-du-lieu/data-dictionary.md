@@ -23,7 +23,9 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | Shelf (`shelves`, V9) | Kệ thuộc chi nhánh | UUID `id`; Branch FK; mã duy nhất trong Branch; label; thứ tự; không xóa khi còn Copy tham chiếu | Core/Inventory |
 | BookCopy (`book_copies`, V10) | Bản sách vật lý | UUID `id`; Edition/Shelf FK; barcode duy nhất; status; version; không để API bảo trì đổi trạng thái lưu thông | Core/Inventory |
 | CatalogMediaReference (`catalog_media_references`, V12) | Ảnh đã được nhân viên duyệt | Một Edition hoặc Author FK; unique theo đối tượng; source/source ID/URL, license/attribution/evidence; MIME/bytes; approved_by FK users, approved_at, version | Core/Catalog |
-| Loan (`loans`, V16) | Lần cho mượn một Copy; mới có nền tảng, chưa có command HTTP | UUID id/copy/edition/reader/branch/borrowed_by/returned_by; borrowed/due/returned time; renewal_count, version; policy_version/snapshot JSONB; unique copy khi returned_at null, FK RESTRICT | Core/Circulation |
+| Loan (`loans`, V16) | Lần cho mượn một Copy; command mượn/trả ghi cùng Copy/audit/outbox | UUID id/copy/edition/reader/branch/borrowed_by/returned_by; borrowed/due/returned time; renewal_count, version; policy_version/snapshot JSONB; unique copy khi returned_at null, FK RESTRICT | Core/Circulation |
+| Command receipt (`circulation_requests`, V17) | Chống lặp lệnh theo nhân viên và requestId | PK actor_id/request_id; command; request_payload/response_payload JSONB; created_at; chỉ lưu cùng transaction thành công, chưa có dọn retention | Core/Circulation |
+| Copy state audit (`copy_state_changes`, V17) | Lịch sử chuyển trạng thái vật lý | copy_id; from/to_status; copy_version unique theo Copy; actor_id/actor_kind; reason; occurred_at; FK RESTRICT | Core/Inventory |
 | Hold | Vị trí chờ tài liệu | reader, book/edition preference, queue time, state, assigned copy, pickup TTL | Core/Hold |
 | InventorySession | Phiên kiểm kê có phạm vi | branch/shelf scope, started/finished by, status, snapshot boundary | Core/Inventory |
 | SearchEvent | Một truy vấn đã ẩn danh/giảm PII | query normalized, filters, result count, session hash, time | Insight/Analytics |
@@ -35,7 +37,7 @@ V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book
 
 ## Các nhóm còn lại
 
-V16 thêm `loans` và index, không tự tạo giao dịch hay đổi trạng thái Copy. Chi tiết trạng thái dẫn xuất, FK, policy PROVISIONAL và retention xem [kiến trúc lưu thông](../02-kien-truc/circulation.md). `loan_extensions`/Hold chưa có migration ở mốc này.
+V16 thêm `loans`; V17 thêm receipt/audit, không backfill giao dịch hay đổi trạng thái Copy cũ. Chi tiết transaction, trạng thái dẫn xuất, FK, policy PROVISIONAL và retention xem [kiến trúc lưu thông](../02-kien-truc/circulation.md). `loan_extensions`/Hold chưa có migration ở mốc này.
 
 - Identity: `roles`, `user_roles`, `refresh_tokens`.
 - Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7.

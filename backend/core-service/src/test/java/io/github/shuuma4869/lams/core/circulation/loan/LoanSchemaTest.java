@@ -42,7 +42,7 @@ class LoanSchemaTest {
 
     private Fixture fixture(boolean upgrade) {
         String schema = "loan_" + UUID.randomUUID().toString().replace("-", "");
-        migrate(schema, upgrade ? "15" : "latest");
+        migrate(schema, upgrade ? "15" : "16");
         var source = new DriverManagerDataSource(DB.getJdbcUrl() + "&currentSchema=" + schema,
                 DB.getUsername(), DB.getPassword());
         var jdbc = new JdbcTemplate(source);
@@ -63,7 +63,7 @@ class LoanSchemaTest {
         jdbc.update("INSERT INTO favorites(user_id,book_id) VALUES (?,?)", reader, book);
         jdbc.update("INSERT INTO reviews(id,user_id,book_id,body,rating) VALUES (?,?,?,'Existing review',5)",
                 UUID.randomUUID(), reader, book);
-        if (upgrade) migrate(schema, "latest");
+        if (upgrade) migrate(schema, "16");
         return new Fixture(schema, jdbc, new LoanRepository(jdbc),
                 new TransactionTemplate(new DataSourceTransactionManager(source)), reader, staff, book, edition, branch, copy);
     }
@@ -85,7 +85,7 @@ class LoanSchemaTest {
         assertThat(f.jdbc.queryForObject("SELECT count(*) FROM favorites", Integer.class)).isOne();
         assertThat(f.jdbc.queryForObject("SELECT body FROM reviews", String.class)).isEqualTo("Existing review");
         assertThat(f.jdbc.queryForObject("SELECT count(*) FROM loans", Integer.class)).isZero();
-        migrate(f.schema, "latest");
+        migrate(f.schema, "16");
         assertThat(f.jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE version='16'", Integer.class)).isOne();
     }
 
@@ -97,6 +97,28 @@ class LoanSchemaTest {
         assertThat(f.jdbc.queryForObject("SELECT count(*) FROM loans", Integer.class)).isEqualTo(2);
         assertThat(f.loans.activeCount(f.reader)).isOne();
         assertThat(f.loans.find(first.id()).orElseThrow().active()).isFalse();
+    }
+
+    @Test void upgradeV17PreservesLoanAndAddsConstrainedCommandAuditTables() {
+        var f = fixture(false); var loan = f.loan(); f.insert(loan);
+        migrate(f.schema, "17");
+        assertThat(f.loans.find(loan.id()).orElseThrow()).usingRecursiveComparison()
+                .ignoringFields("policySnapshot").isEqualTo(loan);
+        assertThat(f.jdbc.queryForObject("SELECT policy_snapshot->>'loanDuration' FROM loans WHERE id=?",
+                String.class, loan.id())).isEqualTo("P1D");
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM circulation_requests", Integer.class)).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM copy_state_changes", Integer.class)).isZero();
+        UUID key = UUID.randomUUID();
+        f.jdbc.update("INSERT INTO circulation_requests(actor_id,request_id,command,request_payload,response_payload) VALUES (?,?,'BORROW','{}','{}')",
+                f.staff, key);
+        assertThatThrownBy(() -> f.jdbc.update("INSERT INTO circulation_requests(actor_id,request_id,command,request_payload,response_payload) VALUES (?,?,'RETURN','{}','{}')",
+                f.staff, key)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> f.jdbc.update("""
+                INSERT INTO copy_state_changes(id,copy_id,from_status,to_status,copy_version,actor_kind,reason,occurred_at)
+                VALUES (?,?,'AVAILABLE','ON_LOAN',1,'HUMAN','Thiếu nhân viên',now())
+                """, UUID.randomUUID(), f.copy)).isInstanceOf(DataIntegrityViolationException.class);
+        migrate(f.schema, "17");
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE version='17'", Integer.class)).isOne();
     }
 
     @Test void foreignKeysPreventOrphansAndDeletionOfHistoricalReferences() {

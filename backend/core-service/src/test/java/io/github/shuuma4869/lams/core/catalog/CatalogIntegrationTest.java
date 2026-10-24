@@ -38,10 +38,10 @@ class CatalogIntegrationTest {
     @Test
     void freshDatabaseAppliesAllCatalogAndInventoryMigrations() {
         assertThat(jdbc.queryForObject("SELECT version FROM flyway_schema_history WHERE success "
-                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(16);
+                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(17);
         for (String table : new String[]{"authors", "categories", "publishers", "books", "book_authors",
                 "book_categories", "editions", "branches", "shelves", "book_copies", "catalog_media_references",
-                "favorites", "reviews"}) {
+                "favorites", "reviews", "loans", "circulation_requests", "copy_state_changes"}) {
             assertThat(jdbc.queryForObject("SELECT to_regclass(?) IS NOT NULL", Boolean.class,
                     "public." + table)).as("bảng %s", table).isTrue();
         }
@@ -63,7 +63,8 @@ class CatalogIntegrationTest {
             for (String path : new String[]{"/authors", "/categories", "/publishers", "/books",
                     "/books/{bookId}/editions", "/me/favorites", "/me/favorites/{bookId}",
                     "/books/{bookId}/reviews", "/books/{bookId}/reviews/{reviewId}",
-                    "/books/{bookId}/reviews/summary", "/branches", "/shelves", "/copies"}) {
+                    "/books/{bookId}/reviews/summary", "/branches", "/shelves", "/copies",
+                    "/copies/{copyId}/state", "/loans", "/loans/{loanId}/return"}) {
                 assertThat(paths).as("đường dẫn %s", path).containsKey(path);
             }
             var schemas = (Map<String, Object>) ((Map<String, Object>) document.get("components")).get("schemas");
