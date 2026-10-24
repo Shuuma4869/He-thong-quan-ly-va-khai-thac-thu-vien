@@ -341,6 +341,60 @@ test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ li�
   await page.getByRole('alertdialog').getByRole('button',{name:'Xác nhận xóa'}).click();await expect(page.getByRole('status')).toHaveText('Đã xóa dữ liệu.');
 });
 
+test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy hàng chờ trên dữ liệu thật', async ({ page, request }) => {
+  test.setTimeout(120000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Lưu thông ${suffix}`, authorIds: [], categoryIds: [] });
+  const edition = await createCatalog(request, headers, `/books/${book.id}/editions`, { isbn13: '9780140328721' });
+  const branch = await createCatalog(request, headers, '/branches', { code: `C-${suffix}`, name: `Nhận sách ${suffix}` });
+  const shelf = await createCatalog(request, headers, '/shelves', { branchId: branch.id, code: 'C1', label: 'Kệ lưu thông', sortOrder: 0 });
+  const copy = await createCatalog(request, headers, '/copies', { editionId: edition.id, shelfId: shelf.id, barcode: `C-${suffix}` });
+  expect((await request.post(`${core}/copies/${copy.id}/state`, { headers, data: { requestId: randomUUID(), version: copy.version, status: 'AVAILABLE', reason: 'Đã kiểm tra bản sách thử' } })).status()).toBe(200);
+  const readerLogin = await request.post(`${core}/auth/login`, { data: { identifier: accounts.READER.email, password, remember: false } });
+  expect(readerLogin.status()).toBe(200); const reader = await readerLogin.json();
+  const readerHeaders = { Authorization: `Bearer ${reader.accessToken}` };
+  await loginCatalog(page, 'READER'); await navigate(page, `/sach/${book.id}`);
+  await page.getByRole('link', { name: 'Giữ chỗ ấn bản này' }).click();
+  await expect(page.getByRole('checkbox')).not.toBeChecked();
+  await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
+  await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).click();
+  await expect(page.getByText(`Đã chọn: ${branch.code} · ${branch.name}`)).toBeVisible();
+  await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
+  await expect(page.getByRole('status')).toContainText('Sẵn sàng nhận');
+  await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
+  await page.reload(); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Sẵn sàng nhận');
+  const ready = await request.get(`${core}/copies/${copy.id}`, { headers }); expect(ready.status()).toBe(200);
+  const borrowed = await createCatalog(request, headers, '/loans', { requestId: randomUUID(), copyId: copy.id,
+    readerId: reader.user.id, branchId: branch.id, copyVersion: (await ready.json()).version });
+  await page.reload();
+  const loans = page.getByLabel('Lượt mượn của tôi');
+  await expect(loans).toContainText(book.title); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã nhận sách');
+  await loans.getByRole('button', { name: 'Gia hạn', exact: true }).click();
+  await loans.getByRole('button', { name: 'Xác nhận gia hạn' }).click();
+  await expect(loans).toContainText('Đã gia hạn 1 lần');
+  const renewed = await request.get(`${core}/loans/${borrowed.loanId}`, { headers: readerHeaders });
+  expect(renewed.status()).toBe(200); const renewedBody = await renewed.json();
+  expect(renewedBody.renewalCount).toBe(1); expect(Date.parse(renewedBody.dueAt)).toBeGreaterThan(Date.parse(borrowed.dueAt));
+  await navigate(page, `/giu-cho/${book.id}/${edition.id}`);
+  await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
+  await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).click();
+  await expect(page.getByText(`Đã chọn: ${branch.code} · ${branch.name}`)).toBeVisible();
+  await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
+  await expect(page.getByRole('status')).toContainText('Đang chờ');
+  await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
+  await page.getByRole('button', { name: 'Hủy giữ chỗ', exact: true }).click();
+  await page.getByRole('button', { name: 'Xác nhận hủy giữ chỗ' }).click();
+  await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã hủy');
+  await page.reload(); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã hủy');
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/reader-circulation-${viewport.width}.png`, fullPage: true });
+  }
+  expect((await request.post(`${core}/loans/${borrowed.loanId}/return`, { headers, data: { requestId: randomUUID(), version: renewedBody.version, branchId: branch.id } })).status()).toBe(200);
+  await page.reload(); await expect(loans).toContainText('Đã trả');
+});
+
 test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thật', async ({ page, request }) => {
   test.setTimeout(120_000);
   const headers=await staffApi(request);

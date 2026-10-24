@@ -33,6 +33,14 @@ Một Loan tham chiếu Copy vật lý, Reader, nhân viên cho mượn, Edition
 
 Unique index không thay kiểm quyền, quota, trạng thái Copy hay đồng bộ Loan–Copy. Command thực hiện các kiểm tra đó cùng transaction. Repository yêu cầu transaction cho INSERT và SELECT FOR UPDATE; hàm policy thuần không tự khóa Reader. Code có quyền truy cập trực tiếp database vẫn có thể ghi sai quan hệ nghiệp vụ giữa Copy và Loan; hạn chế tài khoản DB và kiểm command là lớp bảo vệ bắt buộc.
 
+## Giao diện bạn đọc
+
+`/muon-va-giu-cho` hiển thị lượt mượn và giữ chỗ thật từ Core, phân trang độc lập; bộ lọc trạng thái Loan nằm trong URL. Từ mỗi ấn bản trong Catalog, đường dẫn `/giu-cho/{bookId}/{editionId}` mở form với đúng Edition mặc định. Chỉ gửi editionId=null khi bạn đọc chủ động chấp nhận bất kỳ ấn bản nào, kể cả khác ISBN/ngôn ngữ. Chi nhánh chọn qua `/holds/pickup-branches`, chỉ đọc id/code/name của chi nhánh ACTIVE; các API quản trị `/branches` vẫn giữ quyền staff.
+
+HoldView có tên sách và chi nhánh hiện tại; Core lấy nhãn và vị trí hàng chờ bằng một truy vấn cho cả trang, không để client gọi từng tên. Vị trí này chưa phải ETA hoặc lời hứa ngày nhận. READY hiển thị hạn nhận, nhưng server vẫn kiểm deadline khi nhận sách.
+
+Gia hạn và hủy cần xác nhận. Hook `useCirculationCommand` chặn gửi đồng thời, giữ requestId cho cùng nội dung khi thử lại sau timeout/lỗi mạng; form giữ chỗ khóa thay phạm vi khi kết quả chưa rõ. UI chỉ báo thành công khi nhận response hợp lệ, rồi hủy lượt đọc cũ và tải lại cache theo tài khoản. Key chỉ giữ trong vòng đời component, không lưu qua khởi động lại; reload cần đối chiếu hiện trạng trước khi tạo lệnh mới. Version/unique active Hold phía Core vẫn là lớp bảo vệ cuối. Chưa có UI quầy, báo cáo hay E2E thao tác quầy bằng giao diện.
+
 ## Lịch sử mượn và báo cáo chỉ đọc
 
 `GET /me/loans` lấy reader từ principal. Nhân viên dùng `GET /loans` với readerId, branchId, copyId; cả hai hỗ trợ status, from/to, sort và phân trang. `GET /loans/{id}` dành cho chủ lượt mượn hoặc nhân viên. Service kiểm lại trạng thái và quyền trong Identity, không chỉ tin role trên JWT. API không xuất email, tên người mượn, nhân viên thao tác hoặc policy snapshot.

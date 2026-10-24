@@ -18,6 +18,7 @@ function Library({ owner }: { owner: string }) {
   const reviews = useQuery({ queryKey: ['reviews', owner, 'mine', reviewPage], queryFn: ({ signal }) => myReviews(reviewPage, undefined, signal), retry: false });
   return <section className="shell py-8"><p className="eyebrow">Không gian cá nhân</p><h1 className="page-title">Thư viện của tôi</h1>
     <p className="my-3 text-muted">Sách đã lưu và những đánh giá của bạn. <Link className="text-link" to="/sach">Khám phá danh mục</Link></p>
+    <p className="my-4"><Link className="button-secondary" to="/muon-va-giu-cho">Mượn và giữ chỗ</Link></p>
     <section aria-label="Sách yêu thích" className="my-8"><h2 className="section-title">Sách yêu thích</h2>
       {favorites.isPending ? <p role="status">Đang tải sách yêu thích…</p> : favorites.isError
         ? <LibraryError error={favorites.error} retry={() => void favorites.refetch()}/>

@@ -24,7 +24,7 @@ function BookDetail({ id }: { id: string }) {
       <p className="my-5 whitespace-pre-wrap">{book.data.description || 'Chưa có mô tả tác phẩm.'}</p>
       <FavoriteButton bookId={id}/>
       <h2 className="section-title mt-8">Các ấn bản</h2>
-      <p className="text-sm text-muted my-3">Mỗi ấn bản có ISBN và thông tin xuất bản riêng. Bản sách vật lý được quản lý riêng; trang này chưa cung cấp thông tin mượn hoặc số bản sẵn có.</p>
+      <p className="text-sm text-muted my-3">Mỗi ấn bản có ISBN và thông tin xuất bản riêng. Chọn ấn bản để giữ chỗ tại chi nhánh nhận; trạng thái sẵn sàng nhận được xác nhận sau khi gửi yêu cầu.</p>
       {editions.isPending ? <p role="status">Đang tải ấn bản…</p> : editions.isError ? <CatalogError error={editions.error} retry={() => void editions.refetch()} /> : <>
         {!editions.data.items.length && <p className="editorial-card">Tác phẩm chưa có ấn bản ở trang này.</p>}
         <div className="catalog-grid">{editions.data.items.map(edition => <article key={edition.id} className="editorial-card">
@@ -32,6 +32,7 @@ function BookDetail({ id }: { id: string }) {
           <h3 className="font-semibold mt-4">{edition.isbn13 ? `ISBN ${edition.isbn13}` : 'Ấn bản không có ISBN'}</h3>
           <dl className="catalog-facts"><dt>Nhà xuất bản</dt><dd>{edition.publisherName ?? 'Chưa có thông tin'}</dd>
             <dt>Năm xuất bản</dt><dd>{edition.publicationYear ?? 'Chưa có thông tin'}</dd><dt>Ngôn ngữ</dt><dd>{edition.language ?? 'Chưa có thông tin'}</dd></dl>
+          <Link className="button-secondary mt-4" to={`/giu-cho/${id}/${edition.id}`}>Giữ chỗ ấn bản này</Link>
         </article>)}</div><Pagination page={editions.data.page} onChange={setPage} />
       </>}
       <ReviewSection bookId={id}/>

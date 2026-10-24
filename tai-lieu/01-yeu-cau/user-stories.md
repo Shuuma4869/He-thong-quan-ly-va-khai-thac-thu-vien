@@ -210,7 +210,7 @@ Là người mượn hoặc nhân viên, tôi muốn gia hạn lượt mượn h
 - AC-19-01: chỉ chủ lượt mượn hoặc staff còn quyền; người mượn ACTIVE, chưa tới hạn, còn lượt gia hạn và không có WAITING phù hợp tại chi nhánh.
 - AC-19-02: hạn mới tính từ hạn cũ; tăng count/version, lưu lịch sử chính sách gia hạn, không thay snapshot lúc mượn. Retry không gia hạn thêm; renew/return đồng thời không mất cập nhật.
 - API: POST `/loans/{loanId}/renew`. Test: HoldIntegrationTest; bảng `loan_extensions` V18.
-- Trạng thái: backend đã có; giao diện và E2E lưu thông chưa hoàn thành.
+- Trạng thái: backend và giao diện gia hạn cho Reader đã có; E2E Reader kiểm trên dữ liệu thật, kết quả xem đúng SHA. Giao diện quầy còn chờ.
 
 ### US-20 / FR-20 / UC-20
 
@@ -220,7 +220,7 @@ Là người đọc, tôi muốn giữ đúng ấn bản cần dùng tại chi n
 - AC-20-02: FIFO trong các yêu cầu phù hợp; một Copy chỉ có một READY; trả/hủy/hết hạn phân bổ lại cùng transaction. Đúng hạn nhận đã hết hiệu lực, kể cả job chạy chậm.
 - AC-20-03: reader không xem/hủy của người khác; staff chỉ được tra cứu, không có quyền hủy thay ngầm. Đổi phạm vi cần hủy/tạo mới, mất vị trí cũ.
 - API: POST `/holds`, POST `/holds/{id}/cancel`, GET `/holds/{id}`, GET `/me/holds`, GET `/holds/queue` cho staff.
-- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest. Trạng thái: backend đã có; UI, ETA theo ngày và E2E còn chờ.
+- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest, CirculationFlow và E2E Reader lưu thông. Backend và Reader UI đã có; ETA theo ngày và giao diện quầy còn chờ. Không dùng kết quả của commit trước Reader UI để nghiệm thu giao diện mới.
 
 ### US-21 / FR-21 / UC-21
 
@@ -229,7 +229,7 @@ Là người mượn, tôi muốn xem các lượt mượn của mình; là nhâ
 - AC-21-01: principal chỉ xem của mình; staff còn quyền được lọc reader/branch/copy. Chi tiết Loan chặn người khác; tài khoản bị khóa hoặc thu hồi role không giữ quyền qua JWT cũ.
 - AC-21-02: phân trang ổn định khi trùng thời gian, filter ngày mượn [from,to), ACTIVE/RETURNED/OVERDUE; đúng hạn chưa quá hạn. Count/items cùng snapshot; giữ Edition/Branch tại lúc mượn khi Copy đổi vị trí.
 - API: GET `/me/loans`, `/loans`, `/loans/{id}`. LoanHistoryController/Service/Repository chỉ đọc V16, không thêm migration.
-- Test: LoanHistoryIntegrationTest. Backend đã có implementation; Reader/Staff UI và E2E lưu thông còn chờ.
+- Test: LoanHistoryIntegrationTest, CirculationFlow và E2E Reader lưu thông. Reader UI có phân trang/trạng thái; Staff UI và bộ lọc thời gian trên giao diện còn chờ.
 
 ### US-22 / FR-22 / UC-22
 

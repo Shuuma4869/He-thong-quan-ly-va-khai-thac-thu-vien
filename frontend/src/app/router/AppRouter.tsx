@@ -14,6 +14,8 @@ import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
 import { StaffCatalogPage } from '../../features/catalog/StaffCatalogPage';
 import { MyLibraryPage } from '../../features/my-library/MyLibraryPage';
+import { ReaderLoansPage } from '../../features/circulation/ReaderLoansPage';
+import { HoldCreatePage } from '../../features/circulation/HoldCreatePage';
 
 export function AppRouter() {
   return (
@@ -23,6 +25,8 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route path="ho-so" element={<ProfilePage />} />
           <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
+          <Route path="muon-va-giu-cho" element={<ReaderLoansPage />} />
+          <Route path="giu-cho/:bookId/:editionId" element={<HoldCreatePage />} />
           <Route path="sach" element={<CatalogPage />} />
           <Route path="sach/:bookId" element={<BookDetailPage />} />
           <Route path="tac-gia/:authorId" element={<AuthorDetailPage />} />
