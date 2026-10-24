@@ -357,7 +357,8 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   await page.getByRole('link', { name: 'Giữ chỗ ấn bản này' }).click();
   await expect(page.getByRole('checkbox')).not.toBeChecked();
   await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
-  await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).check();
+  await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).click();
+  await expect(page.getByText(`Đã chọn: ${branch.code} · ${branch.name}`)).toBeVisible();
   await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
   await expect(page.getByRole('status')).toContainText('Sẵn sàng nhận');
   await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
@@ -376,7 +377,8 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   expect(renewedBody.renewalCount).toBe(1); expect(Date.parse(renewedBody.dueAt)).toBeGreaterThan(Date.parse(borrowed.dueAt));
   await navigate(page, `/giu-cho/${book.id}/${edition.id}`);
   await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
-  await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).check();
+  await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).click();
+  await expect(page.getByText(`Đã chọn: ${branch.code} · ${branch.name}`)).toBeVisible();
   await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
   await expect(page.getByRole('status')).toContainText('Đang chờ');
   await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
