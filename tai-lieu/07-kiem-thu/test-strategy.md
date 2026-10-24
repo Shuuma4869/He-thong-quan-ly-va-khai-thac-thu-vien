@@ -22,6 +22,8 @@ Circulation/Hold: `LoanCommandIntegrationTest` kiểm mượn/trả, quota và r
 
 Maven test tắt timer tự chạy của Hold để Spring context cache không tiếp tục dùng Testcontainer đã đóng. Nghiệp vụ job vẫn được gọi trực tiếp trên PostgreSQL trong `HoldIntegrationTest`; `HoldExpiryJobTest` kiểm con trỏ 100 Book/lượt và retry khi một Book lỗi. Ứng dụng bình thường mặc định bật timer. Bộ test backend này không thay cho E2E giao diện lưu thông hoặc Kafka delivery.
 
+Các lớp Spring integration dùng container riêng đóng context sau từng lớp qua `DirtiesContext(AFTER_CLASS)`. Connection pool không được giữ trong cache sau khi database của lớp đó kết thúc; nếu không, Hikari có thể tiếp tục thử nối vào database đã dừng và làm chậm shutdown JVM. Không tăng timeout hoặc bỏ test để che lỗi dọn tài nguyên.
+
 Read-side Phase 4: `LoanHistoryIntegrationTest` dùng PostgreSQL/HTTP thật để kiểm owner, quyền hiện hành, filter [from,to), biên overdue, trang ổn định khi trùng thời gian, chi nhánh/ấn bản lịch sử sau khi Copy đổi vị trí, tổng báo cáo theo múi giờ và GET không ghi nghiệp vụ. Fixture hơn 10000 nhóm kiểm từ chối báo cáo quá lớn thay vì xuất thiếu dữ liệu. `LoanCsvExporterTest` kiểm UTF-8 BOM, file rỗng, dấu phẩy/nháy kép/xuống dòng và công thức đầu ô; HTTP test đối chiếu byte CSV với cùng report snapshot. Đây chưa phải kiểm mở file bằng Excel hoặc đo tải production.
 
 Các regression bắt buộc của Phase 1: principal tự xem hồ sơ, DTO allowlist, GET không ghi dữ liệu, invalid/expired JWT, staff bị khóa hoặc thu hồi role khi JWT còn hạn, query literal `%`/`_`/`\`, SQL injection, phân trang ổn định khi trùng tên, debounce giữ focus, stale response và refresh đến muộn sau logout. UI phải xử lý loading/error/retry/empty, `profile: null`, deep link và reload/Back.
@@ -39,6 +41,8 @@ Quality gate: compile/typecheck, unit/integration, migration upgrade, contract v
 Phase 4 command: `LoanCommandIntegrationTest` dùng PostgreSQL thật, HTTP staff/current-role, replay, request key sai nội dung, rollback cả Loan/Copy/audit/outbox/receipt, hai người tranh Copy cuối và một Reader tranh quota qua hai Book. Test khóa dùng `pg_blocking_pids`/`pg_stat_activity`; khi quan sát từ transaction dài phải gọi `pg_stat_clear_snapshot()` để không giữ snapshot thống kê cũ. `LoanSchemaTest` kiểm riêng mốc V16 và nâng V16 → V17 giữ Loan có sẵn. Không gọi test API là E2E giao diện, không dùng EXE Phase 3 làm bằng chứng UI lưu thông chưa triển khai.
 
 Desktop: `scripts/test-phase1-e2e.ps1 -Desktop` chạy cùng kịch bản trên WebView2 thật của EXE release thay vì Vite/Chromium. Rust có test allowlist điều hướng, fmt/clippy; CI Windows build NSIS. Xem [runbook desktop](../08-van-hanh/desktop-windows.md) về cổng, profile test và điều kiện môi trường. CI build không thay cho E2E native local.
+
+Fixture desktop chọn đúng target có origin `http://tauri.localhost` và dấu hiệu Tauri, không lấy target đầu tiên: sau khi tải CSV, WebView2 có thể thêm trang downloads-hub. Test giữ kiểm tra reload ứng dụng sau tải và tiếp tục bài quản trị kế tiếp, không bỏ bài lỗi hoặc mở rộng allowlist điều hướng production.
 
 Reader lưu thông: `CirculationFlow` kiểm đúng Edition mặc định, anyEdition chủ động, chỉ gọi API chi nhánh nhận, retry giữ requestId, gửi kép, xác nhận hủy/gia hạn và URL sai. E2E đi qua form giữ chỗ → reload → nhận sách bằng API staff → gia hạn bằng UI → tạo/hủy hàng chờ → trả bằng API staff. Hai bước dùng API trong bài này không được tính là kiểm thử giao diện quầy. Bài E2E chụp desktop/mobile để kiểm không tràn ngang.
 

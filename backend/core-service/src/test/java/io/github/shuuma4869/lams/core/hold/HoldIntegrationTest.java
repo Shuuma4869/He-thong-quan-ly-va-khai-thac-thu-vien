@@ -47,6 +47,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(properties="lams.circulation.hold-job-enabled=false")
 @AutoConfigureMockMvc
 @Import(HoldIntegrationTest.TimeConfig.class)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 class HoldIntegrationTest {
     @Container static final PostgreSQLContainer<?> DB=new PostgreSQLContainer<>("postgres:17.6-alpine");

@@ -11,8 +11,14 @@ const test = base.extend({
     try {
       const context = desktop.contexts()[0];
       await context.clearCookies();
-      const nativePage = context.pages()[0];
-      if (!nativePage) throw new Error('Cửa sổ WebView2 chưa mở.');
+      // WebView2 thêm downloads-hub sau khi tải file; thứ tự targets không xác định.
+      const nativePages = [];
+      for (const target of context.pages()) {
+        if (new URL(target.url()).origin === 'http://tauri.localhost'
+          && await target.evaluate(() => '__TAURI_INTERNALS__' in window).catch(() => false)) nativePages.push(target);
+      }
+      if (nativePages.length !== 1) throw new Error(`Cần đúng một cửa sổ LAMS, nhận ${nativePages.length}.`);
+      const nativePage = nativePages[0];
       await nativePage.goto('http://tauri.localhost/');
       expect(await nativePage.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
       await providePage(nativePage);
@@ -452,6 +458,8 @@ test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua g
   const output = `test-results/circulation-${suffix}.csv`; await download.saveAs(output);
   const csv = await readFile(output, 'utf8'); expect(csv.charCodeAt(0)).toBe(0xfeff); expect(csv).toContain(branch.name);
   expect(csv).not.toContain(accounts.READER.email); expect(csv).not.toContain(accounts.READER.name);
+  await page.reload(); await expect(page.getByRole('heading', { name: 'Báo cáo mượn theo chi nhánh' })).toBeVisible();
+  if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/circulation-report-${viewport.width}.png`, fullPage: true });
