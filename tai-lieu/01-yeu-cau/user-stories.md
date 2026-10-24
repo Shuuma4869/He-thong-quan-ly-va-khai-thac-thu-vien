@@ -192,7 +192,7 @@ Là nhân viên, tôi muốn cho mượn đúng bản sách, đúng người và
 - AC-17-01: chỉ staff ACTIVE còn quyền hiện hành; kiểm người mượn, quota, overdue, chi nhánh và version Copy. Hai người tranh bản cuối chỉ có một Loan đang mở.
 - AC-17-02: cùng nhân viên/requestId/nội dung không tạo Loan thứ hai; nội dung khác với key cũ trả 409; rollback không để sót Copy/audit/outbox/receipt.
 - API: POST `/loans`; schema Loan V16, receipt/audit V17. Test: LoanCommandIntegrationTest và LoanSchemaTest trên PostgreSQL thật.
-- Trạng thái tại PR #15: backend đã triển khai; giao diện quầy và E2E hành trình mượn còn chờ. Không coi regression EXE Phase 3 là bằng chứng UI cho US-17.
+- Quầy có tìm thành viên, tra mã vạch chính xác và xác nhận trước khi cho mượn. StaffCirculationFlow kiểm gửi kép/retry, E2E quầy kiểm Loan và Copy thật. Kết quả chạy gắn với SHA mới, không dùng regression EXE Phase 3 thay thế.
 
 ### US-18 / FR-18 / UC-18
 
@@ -201,7 +201,7 @@ Là nhân viên, tôi muốn nhận trả đúng lượt mượn và giữ nguy�
 - AC-18-01: đúng chi nhánh, Loan còn mở và đúng version; Return mới cho Loan đã trả bị từ chối, retry cùng key nhận kết quả gốc. Người mượn bị khóa vẫn được trả sách.
 - AC-18-02: Loan, Copy, audit và outbox thay đổi cùng transaction; khi có giữ chỗ phải phân bổ trong transaction trước khi trả kết quả.
 - API: POST `/loans/{loanId}/return`. Test mốc PR #15: LoanCommandIntegrationTest, chưa kiểm AC-18-02 với Hold vì Hold chưa triển khai tại mốc đó.
-- Trạng thái hiện tại: backend Return đã nối phân bổ Hold, kiểm bằng HoldIntegrationTest; UI và E2E lưu thông còn chờ.
+- Backend Return đã nối phân bổ Hold, kiểm bằng HoldIntegrationTest. Quầy có tra lượt đang mượn theo bản và xác nhận nhận trả; E2E quầy đối chiếu Loan RETURNED, Copy AVAILABLE sau giao dịch.
 
 ### US-19 / FR-19 / UC-19
 
@@ -210,7 +210,7 @@ Là người mượn hoặc nhân viên, tôi muốn gia hạn lượt mượn h
 - AC-19-01: chỉ chủ lượt mượn hoặc staff còn quyền; người mượn ACTIVE, chưa tới hạn, còn lượt gia hạn và không có WAITING phù hợp tại chi nhánh.
 - AC-19-02: hạn mới tính từ hạn cũ; tăng count/version, lưu lịch sử chính sách gia hạn, không thay snapshot lúc mượn. Retry không gia hạn thêm; renew/return đồng thời không mất cập nhật.
 - API: POST `/loans/{loanId}/renew`. Test: HoldIntegrationTest; bảng `loan_extensions` V18.
-- Trạng thái: backend và giao diện gia hạn cho Reader đã có; E2E Reader kiểm trên dữ liệu thật, kết quả xem đúng SHA. Giao diện quầy còn chờ.
+- Backend và giao diện gia hạn cho Reader/staff đã có; E2E Reader và quầy kiểm trên dữ liệu thật, kết quả xem đúng SHA.
 
 ### US-20 / FR-20 / UC-20
 
@@ -220,7 +220,7 @@ Là người đọc, tôi muốn giữ đúng ấn bản cần dùng tại chi n
 - AC-20-02: FIFO trong các yêu cầu phù hợp; một Copy chỉ có một READY; trả/hủy/hết hạn phân bổ lại cùng transaction. Đúng hạn nhận đã hết hiệu lực, kể cả job chạy chậm.
 - AC-20-03: reader không xem/hủy của người khác; staff chỉ được tra cứu, không có quyền hủy thay ngầm. Đổi phạm vi cần hủy/tạo mới, mất vị trí cũ.
 - API: POST `/holds`, POST `/holds/{id}/cancel`, GET `/holds/{id}`, GET `/me/holds`, GET `/holds/queue` cho staff.
-- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest, CirculationFlow và E2E Reader lưu thông. Backend và Reader UI đã có; ETA theo ngày và giao diện quầy còn chờ. Không dùng kết quả của commit trước Reader UI để nghiệm thu giao diện mới.
+- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest, CirculationFlow và E2E Reader lưu thông. Backend và Reader UI đã có; ETA theo ngày còn chờ. Không dùng kết quả của commit trước Reader UI để nghiệm thu giao diện mới.
 
 ### US-21 / FR-21 / UC-21
 
@@ -229,7 +229,7 @@ Là người mượn, tôi muốn xem các lượt mượn của mình; là nhâ
 - AC-21-01: principal chỉ xem của mình; staff còn quyền được lọc reader/branch/copy. Chi tiết Loan chặn người khác; tài khoản bị khóa hoặc thu hồi role không giữ quyền qua JWT cũ.
 - AC-21-02: phân trang ổn định khi trùng thời gian, filter ngày mượn [from,to), ACTIVE/RETURNED/OVERDUE; đúng hạn chưa quá hạn. Count/items cùng snapshot; giữ Edition/Branch tại lúc mượn khi Copy đổi vị trí.
 - API: GET `/me/loans`, `/loans`, `/loans/{id}`. LoanHistoryController/Service/Repository chỉ đọc V16, không thêm migration.
-- Test: LoanHistoryIntegrationTest, CirculationFlow và E2E Reader lưu thông. Reader UI có phân trang/trạng thái; Staff UI và bộ lọc thời gian trên giao diện còn chờ.
+- Test: LoanHistoryIntegrationTest, CirculationFlow, StaffCirculationFlow và E2E lưu thông. Reader UI có phân trang/trạng thái; staff lọc theo người, chi nhánh, bản và trạng thái. Bộ lọc ngày cho lịch sử trên giao diện còn chờ; ngày báo cáo được xử lý riêng.
 
 ### US-22 / FR-22 / UC-22
 
@@ -238,4 +238,4 @@ Là nhân viên, tôi muốn thống kê các lượt bắt đầu mượn trong
 - AC-22-01: staff hiện hành; from/to bắt buộc, tối đa 366 ngày; nhóm theo ngày mượn/chi nhánh với UTC hoặc Asia/Ho_Chi_Minh. borrowed = active + returned, overdue thuộc active. Trạng thái tính tại lúc đọc, không giả báo cáo hồi tố.
 - AC-22-02: CSV cùng bộ lọc/cách tính; Unicode, quote/comma/newline và công thức đầu ô được xử lý. Không xuất danh tính người mượn; vượt 10000 nhóm bị từ chối thay vì cắt dòng. GET không ghi Loan/Copy/receipt/outbox.
 - API: GET `/reports/circulation`, `/reports/circulation.csv`. CirculationReportService và LoanCsvExporter.
-- Test: LoanHistoryIntegrationTest, LoanCsvExporterTest. Backend đã có implementation; UI báo cáo, kiểm Excel và tải production còn chờ.
+- Test: LoanHistoryIntegrationTest, LoanCsvExporterTest, report-api, StaffCirculationFlow và E2E tải CSV từ báo cáo UI. Kiểm mở file bằng Excel và đo tải production còn chờ.

@@ -9,6 +9,7 @@ const navigation = [
   { label: 'Danh mục', icon: BookCopy, to: '/nhan-vien/danh-muc' },
   { label: 'Hồ sơ của tôi', icon: UserRound, to: '/ho-so' },
   { label: 'Quầy lưu thông', icon: BookCopy, to: '/nhan-vien/luu-thong' },
+  { label: 'Báo cáo mượn', icon: BarChart3, to: '/nhan-vien/bao-cao-luu-thong' },
   { label: 'Kiểm kê', icon: ClipboardList, to: '/nhan-vien/kiem-ke' },
 ];
 
@@ -31,7 +32,7 @@ export function StaffLayout() {
       <div className="min-w-0 flex-1">
         <header className="staff-topbar"><span>Nền tảng vận hành thư viện</span><button className="ml-auto text-link" type="button" onClick={() => void signOut()}>Đăng xuất</button></header>
         <nav className="staff-mobile-nav" aria-label="Điều hướng nhân viên trên điện thoại">
-          {navigation.slice(0, 4).map(({ label, to }) => <NavLink key={to} to={to}
+          {navigation.map(({ label, to }) => <NavLink key={to} to={to}
             className={({ isActive }) => `staff-nav ${isActive ? 'staff-nav-active' : ''}`}>{label}</NavLink>)}
         </nav>
         <main className="p-5 md:p-8"><Outlet /></main>

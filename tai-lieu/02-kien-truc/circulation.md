@@ -39,7 +39,17 @@ Unique index không thay kiểm quyền, quota, trạng thái Copy hay đồng b
 
 HoldView có tên sách và chi nhánh hiện tại; Core lấy nhãn và vị trí hàng chờ bằng một truy vấn cho cả trang, không để client gọi từng tên. Vị trí này chưa phải ETA hoặc lời hứa ngày nhận. READY hiển thị hạn nhận, nhưng server vẫn kiểm deadline khi nhận sách.
 
-Gia hạn và hủy cần xác nhận. Hook `useCirculationCommand` chặn gửi đồng thời, giữ requestId cho cùng nội dung khi thử lại sau timeout/lỗi mạng; form giữ chỗ khóa thay phạm vi khi kết quả chưa rõ. UI chỉ báo thành công khi nhận response hợp lệ, rồi hủy lượt đọc cũ và tải lại cache theo tài khoản. Key chỉ giữ trong vòng đời component, không lưu qua khởi động lại; reload cần đối chiếu hiện trạng trước khi tạo lệnh mới. Version/unique active Hold phía Core vẫn là lớp bảo vệ cuối. Chưa có UI quầy, báo cáo hay E2E thao tác quầy bằng giao diện.
+Gia hạn và hủy cần xác nhận. Hook `useCirculationCommand` chặn gửi đồng thời, giữ requestId cho cùng nội dung khi thử lại sau timeout/lỗi mạng; form giữ chỗ khóa thay phạm vi khi kết quả chưa rõ. UI chỉ báo thành công khi nhận response hợp lệ, rồi hủy lượt đọc cũ và tải lại cache theo tài khoản. Key chỉ giữ trong vòng đời component, không lưu qua khởi động lại; reload cần đối chiếu hiện trạng trước khi tạo lệnh mới. Version/unique active Hold phía Core vẫn là lớp bảo vệ cuối.
+
+## Quầy lưu thông và báo cáo trên ứng dụng
+
+Nhân viên mở `/nhan-vien/luu-thong`, tìm người mượn bằng mã thành viên hoặc họ tên, rồi nhập/quét mã vạch. `GET /copies/by-barcode` chỉ nhận staff đang hoạt động, bỏ khoảng trắng hai đầu và so khớp chính xác, phân biệt hoa thường. Giá trị được bind vào SQL, không diễn giải `%`, `_` hay dấu nháy thành mẫu tìm kiếm. Endpoint chỉ đọc; thao tác mượn vẫn kiểm lại version, quota và trạng thái trong transaction.
+
+Màn hình xác nhận nêu rõ người, bản sách và chi nhánh; khóa đổi dữ liệu trong lúc xử lý hoặc khi chưa biết kết quả do lỗi mạng. Thử lại dùng cùng requestId. Nhận trả và gia hạn dùng version Loan đã đọc. Lịch sử lọc theo người, chi nhánh, trạng thái hoặc bản sách; nút tìm lượt đang mượn của bản vừa quét bỏ bộ lọc người/chi nhánh cũ để không che mất giao dịch cần trả. Không chọn người tự động từ kết quả tìm kiếm. Member LOCKED/DISABLED vẫn có thể được chọn để đối chiếu lịch sử, nhưng không được cho mượn mới.
+
+`/nhan-vien/bao-cao-luu-thong` nhận ngày đầu và ngày cuối không bao gồm, đổi mốc nửa đêm theo múi giờ đã chọn sang UTC. Kiểm ngày lịch thực, thứ tự, tối đa 366 ngày và UUID chi nhánh trước khi gọi Core. Chỉ nút Xem báo cáo áp dụng bộ lọc; sửa form chưa bấm nút không đổi dữ liệu đang xem hoặc bộ lọc CSV.
+
+CSV đi qua API client có Bearer/refresh và kiểm phiên, không đưa token vào URL. Khi đổi tài khoản hoặc rời màn hình, request tải bị hủy; response đến muộn không tạo file. File dùng Blob và trình tải của WebView2/trình duyệt, không cấp quyền truy cập tùy ý hệ thống tệp cho frontend. Bộ lọc giữ nguyên nhưng JSON và CSV là hai lần đọc riêng, nên số liệu có thể khác nếu giao dịch vừa thay đổi. Dữ liệu tải về không chứa danh tính người mượn và không thể thu hồi sau khi đã lưu.
 
 ## Lịch sử mượn và báo cáo chỉ đọc
 

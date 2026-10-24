@@ -1,6 +1,7 @@
 import { test as base, expect, chromium, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 const desktopEndpoint = process.env.LAMS_E2E_DESKTOP_CDP;
 const test = base.extend({
@@ -393,6 +394,68 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   }
   expect((await request.post(`${core}/loans/${borrowed.loanId}/return`, { headers, data: { requestId: randomUUID(), version: renewedBody.version, branchId: branch.id } })).status()).toBe(200);
   await page.reload(); await expect(loans).toContainText('Đã trả');
+});
+
+test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua giao diện', async ({ page, request }) => {
+  test.setTimeout(120000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Quầy ${suffix}`, authorIds: [], categoryIds: [] });
+  const edition = await createCatalog(request, headers, `/books/${book.id}/editions`, { isbn13: '9780140328721' });
+  const branch = await createCatalog(request, headers, '/branches', { code: `Q-${suffix}`, name: `Quầy thử ${suffix}` });
+  const shelf = await createCatalog(request, headers, '/shelves', { branchId: branch.id, code: 'Q1', label: 'Kệ tại quầy', sortOrder: 0 });
+  const copy = await createCatalog(request, headers, '/copies', { editionId: edition.id, shelfId: shelf.id, barcode: `Q_%/${suffix}` });
+  expect((await request.post(`${core}/copies/${copy.id}/state`, { headers, data: { requestId: randomUUID(), version: copy.version, status: 'AVAILABLE', reason: 'Bản sách kiểm thử quầy' } })).status()).toBe(200);
+  await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/luu-thong');
+  await page.getByLabel('Mã thành viên hoặc họ tên').fill(accounts.READER.name);
+  await page.getByRole('button', { name: 'Tìm thành viên' }).click();
+  await page.getByRole('button', { name: new RegExp(accounts.READER.name) }).click();
+  await page.getByLabel('Mã vạch bản sách').fill(copy.barcode);
+  await page.getByRole('button', { name: 'Tra bản sách' }).click();
+  await page.getByRole('button', { name: 'Cho mượn bản sách này' }).click();
+  const confirmation = page.getByRole('group', { name: 'Xác nhận cho mượn' });
+  await expect(confirmation).toContainText(accounts.READER.name); await expect(confirmation).toContainText(copy.barcode);
+  await confirmation.getByRole('button', { name: 'Xác nhận cho mượn' }).click();
+  await expect(page.getByText(/Đã cho mượn. Hạn trả/)).toBeVisible();
+  await page.getByRole('button', { name: 'Giao dịch tiếp theo' }).click();
+  await page.reload();
+  await page.getByLabel('Mã vạch bản sách').fill(copy.barcode); await page.getByRole('button', { name: 'Tra bản sách' }).click();
+  await page.getByRole('button', { name: 'Tìm lượt đang mượn của bản này' }).click();
+  const history = page.getByLabel('Lịch sử tại quầy');
+  await expect(history.locator('article')).toHaveCount(1); await expect(history).toContainText(book.title);
+  await history.getByRole('button', { name: 'Gia hạn tại quầy', exact: true }).click();
+  await history.getByRole('button', { name: 'Xác nhận gia hạn tại quầy' }).click();
+  await expect(history).toContainText('Đã gia hạn 1 lần');
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/staff-circulation-${viewport.width}.png`, fullPage: true });
+  }
+  await history.getByRole('button', { name: 'Nhận trả', exact: true }).click();
+  await history.getByRole('button', { name: 'Xác nhận nhận trả' }).click();
+  await expect(history).toContainText('Không có lượt mượn phù hợp.');
+  await page.getByLabel('Trạng thái lượt mượn').selectOption('RETURNED'); await expect(history).toContainText(book.title);
+  await page.reload();
+  const actual = await request.get(`${core}/loans?copyId=${copy.id}`, { headers }); expect(actual.status()).toBe(200);
+  const items = (await actual.json()).items; expect(items).toHaveLength(1); expect(items[0].status).toBe('RETURNED'); expect(items[0].renewalCount).toBe(1);
+  const currentCopy = await request.get(`${core}/copies/${copy.id}`, { headers }); expect((await currentCopy.json()).status).toBe('AVAILABLE');
+  await page.getByRole('link', { name: 'Xem báo cáo mượn theo chi nhánh' }).click();
+  const now = new Date(), from = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10), to = new Date(now.getTime() + 2 * 86400000).toISOString().slice(0, 10);
+  await page.getByLabel('Từ ngày (bao gồm)').fill(from); await page.getByLabel('Đến ngày (không bao gồm)').fill(to);
+  await page.getByRole('button', { name: 'Chọn chi nhánh báo cáo', exact: true }).click();
+  await page.getByRole('radio', { name: new RegExp(branch.name) }).click();
+  await page.getByRole('button', { name: 'Xem báo cáo', exact: true }).click();
+  const report = page.getByRole('region', { name: 'Kết quả báo cáo' });
+  await expect(report.locator('tbody tr')).toHaveCount(1); await expect(report.locator('tbody')).toContainText(branch.name);
+  await expect(report.locator('dd')).toHaveText(['1', '0', '1', '0']);
+  const downloadPromise = page.waitForEvent('download');
+  await report.getByRole('button', { name: 'Tải CSV theo bộ lọc này' }).click();
+  const download = await downloadPromise; expect(download.suggestedFilename()).toBe(`luu-thong-${from}-${to}.csv`);
+  const output = `test-results/circulation-${suffix}.csv`; await download.saveAs(output);
+  const csv = await readFile(output, 'utf8'); expect(csv.charCodeAt(0)).toBe(0xfeff); expect(csv).toContain(branch.name);
+  expect(csv).not.toContain(accounts.READER.email); expect(csv).not.toContain(accounts.READER.name);
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/circulation-report-${viewport.width}.png`, fullPage: true });
+  }
 });
 
 test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thật', async ({ page, request }) => {
