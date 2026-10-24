@@ -34,21 +34,22 @@ Implementation chưa tự động có nghĩa TESTED hoặc INTEGRATED. Gate cầ
 
 ## Phase 4 — Tuan
 
-Đăng ký migration V16 `loans` cho P4-D1-01 trên nhánh Tuan sau khi đối chiếu main `ea93b7a`: chưa có PR Phase 4 khác. V1–V15 giữ nguyên. P4-D1-02 dùng policy cấu hình có giá trị phát triển PROVISIONAL; command mượn/trả/gia hạn, Hold và outbox chưa được coi là triển khai chỉ từ schema/policy này.
+V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb03dc52ac1f991999e5c7`; CI main `40041476883` đạt 5/5. V17 trên nhánh Tuan bổ sung receipt/audit, khóa và command mượn/trả. V1–V16 giữ nguyên. P4-D1-02 dùng giá trị phát triển PROVISIONAL; chưa coi toàn bộ Phase 4 hoàn thành từ mốc command này.
 
 | Task | Output hiện có hoặc đang chờ | Kiểm chứng / điều kiện nối tiếp |
 |---|---|---|
 | P4-D1-01 | V16, `Loan`, `LoanRepository` | `LoanSchemaTest`, `LoanRepositoryIntegrationTest`; unique active Copy, FK, upgrade V15, transaction |
 | P4-D1-02 | `CirculationPolicy`, `BorrowPolicyService`; cấu hình môi trường | `BorrowPolicyTest`; quota/status/role/overdue, cấu hình sai dừng khởi động; command phải khóa Reader trước khi đếm |
-| P4-D1-03..08 | Borrow/Return/Renew, Copy locking/state và race bản cuối chưa có | Nối schema/policy với transaction, idempotency, Copy version, audit; Renew cần Hold |
+| P4-D1-03/04/06/07/08 | Borrow/Return, CopyLockRepository/CopyStateService, receipt V17, audit/outbox | LoanCommandIntegrationTest kiểm quyền, replay, rollback, quota/copy race; Return cần nối phân bổ Hold ở bước sau |
+| P4-D1-05 | Renew chưa có | Phụ thuộc Hold để chặn gia hạn khi có người đợi; cần lịch sử gia hạn |
 | P4-D1-09..13 | Hold model/queue/allocation/expiry/ETA chưa có | FIFO, assignment unique, pickup TTL, concurrent cancel/expiry; ETA phải nêu độ bất định |
 | P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
 | P4-D1-16..17 | Reader/Staff circulation UI chưa có | Command thật và query P4-D2-01 của Toan; thiếu dependency phải hiện rõ, không tạo dữ liệu giả |
 
 Chi tiết schema, cấu hình, retention và ranh giới kiểm thử ở [kiến trúc lưu thông](../02-kien-truc/circulation.md). Tất cả đường dẫn Java trong bảng tính từ package Core. Bảng này không đánh dấu cả Phase 4 hoàn thành.
 
-Tuan giữ 17 task DEV1: Loan/schema/policy → borrow/return/renew → locking/idempotency → Hold/queue/allocation/expiry/ETA → outbox/Kafka/notification → Reader/Staff UI. Toan giữ P4-D2-01 đến P4-D2-05: query lịch sử, lọc, báo cáo, CSV và kiểm thử query. Không làm thay hoặc đánh dấu DONE phần Toan chưa bàn giao.
+Phân công gốc vẫn giữ để truy vết tác giả. Quyết định ngày 24/10/2026 mở rộng triển khai trên nhánh Tuan tới phần còn thiếu của cả hai thành viên trong Phase 4–6, gồm P4-D2-01..05 (query/filter/report/CSV/tests). Không sửa nhánh Toan, không gán code gốc của Toan cho Tuan, không đánh dấu các task mới DONE trước khi có đầu ra và kiểm chứng.
 
 Điều kiện bắt đầu: Phase 3 contract/tests/main gate đã đạt, DEV1 duyệt policy quota/due date/renew/hold priority, migration number được đăng ký. Bảo toàn Book != Edition != Copy; transaction nghiệp vụ ở Core; unique một active loan/copy; không fake availability; event chỉ publish qua outbox sau khi thực sự triển khai. Không cho Insight viết bảng Core. Concurrency cần PostgreSQL tests phối hợp transaction, không chỉ sleep.
 
-Policy cấu hình dùng mặc định PROVISIONAL phải ghi rõ; quyết định làm đổi nghiệp vụ hoặc quyền không thể đảo ngược cần xác nhận. Nếu UI thiếu query của Toan, ghi dependency và kiểm component độc lập, không tạo API giả hoặc dữ liệu Loan/Hold mẫu trong production. Loan/Hold chưa triển khai ở mốc bàn giao Phase 3 này.
+Policy cấu hình dùng mặc định PROVISIONAL phải ghi rõ; quyết định làm đổi nghiệp vụ hoặc quyền không thể đảo ngược cần xác nhận. UI lưu thông sẽ nối query thật sau command, không tạo API giả hoặc dữ liệu Loan/Hold mẫu trong production. Phase 5 đã chốt sáu loại bất thường: WRONG_SHELF, EXPECTED_BUT_MISSING, STATUS_MISMATCH, WRONG_BRANCH, UNKNOWN_BARCODE, DUPLICATE_SCAN; sửa dữ liệu phải có nhân viên xác nhận và kiểm version. Quyết định này không phải bằng chứng đã triển khai kiểm kê.

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LAMS Core API
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     Core health, Identity/Auth, Member, Catalog, Inventory và Reader contribution API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
@@ -903,6 +903,81 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /copies/{copyId}/state:
+    parameters:
+      - { name: copyId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: changeCopyState
+      tags: [Inventory]
+      summary: Chuyển trạng thái bảo trì bản sách có lý do và version
+      description: >-
+        LIBRARIAN/ADMIN ACTIVE. Chỉ IN_PROCESS sang AVAILABLE/WITHDRAWN, AVAILABLE sang LOST/DAMAGED,
+        DAMAGED sang IN_PROCESS/WITHDRAWN, LOST sang IN_PROCESS. Không dùng để đóng Loan hoặc giải phóng Hold.
+        Cùng actor/requestId và nội dung trả lại response lần đầu; đổi nội dung cùng key trả 409.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CopyStateRequest' }
+      responses:
+        '200': { description: Trạng thái đã ghi hoặc kết quả gốc của yêu cầu gửi lại, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /loans:
+    post:
+      operationId: borrowCopy
+      tags: [Circulation]
+      summary: Nhân viên cho mượn bản sách sẵn sàng
+      description: >-
+        LIBRARIAN/ADMIN ACTIVE còn quyền hiện hành. Core khóa người mượn rồi Book/Copy, kiểm policy, chi nhánh
+        và copyVersion; tạo Loan, đổi Copy, ghi audit/outbox trong một transaction. Chỉ nhận Copy AVAILABLE
+        ở mốc này; nhận sách giữ chỗ chưa triển khai. requestId là UUID do client tạo, dùng lại khi retry.
+        Cùng actor/key/nội dung trả 201 với snapshot response gốc, kể cả Loan đã trả sau đó; không phải query hiện trạng.
+        Cùng key khác nội dung trả 409. Key chỉ được lưu sau thành công; lỗi rollback có thể gửi lại cùng key.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BorrowRequest' }
+      responses:
+        '201': { description: Loan đã tạo hoặc kết quả gốc của yêu cầu gửi lại, content: { application/json: { schema: { $ref: '#/components/schemas/LoanCommandResult' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /loans/{loanId}/return:
+    parameters:
+      - { name: loanId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: returnLoan
+      tags: [Circulation]
+      summary: Nhân viên nhận trả sách tại chi nhánh của lượt mượn
+      description: >-
+        LIBRARIAN/ADMIN ACTIVE. Khóa Book/Copy rồi Loan. Đóng Loan, đổi Copy AVAILABLE, audit/outbox cùng transaction.
+        Người mượn bị khóa vẫn được trả sách. Yêu cầu mới cho Loan đã trả hoặc version cũ trả 409.
+        Retry cùng actor/requestId/nội dung trả response gốc 200. Phân bổ Hold chưa triển khai tại mốc này.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReturnRequest' }
+      responses:
+        '200': { description: Đã nhận trả hoặc kết quả gốc của yêu cầu gửi lại, content: { application/json: { schema: { $ref: '#/components/schemas/LoanCommandResult' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /health:
     get:
       operationId: getCoreHealth
@@ -1281,6 +1356,45 @@ components:
     CopyStatus:
       type: string
       enum: [IN_PROCESS, AVAILABLE, ON_LOAN, ON_HOLD, LOST, DAMAGED, WITHDRAWN]
+    CopyStateRequest:
+      type: object
+      required: [requestId, version, status, reason]
+      properties:
+        requestId: { type: string, format: uuid }
+        version: { type: integer, format: int64, minimum: 0 }
+        status: { type: string, minLength: 1, description: Đích không thuộc transition bảo trì cho phép trả 409. }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    BorrowRequest:
+      type: object
+      required: [requestId, copyId, readerId, branchId, copyVersion]
+      properties:
+        requestId: { type: string, format: uuid }
+        copyId: { type: string, format: uuid }
+        readerId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        copyVersion: { type: integer, format: int64, minimum: 0 }
+    ReturnRequest:
+      type: object
+      required: [requestId, branchId, version]
+      properties:
+        requestId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        version: { type: integer, format: int64, minimum: 0, description: Version Loan, không phải Copy. }
+    LoanCommandResult:
+      type: object
+      required: [loanId, copyId, readerId, editionId, branchId, borrowedAt, dueAt, returnedAt, renewalCount, version, copyVersion]
+      properties:
+        loanId: { type: string, format: uuid }
+        copyId: { type: string, format: uuid }
+        readerId: { type: string, format: uuid }
+        editionId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        borrowedAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time }
+        returnedAt: { type: [string, 'null'], format: date-time }
+        renewalCount: { type: integer, minimum: 0 }
+        version: { type: integer, format: int64, minimum: 0 }
+        copyVersion: { type: integer, format: int64, minimum: 0 }
     BookCopyRequest:
       type: object
       required: [editionId, barcode, shelfId]

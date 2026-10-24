@@ -1,6 +1,7 @@
 package io.github.shuuma4869.lams.core.inventory.copy.api;
 
 import io.github.shuuma4869.lams.core.inventory.copy.application.BookCopyService;
+import io.github.shuuma4869.lams.core.inventory.copy.application.CopyStateService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -21,9 +22,24 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('LIBRARIAN', 'ADMIN')")
 public class BookCopyController {
     private final BookCopyService copies;
+    private final CopyStateService states;
 
-    public BookCopyController(BookCopyService copies) {
+    public BookCopyController(BookCopyService copies, CopyStateService states) {
         this.copies = copies;
+        this.states = states;
+    }
+
+    public record StateRequest(@jakarta.validation.constraints.NotNull UUID requestId,
+                               @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.PositiveOrZero
+                               @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = io.github.shuuma4869.lams.core.circulation.shared.VersionDeserializer.class) Long version,
+                               @jakarta.validation.constraints.NotBlank String status,
+                               @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 500) String reason) {}
+
+    @PostMapping("/{copyId}/state")
+    public BookCopyResponse state(JwtAuthenticationToken token, @PathVariable UUID copyId,
+                                  @Valid @RequestBody StateRequest request) {
+        return BookCopyResponse.from(states.change(actorId(token), copyId, request.requestId(), request.version(),
+                request.status(), request.reason()));
     }
 
     @PostMapping
