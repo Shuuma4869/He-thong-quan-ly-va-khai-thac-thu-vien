@@ -221,3 +221,21 @@ Là người đọc, tôi muốn giữ đúng ấn bản cần dùng tại chi n
 - AC-20-03: reader không xem/hủy của người khác; staff chỉ được tra cứu, không có quyền hủy thay ngầm. Đổi phạm vi cần hủy/tạo mới, mất vị trí cũ.
 - API: POST `/holds`, POST `/holds/{id}/cancel`, GET `/holds/{id}`, GET `/me/holds`, GET `/holds/queue` cho staff.
 - Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest. Trạng thái: backend đã có; UI, ETA theo ngày và E2E còn chờ.
+
+### US-21 / FR-21 / UC-21
+
+Là người mượn, tôi muốn xem các lượt mượn của mình; là nhân viên, tôi muốn lọc lịch sử để đối chiếu giao dịch tại quầy.
+
+- AC-21-01: principal chỉ xem của mình; staff còn quyền được lọc reader/branch/copy. Chi tiết Loan chặn người khác; tài khoản bị khóa hoặc thu hồi role không giữ quyền qua JWT cũ.
+- AC-21-02: phân trang ổn định khi trùng thời gian, filter ngày mượn [from,to), ACTIVE/RETURNED/OVERDUE; đúng hạn chưa quá hạn. Count/items cùng snapshot; giữ Edition/Branch tại lúc mượn khi Copy đổi vị trí.
+- API: GET `/me/loans`, `/loans`, `/loans/{id}`. LoanHistoryController/Service/Repository chỉ đọc V16, không thêm migration.
+- Test: LoanHistoryIntegrationTest. Backend đã có implementation; Reader/Staff UI và E2E lưu thông còn chờ.
+
+### US-22 / FR-22 / UC-22
+
+Là nhân viên, tôi muốn thống kê các lượt bắt đầu mượn trong một khoảng thời gian và xuất bảng để đối chiếu.
+
+- AC-22-01: staff hiện hành; from/to bắt buộc, tối đa 366 ngày; nhóm theo ngày mượn/chi nhánh với UTC hoặc Asia/Ho_Chi_Minh. borrowed = active + returned, overdue thuộc active. Trạng thái tính tại lúc đọc, không giả báo cáo hồi tố.
+- AC-22-02: CSV cùng bộ lọc/cách tính; Unicode, quote/comma/newline và công thức đầu ô được xử lý. Không xuất danh tính người mượn; vượt 10000 nhóm bị từ chối thay vì cắt dòng. GET không ghi Loan/Copy/receipt/outbox.
+- API: GET `/reports/circulation`, `/reports/circulation.csv`. CirculationReportService và LoanCsvExporter.
+- Test: LoanHistoryIntegrationTest, LoanCsvExporterTest. Backend đã có implementation; UI báo cáo, kiểm Excel và tải production còn chờ.

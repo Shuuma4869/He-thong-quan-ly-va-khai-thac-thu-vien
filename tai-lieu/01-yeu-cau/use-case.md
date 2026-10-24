@@ -26,6 +26,9 @@ flowchart LR
   S --> U19((UC-19 Gia hạn))
   R --> U19
   R --> U20((UC-20 Giữ chỗ của tôi))
+  R --> U21((UC-21 Lịch sử mượn))
+  S --> U21
+  S --> U22((UC-22 Thống kê mượn và CSV))
 ```
 
 Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay authorization. UC-13 lấy owner từ Core principal, kể cả ADMIN không được đọc/xóa history của tài khoản khác. Không có use case công khai tự nâng role. Profile chỉ đọc; UC-17–20 có backend nhưng giao diện lưu thông chưa hoàn thành. Favorites/Reviews/Rating và My Library đã có implementation UI; nghiệm thu cần kết quả test đúng SHA.
@@ -44,3 +47,5 @@ Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay 
 | 17–18 | Staff ACTIVE, version và chi nhánh hợp lệ | Khóa → kiểm policy → Loan/Copy/Hold/audit/outbox/receipt → commit | 409 xung đột; rollback toàn bộ; retry trả snapshot gốc; người mượn bị khóa vẫn trả được |
 | 19 | Chủ Loan hoặc staff, người mượn ACTIVE | Kiểm hạn/lượt/WAITING → gia hạn + audit riêng → commit | 403 sai quyền, 409 tới hạn/hết lượt/có người chờ/version cũ; không gia hạn Loan đã trả |
 | 20 | Thành viên ACTIVE; chi nhánh hoạt động | Chọn Book/Edition → WAITING/READY → nhận hoặc hủy/hết hạn | Không tự đổi Edition; reader không đọc/hủy của người khác; READY hết hạn phân bổ người kế; UI chưa có |
+| 21 | Chủ Loan hoặc staff hiện hành | Principal/filter → snapshot count/items → DTO lịch sử | 403 người khác, 404 ID không tồn tại, 422 filter; Edition/Branch theo lúc mượn, nhãn theo Catalog hiện tại |
+| 22 | Staff hiện hành, khoảng thời gian hợp lệ | Lọc nhóm Loan bắt đầu trong kỳ → nhóm ngày/chi nhánh → JSON/CSV | Không phải số trả phát sinh trong kỳ; 422 quá 366 ngày/10000 nhóm; CSV không chứa danh tính bạn đọc |

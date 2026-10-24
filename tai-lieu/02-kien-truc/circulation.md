@@ -2,7 +2,7 @@
 
 ## Phạm vi hiện có
 
-V16 bổ sung `loans` và policy; V17 bổ sung biên nhận lệnh và lịch sử trạng thái Copy; V18 bổ sung `holds`, `hold_changes`, `loan_extensions`. Core có lệnh mượn/trả/gia hạn, tạo/hủy/nhận giữ chỗ, phân bổ và hết hạn; có query giữ chỗ cá nhân/hàng chờ. Query Loan, báo cáo, giao diện lưu thông và Kafka delivery chưa hoàn thành ở mốc này. Không dùng API bảo trì để giả lập mượn/trả.
+V16 bổ sung `loans` và policy; V17 bổ sung biên nhận lệnh và lịch sử trạng thái Copy; V18 bổ sung `holds`, `hold_changes`, `loan_extensions`. Core có lệnh mượn/trả/gia hạn, tạo/hủy/nhận giữ chỗ, phân bổ và hết hạn; có query Loan/Hold, báo cáo mượn theo ngày và xuất CSV. Giao diện lưu thông và Kafka delivery chưa hoàn thành ở mốc này. Không dùng API bảo trì để giả lập mượn/trả.
 
 Phân công ban đầu: Tuan phụ trách command/transaction/policy/Hold/outbox/giao diện; Toan phụ trách query/history/filter/report/CSV P4-D2-01..05. Từ ngày 24/10/2026, phần còn thiếu của cả hai nhóm task Phase 4–6 được tiếp tục tích hợp trên nhánh Tuan theo quyết định của nhóm; giữ nguyên nhánh và lịch sử commit Toan. Insight không đọc/ghi trực tiếp bảng Loan.
 
@@ -32,6 +32,29 @@ Một Loan tham chiếu Copy vật lý, Reader, nhân viên cho mượn, Edition
 - Index theo Reader/thời gian, Reader/hạn trả đang mở, Branch/thời gian và Edition phục vụ lookup nghiệp vụ; read-side bổ sung index sau khi kiểm query plan.
 
 Unique index không thay kiểm quyền, quota, trạng thái Copy hay đồng bộ Loan–Copy. Command thực hiện các kiểm tra đó cùng transaction. Repository yêu cầu transaction cho INSERT và SELECT FOR UPDATE; hàm policy thuần không tự khóa Reader. Code có quyền truy cập trực tiếp database vẫn có thể ghi sai quan hệ nghiệp vụ giữa Copy và Loan; hạn chế tài khoản DB và kiểm command là lớp bảo vệ bắt buộc.
+
+## Lịch sử mượn và báo cáo chỉ đọc
+
+`GET /me/loans` lấy reader từ principal. Nhân viên dùng `GET /loans` với readerId, branchId, copyId; cả hai hỗ trợ status, from/to, sort và phân trang. `GET /loans/{id}` dành cho chủ lượt mượn hoặc nhân viên. Service kiểm lại trạng thái và quyền trong Identity, không chỉ tin role trên JWT. API không xuất email, tên người mượn, nhân viên thao tác hoặc policy snapshot.
+
+Các bộ lọc kết hợp bằng AND. Thời gian lọc là `borrowed_at`, khoảng `[from,to)` theo ISO 8601 có múi giờ; không nhận ngày thiếu múi giờ hoặc năm ngoài 0001–9999. Status ACTIVE gồm mọi Loan chưa trả, kể cả quá hạn; OVERDUE là phần đang mở có `due_at < asOf`; RETURNED là đã trả. Đúng tại dueAt chưa tính quá hạn. `asOf` trong trang là mốc phân loại, không phải thời điểm phát sinh nghiệp vụ.
+
+Count và items đọc cùng transaction REPEATABLE_READ. Page bắt đầu từ 0, size mặc định 20, tối đa 100; trang vượt cuối trả rỗng và giữ tổng số. Sort chỉ nhận borrowedAt/dueAt tăng hoặc giảm, luôn thêm id tăng dần khi trùng thời gian. SQL bind giá trị; cột và chiều sort chọn từ enum cố định. Các lần gọi trang riêng biệt không cùng snapshot, nên dữ liệu mới có thể làm dịch vị trí trang. Index V16 hỗ trợ reader/time, branch/time và active reader/due; chưa có benchmark tải production hoặc cam kết thời gian cho truy vấn nhiều năm/toàn hệ thống.
+
+Branch và Edition lấy từ Loan tại lúc mượn, kể cả Copy sau đó đổi kệ/chi nhánh/ấn bản. Tên sách, barcode và tên chi nhánh là giá trị hiện tại trong Catalog/Inventory, không phải bản sao nguyên văn tại ngày mượn. UI phải dùng `version` Loan cho gia hạn/trả và tải lại khi 409; query không giữ khóa cho thao tác tiếp theo.
+
+`GET /reports/circulation` dành cho LIBRARIAN/ADMIN, bắt buộc from/to không quá 366 ngày, tùy chọn branchId. Báo cáo nhóm theo ngày bắt đầu mượn và chi nhánh lịch sử, mặc định múi giờ `Asia/Ho_Chi_Minh`, có thể chọn `UTC`. Ngày không có dữ liệu không sinh dòng. Mỗi nhóm có:
+
+- `borrowed`: số Loan bắt đầu mượn trong khoảng đã chọn.
+- `active`: các Loan trong nhóm vẫn chưa trả tại lúc đọc.
+- `returned`: các Loan trong nhóm đã trả tại lúc đọc, kể cả trả ngoài khoảng đã chọn.
+- `overdue`: phần active có hạn trả trước asOf; không cộng thêm vào tổng borrowed.
+
+Vì vậy `borrowed = active + returned`. Đây là thống kê hiện trạng của nhóm Loan bắt đầu trong kỳ, không phải thống kê lượt trả phát sinh trong kỳ hay tái dựng trạng thái tại to. Gia hạn thay đổi dueAt nên có thể thay đổi số quá hạn trong lần xem sau. UI và slide phải giữ đúng tên/chú thích này.
+
+`GET /reports/circulation.csv` xuất cùng các nhóm và bộ lọc, không xuất chi tiết người mượn. Mỗi dòng mang from/to/timezone/as_of, CSV UTF-8 BOM, CRLF, quote và nhân đôi dấu nháy kép. Tên chi nhánh bắt đầu bằng công thức Excel hoặc ký tự điều khiển được thêm nháy đơn để giữ dạng text. File rỗng chỉ có header. Response dùng attachment và no-store; dữ liệu đã tải xuống nằm ngoài cơ chế thu hồi phiên của ứng dụng.
+
+Cả JSON và CSV giới hạn 10000 nhóm; vượt trả 422, không âm thầm cắt dòng. Transaction báo cáo có timeout 15 giây; cần thu hẹp thời gian/chi nhánh nếu quá lớn. Hai request JSON/CSV độc lập có thể khác nhau nếu dữ liệu thay đổi giữa hai lần đọc. Những API này chỉ SELECT, không sửa Loan/Copy/biên nhận/audit/outbox, không thêm migration và không áp dụng chính sách xóa dữ liệu.
 
 ## Policy phát triển — PROVISIONAL
 
