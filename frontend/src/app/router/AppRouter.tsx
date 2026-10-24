@@ -16,6 +16,8 @@ import { StaffCatalogPage } from '../../features/catalog/StaffCatalogPage';
 import { MyLibraryPage } from '../../features/my-library/MyLibraryPage';
 import { ReaderLoansPage } from '../../features/circulation/ReaderLoansPage';
 import { HoldCreatePage } from '../../features/circulation/HoldCreatePage';
+import { StaffCirculationPage } from '../../features/circulation/StaffCirculationPage';
+import { CirculationReportPage } from '../../features/circulation/CirculationReportPage';
 
 export function AppRouter() {
   return (
@@ -42,6 +44,8 @@ export function AppRouter() {
         <Route path="bang-dieu-khien" element={<StaffDashboardPage />} />
         <Route path="thanh-vien" element={<MemberListPage />} />
         <Route path="danh-muc" element={<StaffCatalogPage />} />
+        <Route path="luu-thong" element={<StaffCirculationPage />} />
+        <Route path="bao-cao-luu-thong" element={<CirculationReportPage />} />
       </Route>
       </Route></Route>
       <Route path="*" element={<NotFoundPage />} />

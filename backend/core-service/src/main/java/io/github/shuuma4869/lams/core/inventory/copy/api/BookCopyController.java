@@ -63,6 +63,10 @@ public class BookCopyController {
     public BookCopyResponse get(JwtAuthenticationToken token, @PathVariable UUID copyId) {
         return BookCopyResponse.from(copies.get(actorId(token), copyId));
     }
+    @GetMapping("/by-barcode")
+    public BookCopyResponse byBarcode(JwtAuthenticationToken token,@RequestParam String barcode) {
+        return BookCopyResponse.from(copies.byBarcode(actorId(token),barcode));
+    }
 
     @PatchMapping("/{copyId}")
     public BookCopyResponse update(JwtAuthenticationToken token, @PathVariable UUID copyId,

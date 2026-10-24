@@ -48,6 +48,11 @@ public class BookCopyService {
         requireStaff(actorId);
         return find(copyId);
     }
+    @Transactional(readOnly=true)
+    public BookCopy byBarcode(UUID actorId,String barcode) {
+        requireStaff(actorId);
+        return copies.findBarcode(normalizeBarcode(barcode)).orElseThrow(()->new AuthFailure(404,"Không tìm thấy bản sách có mã vạch này."));
+    }
 
     public CopyPage list(UUID actorId, UUID editionId, UUID shelfId, String statusValue,
                          String pageValue, String sizeValue) {

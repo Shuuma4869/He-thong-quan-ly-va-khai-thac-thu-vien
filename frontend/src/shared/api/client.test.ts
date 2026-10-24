@@ -21,6 +21,34 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+it('CSV dùng Authorization và refresh một lần, không đưa token vào URL', async () => {
+  let token = 'expired'; const refresh = vi.fn(async () => { token = 'fresh'; return true; });
+  const fetchMock = vi.fn((_url: string, init: RequestInit) => Promise.resolve(
+    (init.headers as Record<string, string>).Authorization === 'Bearer fresh'
+      ? new Response('ngày,chi nhánh\r\n', { headers: { 'Content-Type': 'text/csv;charset=UTF-8' } })
+      : Response.json({ detail: 'Hết hạn' }, { status: 401 })));
+  vi.stubGlobal('fetch', fetchMock); configureCoreAuth({ token: () => token, refresh, clear: vi.fn() });
+  const blob = await coreApi.download('/reports/circulation.csv?from=test');
+  expect(await blob.text()).toBe('ngày,chi nhánh\r\n'); expect(refresh).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls.every(([url]) => !url.includes(token) && !url.includes('expired'))).toBe(true);
+});
+
+it('không trả file CSV đến muộn của tài khoản cũ', async () => {
+  let generation = 1; let finish!: (value: Response) => void;
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+  configureCoreAuth({ token: () => 'old-token', generation: () => generation, refresh: vi.fn(), clear: vi.fn() });
+  const request = coreApi.download('/reports/circulation.csv'); generation++;
+  finish(new Response('dữ liệu cũ', { headers: { 'Content-Type': 'text/csv' } }));
+  await expect(request).rejects.toMatchObject({ status: 401 });
+});
+
+it('CSV lỗi vẫn đọc Problem Details và request đã hủy không được trả file', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ detail: 'Khoảng thời gian quá dài' }, { status: 422 })));
+  await expect(coreApi.download('/reports/circulation.csv')).rejects.toMatchObject({ status: 422, message: 'Khoảng thời gian quá dài' });
+  const controller = new AbortController(); controller.abort();
+  await expect(coreApi.download('/reports/circulation.csv', controller.signal)).rejects.toBeDefined();
+});
+
 it.each([200, 401])('response %s từ phiên cũ không trả dữ liệu hoặc gửi lại POST bằng tài khoản mới', async status => {
   let token = 'old-user'; let generation = 1;
   let finish!: (response: Response) => void;

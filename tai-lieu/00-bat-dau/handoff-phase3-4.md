@@ -46,14 +46,16 @@ V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb0
 | P4-D1-13 | Có vị trí hàng chờ, chưa có ETA theo ngày | Cần mô hình và kiểm thử độ bất định trước khi hiển thị ngày dự đoán |
 | P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
 | P4-D1-16 | ReaderLoansPage/HoldCreatePage: xem Loan/Hold, giữ đúng ấn bản hoặc chọn bất kỳ, gia hạn/hủy có xác nhận | CirculationFlow kiểm retry cùng requestId, chặn double submit, lỗi và query; E2E Reader lưu thông cần đối chiếu CI/EXE đúng SHA |
-| P4-D1-17 | Staff circulation UI chưa có | Cần nối command/query thật cho quầy; thao tác API trong E2E Reader không thay nghiệm thu UI staff |
+| P4-D1-17 | StaffCirculationPage/MemberPicker: tìm người, quét mã, xác nhận mượn/trả/gia hạn, lịch sử theo người/chi nhánh/bản | StaffCirculationFlow kiểm xác nhận, version, retry, lỗi và bộ lọc; E2E quầy thực hiện command bằng UI rồi kiểm dữ liệu Core |
 | P4-D2-01..02 | LoanHistoryController/Service/Repository; `/me/loans`, `/loans`, `/loans/{id}` | Owner/current-role, filter borrowedAt/status/branch/copy, phân trang, giữ Edition/Branch lịch sử |
-| P4-D2-03..04 | CirculationReportService và LoanCsvExporter; `/reports/circulation(.csv)` | Nhóm Loan bắt đầu trong [from,to), hiện trạng tại asOf; timezone, 366 ngày/10000 nhóm, CSV không có danh tính người mượn |
+| P4-D2-03..04 | CirculationReportService/LoanCsvExporter và CirculationReportPage; `/reports/circulation(.csv)` | Nhóm Loan bắt đầu trong [from,to), hiện trạng tại asOf; timezone, 366 ngày/10000 nhóm; tải CSV có xác thực, không chứa danh tính người mượn |
 | P4-D2-05 | LoanHistoryIntegrationTest và LoanCsvExporterTest | PostgreSQL/HTTP, bộ lọc lỗi, quyền, biên thời gian, CSV/formula và GET không ghi; kiểm CI đúng SHA trước khi đánh dấu tích hợp |
 
 Chi tiết schema, cấu hình, retention và ranh giới kiểm thử ở [kiến trúc lưu thông](../02-kien-truc/circulation.md). Tất cả đường dẫn Java trong bảng tính từ package Core. Bảng này không đánh dấu cả Phase 4 hoàn thành.
 
 P4-D2-01..05 đã tích hợp qua PR #17 tại `d704b0c5459e7e5529ccef883df6846f7d149f1a`; head `236871c` đạt CI `40084875776` 5/5, Core 205 test và hồi quy EXE 9/9 với binary `f8b308d` vì frontend chưa đổi. CI main kiểm riêng tại `40119301261`. Các kết quả này không thay cho Reader UI được bổ sung sau PR #17.
+
+Reader UI tích hợp qua PR #18 tại `c748a009dc1b8d333fe3065e2498aac85ec25a65`. Head `7ea5463` đạt CI `40124723019` 5/5 và EXE 10/10 với frontend cùng source. Bằng chứng này chưa bao gồm quầy và báo cáo UI bổ sung sau đó; các lượt kiểm của giao diện mới phải đối chiếu theo head/CI riêng.
 
 Phân công gốc vẫn giữ để truy vết tác giả. Quyết định ngày 24/10/2026 mở rộng triển khai trên nhánh Tuan tới phần còn thiếu của cả hai thành viên trong Phase 4–6, gồm P4-D2-01..05 (query/filter/report/CSV/tests). Không sửa nhánh Toan, không gán code gốc của Toan cho Tuan, không đánh dấu các task mới DONE trước khi có đầu ra và kiểm chứng.
 

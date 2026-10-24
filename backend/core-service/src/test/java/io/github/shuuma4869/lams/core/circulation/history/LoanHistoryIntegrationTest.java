@@ -31,6 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(properties="lams.circulation.hold-job-enabled=false")
 @AutoConfigureMockMvc
 @Import(LoanHistoryIntegrationTest.TimeConfig.class)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 class LoanHistoryIntegrationTest {
     static final Instant NOW=Instant.parse("2026-10-24T12:00:00Z");

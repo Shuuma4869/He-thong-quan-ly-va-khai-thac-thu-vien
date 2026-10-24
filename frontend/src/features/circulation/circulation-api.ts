@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { coreApi } from '../../shared/api/client';
-import { pageSchema } from '../catalog/catalog-api';
+import { pageSchema, schemas } from '../catalog/catalog-api';
 
 const uuid = z.string().uuid();
 const time = z.string().datetime();
@@ -45,4 +45,16 @@ export async function createHold(input: HoldInput, requestId: string) {
   const payload = z.object({ bookId: uuid, editionId: uuid.nullable(), branchId: uuid, anyEdition: z.boolean() })
     .refine(value => value.anyEdition ? value.editionId === null : value.editionId !== null).parse(input);
   return holdSchema.parse(await coreApi.post('/holds', { ...payload, requestId: uuid.parse(requestId) }));
+}
+export type Copy = z.infer<typeof schemas.copies>;
+export async function findCopy(barcode: string, signal?: AbortSignal) {
+  return schemas.copies.parse(await coreApi.get(`/copies/by-barcode?${new URLSearchParams({ barcode })}`, true, signal));
+}
+export async function borrowCopy(copy: Copy, readerId: string, requestId: string) {
+  return loanResultSchema.parse(await coreApi.post('/loans', { requestId: uuid.parse(requestId), copyId: copy.id,
+    readerId: uuid.parse(readerId), branchId: copy.branchId, copyVersion: version.parse(copy.version) }));
+}
+export async function returnLoan(loan: Loan, requestId: string) {
+  return loanResultSchema.parse(await coreApi.post(`/loans/${uuid.parse(loan.loanId)}/return`, {
+    requestId: uuid.parse(requestId), branchId: loan.branchId, version: version.parse(loan.version) }));
 }

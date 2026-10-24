@@ -872,6 +872,22 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /copies/by-barcode:
+    get:
+      operationId: getCopyByBarcode
+      tags: [Inventory]
+      summary: Tra chính xác một mã vạch tại quầy
+      description: Chỉ LIBRARIAN/ADMIN đang hoạt động. Bỏ khoảng trắng hai đầu, so khớp phân biệt hoa thường; ký tự SQL được coi là dữ liệu, không phải mẫu tìm kiếm. Chỉ đọc, không đặt giữ hoặc thay đổi version bản sách.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: barcode, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        '200': { description: Bản sách khớp mã vạch, content: { application/json: { schema: { $ref: '#/components/schemas/BookCopy' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /copies/{copyId}:
     parameters:
       - { name: copyId, in: path, required: true, schema: { type: string, format: uuid } }
