@@ -2,6 +2,9 @@
 
 | Threat | Endpoint | Control | Negative test | Evidence cần đối chiếu | Rủi ro còn lại |
 |---|---|---|---|---|---|
+| Xem Loan của người khác hoặc giữ quyền staff đã mất | /me/loans, /loans, /loans/{id}, /reports/circulation(.csv) | Principal, owner/current-role và transaction chỉ đọc | LoanHistoryIntegrationTest | PostgreSQL + MockMvc đúng SHA | Staff được xem lịch sử toàn hệ thống; chưa có phân quyền theo chi nhánh |
+| Chèn SQL hoặc xuất báo cáo quá lớn | Loan filters/report | Bind UUID/thời gian, enum sort, size 100; report tối đa 366 ngày/10000 nhóm, timeout 15s | LoanHistoryIntegrationTest | Invalid input và fixture hơn 10000 nhóm | Cần ingress rate limit và kiểm tải trước pilot |
+| Công thức trong CSV hoặc lộ danh tính người mượn | /reports/circulation.csv | Chỉ aggregate chi nhánh/ngày; escape CSV, nháy đơn cho prefix nguy hiểm, no-store | LoanCsvExporterTest; LoanHistoryIntegrationTest | Kiểm byte UTF-8 và HTTP | File tải về không tự thu hồi; chưa kiểm mọi phần mềm bảng tính |
 | Giả staff bằng JWT cũ | Catalog, metadata/history | Core currentUser/roles; MetadataGuard mỗi request | Phase2RegressionTest; metadata-guard.spec | Core/Insight CI đúng SHA | Có cửa sổ thay đổi quyền sau check; chưa phải atomic xuyên service |
 | Đọc/xóa lịch sử người khác | history/{id}, replay | owner từ Symbol nội bộ; WHERE ownerId | history.spec; history.integration; E2E history | CI 39907400703 và E2E EXE local đạt ở head ee929cd | ADMIN cũng không được vượt owner |
 | Chèn ownerId từ client | POST history | DTO whitelist/forbid; không nhận owner field | history.spec; history-http.spec | Unit + HTTP boundary | Không dùng UI ẩn nút thay server |

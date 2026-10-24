@@ -929,6 +929,31 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /loans:
+    get:
+      operationId: listLoansForStaff
+      tags: [Circulation]
+      summary: Nhân viên lọc lịch sử mượn
+      description: >-
+        Chỉ LIBRARIAN/ADMIN ACTIVE còn quyền hiện hành. Bộ lọc kết hợp bằng AND; from bao gồm, to loại trừ,
+        áp dụng borrowedAt. ACTIVE bao gồm cả đang mượn quá hạn; OVERDUE là phần đang mở có dueAt < asOf.
+        Count/items cùng snapshot PostgreSQL. Branch/Edition lấy tại lúc mượn; tên sách/chi nhánh và barcode là giá trị hiện tại.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: readerId, in: query, schema: { type: string, format: uuid } }
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: copyId, in: query, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/LoanStatus' }
+        - { $ref: '#/components/parameters/LoanFrom' }
+        - { $ref: '#/components/parameters/LoanTo' }
+        - { $ref: '#/components/parameters/LoanSort' }
+        - { $ref: '#/components/parameters/LoanPage' }
+        - { $ref: '#/components/parameters/LoanSize' }
+      responses:
+        '200': { description: Trang lịch sử, content: { application/json: { schema: { $ref: '#/components/schemas/LoanHistoryPage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
     post:
       operationId: borrowCopy
       tags: [Circulation]
@@ -952,6 +977,92 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /me/loans:
+    get:
+      operationId: listMyLoans
+      tags: [Circulation]
+      summary: Xem lịch sử mượn của mình
+      description: >-
+        Tài khoản ACTIVE còn READER/LIBRARIAN/ADMIN. Người mượn luôn lấy từ principal.
+        Phân trang mặc định 20, tối đa 100; from/to lọc borrowedAt theo [from,to).
+        ACTIVE bao gồm OVERDUE; quá hạn tính tại asOf, đúng hạn chưa quá hạn.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/LoanStatus' }
+        - { $ref: '#/components/parameters/LoanFrom' }
+        - { $ref: '#/components/parameters/LoanTo' }
+        - { $ref: '#/components/parameters/LoanSort' }
+        - { $ref: '#/components/parameters/LoanPage' }
+        - { $ref: '#/components/parameters/LoanSize' }
+      responses:
+        '200': { description: Trang cá nhân, content: { application/json: { schema: { $ref: '#/components/schemas/LoanHistoryPage' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /loans/{loanId}:
+    parameters:
+      - { name: loanId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getLoan
+      tags: [Circulation]
+      summary: Đọc hiện trạng một lượt mượn
+      description: Chủ lượt mượn hoặc LIBRARIAN/ADMIN còn quyền hiện hành; người khác nhận 403, UUID không tồn tại nhận 404. Không trả thông tin liên hệ hay policy nội bộ.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Lượt mượn, content: { application/json: { schema: { $ref: '#/components/schemas/LoanHistoryItem' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /reports/circulation:
+    get:
+      operationId: getCirculationReport
+      tags: [Circulation]
+      summary: Thống kê các lượt bắt đầu mượn trong khoảng thời gian
+      description: >-
+        LIBRARIAN/ADMIN ACTIVE. from/to bắt buộc, ISO 8601 có múi giờ, [from,to), tối đa 366 ngày.
+        Nhóm ngày mượn và chi nhánh lịch sử; timezone mặc định Asia/Ho_Chi_Minh, có thể chọn UTC.
+        borrowed là số Loan bắt đầu trong kỳ; active/returned/overdue là hiện trạng của chính nhóm Loan này tại asOf.
+        overdue nằm trong active, không cộng lần nữa. Đây không phải số lượt trả phát sinh trong kỳ hay báo cáo hồi tố tại to.
+        Ngày không có lượt mượn không tạo dòng. Tối đa 10000 dòng, vượt trả 422 thay vì cắt dữ liệu.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: timezone, in: query, schema: { type: string, enum: [UTC, Asia/Ho_Chi_Minh], default: Asia/Ho_Chi_Minh } }
+      responses:
+        '200': { description: Thống kê theo ngày và chi nhánh, content: { application/json: { schema: { $ref: '#/components/schemas/CirculationReport' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /reports/circulation.csv:
+    get:
+      operationId: exportCirculationReport
+      tags: [Circulation]
+      summary: Xuất CSV thống kê mượn theo ngày và chi nhánh
+      description: >-
+        Cùng quyền, bộ lọc, cách tính và giới hạn như GET /reports/circulation. Một file là một snapshot;
+        hai request JSON/CSV khác thời điểm có thể khác dữ liệu. UTF-8 BOM, CRLF, quote/escape trường text;
+        tên bắt đầu bằng công thức hoặc ký tự điều khiển được thêm dấu nháy đơn. Không xuất danh tính người mượn.
+        File rỗng có header; mỗi dòng có from/to/timezone/as_of. File này không chứa chi tiết từng Loan.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: timezone, in: query, schema: { type: string, enum: [UTC, Asia/Ho_Chi_Minh], default: Asia/Ho_Chi_Minh } }
+      responses:
+        '200':
+          description: CSV đính kèm, Cache-Control no-store
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /loans/{loanId}/return:
     parameters:
@@ -1181,6 +1292,34 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
 components:
+  parameters:
+    LoanStatus:
+      name: status
+      in: query
+      schema: { type: string, enum: [ACTIVE, OVERDUE, RETURNED] }
+    LoanFrom:
+      name: from
+      in: query
+      description: borrowedAt >= from; ISO 8601 có múi giờ, năm 0001–9999.
+      schema: { type: string, format: date-time }
+    LoanTo:
+      name: to
+      in: query
+      description: borrowedAt < to; nếu có cả hai mốc thì from phải nhỏ hơn to.
+      schema: { type: string, format: date-time }
+    LoanSort:
+      name: sort
+      in: query
+      description: Thứ tự thêm loanId tăng dần để phân trang ổn định khi trùng thời gian.
+      schema: { type: string, enum: ['borrowedAt,asc', 'borrowedAt,desc', 'dueAt,asc', 'dueAt,desc'], default: 'borrowedAt,desc' }
+    LoanPage:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 }
+    LoanSize:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
   securitySchemes:
     bearerAuth:
       type: http
@@ -1551,6 +1690,53 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/HoldView' } }
         page: { $ref: '#/components/schemas/PageMetadata' }
+    LoanHistoryItem:
+      allOf:
+        - { $ref: '#/components/schemas/LoanCommandResult' }
+        - type: object
+          required: [bookTitle, barcode, branchName, status, overdue]
+          properties:
+            bookTitle: { type: string }
+            barcode: { type: string }
+            branchName: { type: string }
+            status: { type: string, enum: [ACTIVE, OVERDUE, RETURNED] }
+            overdue: { type: boolean }
+    LoanHistoryPage:
+      type: object
+      required: [items, page, asOf]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/LoanHistoryItem' } }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+        asOf: { type: string, format: date-time }
+    CirculationTotals:
+      type: object
+      required: [borrowed, active, returned, overdue]
+      properties:
+        borrowed: { type: integer, format: int64, minimum: 0 }
+        active: { type: integer, format: int64, minimum: 0 }
+        returned: { type: integer, format: int64, minimum: 0 }
+        overdue: { type: integer, format: int64, minimum: 0 }
+    CirculationReport:
+      type: object
+      required: [from, to, timezone, asOf, totals, items]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        timezone: { type: string, enum: [UTC, Asia/Ho_Chi_Minh] }
+        asOf: { type: string, format: date-time }
+        totals: { $ref: '#/components/schemas/CirculationTotals' }
+        items:
+          type: array
+          maxItems: 10000
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/CirculationTotals' }
+              - type: object
+                required: [date, branchId, branchName]
+                properties:
+                  date: { type: string, format: date }
+                  branchId: { type: string, format: uuid }
+                  branchName: { type: string }
     LoanCommandResult:
       type: object
       required: [loanId, copyId, readerId, editionId, branchId, borrowedAt, dueAt, returnedAt, renewalCount, version, copyVersion]

@@ -34,7 +34,7 @@ Implementation chưa tự động có nghĩa TESTED hoặc INTEGRATED. Gate cầ
 
 ## Phase 4 — Tuan
 
-V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb03dc52ac1f991999e5c7`; CI main `40041476883` đạt 5/5. V17 tích hợp qua PR #15, merge `594efbee69ae114b2a49f175252e7237f8ea471a`; CI main `40062526536` đạt 5/5. V18 đang bổ sung giữ chỗ/gia hạn trên nhánh Tuan, giữ nguyên V1–V17. P4-D1-02 dùng giá trị phát triển PROVISIONAL; chưa coi toàn bộ Phase 4 hoàn thành từ mốc command này.
+V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb03dc52ac1f991999e5c7`; CI main `40041476883` đạt 5/5. V17 tích hợp qua PR #15, merge `594efbee69ae114b2a49f175252e7237f8ea471a`; CI main `40062526536` đạt 5/5. PR #16 thêm giữ chỗ/gia hạn V18, merge `be3f18c0809a8de0e3ef08703f20792721e5250a`; head `f8b308d` đạt CI `40083737232` 5/5 và EXE mới build đạt 9/9 hồi quy. CI của merge main kiểm riêng tại run `40084534697`, không suy từ kết quả head. P4-D1-02 dùng giá trị phát triển PROVISIONAL; chưa coi toàn bộ Phase 4 hoàn thành từ mốc command này.
 
 | Task | Output hiện có hoặc đang chờ | Kiểm chứng / điều kiện nối tiếp |
 |---|---|---|
@@ -46,6 +46,9 @@ V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb0
 | P4-D1-13 | Có vị trí hàng chờ, chưa có ETA theo ngày | Cần mô hình và kiểm thử độ bất định trước khi hiển thị ngày dự đoán |
 | P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
 | P4-D1-16..17 | Reader/Staff circulation UI chưa có | Command thật và query P4-D2-01 của Toan; thiếu dependency phải hiện rõ, không tạo dữ liệu giả |
+| P4-D2-01..02 | LoanHistoryController/Service/Repository; `/me/loans`, `/loans`, `/loans/{id}` | Owner/current-role, filter borrowedAt/status/branch/copy, phân trang, giữ Edition/Branch lịch sử |
+| P4-D2-03..04 | CirculationReportService và LoanCsvExporter; `/reports/circulation(.csv)` | Nhóm Loan bắt đầu trong [from,to), hiện trạng tại asOf; timezone, 366 ngày/10000 nhóm, CSV không có danh tính người mượn |
+| P4-D2-05 | LoanHistoryIntegrationTest và LoanCsvExporterTest | PostgreSQL/HTTP, bộ lọc lỗi, quyền, biên thời gian, CSV/formula và GET không ghi; kiểm CI đúng SHA trước khi đánh dấu tích hợp |
 
 Chi tiết schema, cấu hình, retention và ranh giới kiểm thử ở [kiến trúc lưu thông](../02-kien-truc/circulation.md). Tất cả đường dẫn Java trong bảng tính từ package Core. Bảng này không đánh dấu cả Phase 4 hoàn thành.
 
