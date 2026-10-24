@@ -121,6 +121,41 @@ class LoanSchemaTest {
         assertThat(f.jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE version='17'", Integer.class)).isOne();
     }
 
+    @Test void upgradeV18PreservesV17ReceiptsAndLoanAndRejectsInvalidHoldLifecycle() {
+        var f=fixture(false); var loan=f.loan(); f.insert(loan); migrate(f.schema,"17");
+        UUID key=UUID.randomUUID();
+        f.jdbc.update("INSERT INTO circulation_requests(actor_id,request_id,command,request_payload,response_payload) VALUES (?,?,'BORROW','{}','{}')",f.staff,key);
+        migrate(f.schema,"18");
+        assertThat(f.loans.find(loan.id()).orElseThrow()).usingRecursiveComparison().ignoringFields("policySnapshot").isEqualTo(loan);
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM circulation_requests WHERE request_id=?",Integer.class,key)).isOne();
+        UUID hold=UUID.randomUUID();
+        f.jdbc.update("""
+                INSERT INTO holds(id,reader_id,book_id,edition_id,branch_id,status,queued_at,policy_version,pickup_seconds)
+                VALUES (?,?,?,?,?,'WAITING',?,'test-v1',60)
+                """,hold,f.reader,f.book,f.edition,f.branch,Timestamp.from(NOW));
+        assertThatThrownBy(()->f.jdbc.update("UPDATE holds SET status='READY' WHERE id=?",hold)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(()->f.jdbc.update("UPDATE holds SET status='FULFILLED',loan_id=? WHERE id=?",loan.id(),hold)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(()->f.jdbc.update("UPDATE holds SET edition_id=? WHERE id=?",UUID.randomUUID(),hold)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(()->f.jdbc.update("UPDATE holds SET pickup_seconds=0 WHERE id=?",hold)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(()->f.jdbc.update("DELETE FROM users WHERE id=?",f.reader)).isInstanceOf(DataIntegrityViolationException.class);
+        f.jdbc.update("UPDATE holds SET status='CANCELLED',closed_at=? WHERE id=?",Timestamp.from(NOW),hold);
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM favorites",Integer.class)).isOne();
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM reviews",Integer.class)).isOne();
+        migrate(f.schema,"18");
+        assertThat(f.jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE version='18'",Integer.class)).isOne();
+    }
+
+    @Test void v18UniqueIndexesPreventTwoActiveRequestsAndDuplicateCopyAssignment() {
+        var f=fixture(false); migrate(f.schema,"18"); UUID first=UUID.randomUUID(),second=UUID.randomUUID();
+        String insert="INSERT INTO holds(id,reader_id,book_id,branch_id,status,queued_at,policy_version,pickup_seconds) VALUES (?,?,?,?,'WAITING',?,'test-v1',60)";
+        f.jdbc.update(insert,first,f.reader,f.book,f.branch,Timestamp.from(NOW));
+        assertThatThrownBy(()->f.jdbc.update(insert,second,f.reader,f.book,f.branch,Timestamp.from(NOW))).isInstanceOf(DataIntegrityViolationException.class);
+        f.jdbc.update(insert,second,f.staff,f.book,f.branch,Timestamp.from(NOW));
+        String ready="UPDATE holds SET status='READY',copy_id=?,ready_at=?,expires_at=? WHERE id=?";
+        f.jdbc.update(ready,f.copy,Timestamp.from(NOW),Timestamp.from(NOW.plusSeconds(60)),first);
+        assertThatThrownBy(()->f.jdbc.update(ready,f.copy,Timestamp.from(NOW),Timestamp.from(NOW.plusSeconds(60)),second)).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     @Test void foreignKeysPreventOrphansAndDeletionOfHistoricalReferences() {
         var f = fixture(false); var loan = f.loan(); f.insert(loan);
         for (String column : new String[]{"copy_id", "edition_id", "reader_id", "branch_id", "borrowed_by"}) {

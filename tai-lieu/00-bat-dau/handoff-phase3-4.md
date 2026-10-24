@@ -34,15 +34,16 @@ Implementation chưa tự động có nghĩa TESTED hoặc INTEGRATED. Gate cầ
 
 ## Phase 4 — Tuan
 
-V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb03dc52ac1f991999e5c7`; CI main `40041476883` đạt 5/5. V17 trên nhánh Tuan bổ sung receipt/audit, khóa và command mượn/trả. V1–V16 giữ nguyên. P4-D1-02 dùng giá trị phát triển PROVISIONAL; chưa coi toàn bộ Phase 4 hoàn thành từ mốc command này.
+V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb03dc52ac1f991999e5c7`; CI main `40041476883` đạt 5/5. V17 tích hợp qua PR #15, merge `594efbee69ae114b2a49f175252e7237f8ea471a`; CI main `40062526536` đạt 5/5. V18 đang bổ sung giữ chỗ/gia hạn trên nhánh Tuan, giữ nguyên V1–V17. P4-D1-02 dùng giá trị phát triển PROVISIONAL; chưa coi toàn bộ Phase 4 hoàn thành từ mốc command này.
 
 | Task | Output hiện có hoặc đang chờ | Kiểm chứng / điều kiện nối tiếp |
 |---|---|---|
 | P4-D1-01 | V16, `Loan`, `LoanRepository` | `LoanSchemaTest`, `LoanRepositoryIntegrationTest`; unique active Copy, FK, upgrade V15, transaction |
 | P4-D1-02 | `CirculationPolicy`, `BorrowPolicyService`; cấu hình môi trường | `BorrowPolicyTest`; quota/status/role/overdue, cấu hình sai dừng khởi động; command phải khóa Reader trước khi đếm |
-| P4-D1-03/04/06/07/08 | Borrow/Return, CopyLockRepository/CopyStateService, receipt V17, audit/outbox | LoanCommandIntegrationTest kiểm quyền, replay, rollback, quota/copy race; Return cần nối phân bổ Hold ở bước sau |
-| P4-D1-05 | Renew chưa có | Phụ thuộc Hold để chặn gia hạn khi có người đợi; cần lịch sử gia hạn |
-| P4-D1-09..13 | Hold model/queue/allocation/expiry/ETA chưa có | FIFO, assignment unique, pickup TTL, concurrent cancel/expiry; ETA phải nêu độ bất định |
+| P4-D1-03/04/06/07/08 | Borrow/Return, CopyLockRepository/CopyStateService, receipt V17, audit/outbox; Return nối phân bổ Hold | LoanCommandIntegrationTest và HoldIntegrationTest kiểm quyền, replay, rollback, quota/copy race, return/cancel |
+| P4-D1-05 | LoanRenewalService, `/loans/{id}/renew`, audit V18 | Chặn quá hạn/hết lượt/WAITING phù hợp; cạnh tranh renew/return, snapshot policy gia hạn riêng |
+| P4-D1-09..12 | Hold V18, tạo/hủy/nhận, FIFO theo chi nhánh/Edition, allocation/expiry, query riêng tư | HoldIntegrationTest, LoanSchemaTest; không đồng nghĩa giao diện đã hoàn thành |
+| P4-D1-13 | Có vị trí hàng chờ, chưa có ETA theo ngày | Cần mô hình và kiểm thử độ bất định trước khi hiển thị ngày dự đoán |
 | P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
 | P4-D1-16..17 | Reader/Staff circulation UI chưa có | Command thật và query P4-D2-01 của Toan; thiếu dependency phải hiện rõ, không tạo dữ liệu giả |
 

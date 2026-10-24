@@ -1,5 +1,7 @@
 # Phân phối hold
 
+Đã có backend `HoldAllocationService`, `HoldService`, `HoldExpiryJob` và migration V18. Giao diện, ETA theo ngày và consumer thông báo chưa hoàn thành. Xem [transaction, policy và giới hạn](../../02-kien-truc/circulation.md).
+
 ## Input
 Copy vừa khả dụng, queue hold cùng Book, branch/edition preference, policy và thời điểm.
 
@@ -12,7 +14,7 @@ Một copy có tối đa một active assignment; một hold không nhận hai c
 ## Pseudo-code
 ```text
 candidates = waiting holds compatible with copy
-             ordered by policyPriority, queuedAt, id
+             ordered by queuedAt, id
 for hold in candidates:
   if reader remains eligible and atomicClaim(copy, hold):
     set hold READY; set copy ON_HOLD; calculate pickup TTL
@@ -25,7 +27,7 @@ return AVAILABLE
 Hold bị hủy trong lúc chọn; reader đạt quota; pickup deadline rơi vào ngày đóng cửa; alternative edition không được chấp thuận; queue rỗng.
 
 ## Concurrency concerns
-Claim dùng transaction/unique constraint; nhiều worker phải skip locked hoặc compare-and-set. Expiry worker và pickup command tranh chấp bằng version.
+Command và worker khóa Book bằng advisory transaction rồi khóa Copy; unique index là lớp bảo vệ bổ sung. Không dùng SKIP LOCKED để tránh bỏ qua thứ tự hàng chờ trong cùng Book. Expiry/pickup/cancel dùng cùng khóa Book và kiểm lại status/version/deadline. Khóa Book của các đầu sách khác nhau độc lập.
 
 ## Test scenarios
-FIFO; tie-break; skip user không hợp lệ; hai copy/two workers; expire chuyển người kế; retry consumer không gửi hai thông báo.
+`HoldIntegrationTest`: FIFO/tie-break, Edition/Branch, bỏ qua người không đủ điều kiện, hai Copy trả đồng thời, cancel/return, hết hạn chuyển người kế, worker lặp và rollback. `HoldExpiryJobTest`: con trỏ lô 100 Book và retry sau lỗi. Retry consumer/thông báo chưa có kiểm thử vì consumer chưa triển khai.

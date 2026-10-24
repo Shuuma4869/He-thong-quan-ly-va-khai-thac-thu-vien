@@ -55,7 +55,7 @@ Media reference có đúng một trong hai FK Author/Edition, không phải cả
 
 ## Mục đích sơ đồ mục tiêu
 
-V16 bổ sung Loan trong Core; V17 thêm receipt và audit phục vụ Borrow/Return (Renew/Hold chưa có):
+V16 bổ sung Loan trong Core; V17 thêm receipt và audit; V18 thêm Hold và lịch sử gia hạn:
 
 ```mermaid
 erDiagram
@@ -63,11 +63,19 @@ erDiagram
   BOOK_COPIES ||--o{ LOANS : physical_copy
   EDITIONS ||--o{ LOANS : edition_at_borrow
   BRANCHES ||--o{ LOANS : branch_at_borrow
+  LOANS ||--o{ LOAN_EXTENSIONS : renewed
+  USERS ||--o{ HOLDS : requests
+  BOOKS ||--o{ HOLDS : targets
+  EDITIONS |o--o{ HOLDS : optional_exact_edition
+  BRANCHES ||--o{ HOLDS : pickup_at
+  BOOK_COPIES |o--o{ HOLDS : assigned_history
+  LOANS |o--o| HOLDS : fulfilled_by
+  HOLDS ||--o{ HOLD_CHANGES : transitions
 ```
 
-V17: `users 1—n circulation_requests`, khóa chính `(actor_id, request_id)`; `book_copies 1—n copy_state_changes`, unique `(copy_id, copy_version)`. Audit tham chiếu actor là users khi HUMAN, không có actor khi SYSTEM. Chưa có thao tác SYSTEM ở mốc mượn/trả này.
+V17: `users 1—n circulation_requests`, khóa chính `(actor_id, request_id)`; `book_copies 1—n copy_state_changes`, unique `(copy_id, copy_version)`. Audit tham chiếu actor là users khi HUMAN, không có actor khi SYSTEM. Job hết hạn/phân bổ Hold ghi SYSTEM.
 
-FK RESTRICT giữ lịch sử; unique partial `copy_id WHERE returned_at IS NULL` chặn hai Loan đang mở. [Kiến trúc lưu thông](../02-kien-truc/circulation.md) ghi transaction và giới hạn schema/policy/retention; chưa có Hold hoặc giao diện lưu thông chỉ từ sơ đồ này.
+FK RESTRICT giữ lịch sử; unique partial `copy_id WHERE returned_at IS NULL` chặn hai Loan đang mở. V18 giới hạn một WAITING/READY mỗi reader/Book và một READY mỗi Copy; Hold lịch sử vẫn tham chiếu Copy sau khi đóng. [Kiến trúc lưu thông](../02-kien-truc/circulation.md) ghi transaction và giới hạn schema/policy/retention. Giao diện lưu thông chưa hoàn thành chỉ từ schema/API này.
 
 Mô tả target model để thống nhất tên và ownership. Đây không phải khẳng định mọi bảng đã được migration trong Giai đoạn 01.
 

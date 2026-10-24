@@ -21,10 +21,14 @@ flowchart LR
   R --> U14((UC-14 Sách yêu thích))
   R --> U15((UC-15 Đánh giá của tôi))
   R --> U16((UC-16 Chấm điểm sách))
-  S -.-> P4((Mượn trả / hold - Phase 4))
+  S --> U17((UC-17 Cho mượn))
+  S --> U18((UC-18 Nhận trả))
+  S --> U19((UC-19 Gia hạn))
+  R --> U19
+  R --> U20((UC-20 Giữ chỗ của tôi))
 ```
 
-Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay authorization. UC-13 lấy owner từ Core principal, kể cả ADMIN không được đọc/xóa history của tài khoản khác. Không có use case công khai tự nâng role. Profile chỉ đọc; mượn/trả và hold chưa phải chức năng chạy được. Favorites/Reviews/Rating và My Library đã có implementation UI; nghiệm thu cần kết quả test đúng SHA.
+Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay authorization. UC-13 lấy owner từ Core principal, kể cả ADMIN không được đọc/xóa history của tài khoản khác. Không có use case công khai tự nâng role. Profile chỉ đọc; UC-17–20 có backend nhưng giao diện lưu thông chưa hoàn thành. Favorites/Reviews/Rating và My Library đã có implementation UI; nghiệm thu cần kết quả test đúng SHA.
 
 | UC | Tiền điều kiện | Luồng chính | Luồng thay thế / hậu điều kiện |
 |---|---|---|---|
@@ -37,3 +41,6 @@ Các API staff kiểm quyền hiện hành phía Core; UI ẩn nút không thay 
 | 13 | Staff ACTIVE, Insight DB sẵn sàng | ISBN → provider → lưu trace → list/replay/delete | 400/401/403/404/429/503; write lỗi không báo thành công; replay không ghi Core |
 | 14 | Thành viên ACTIVE | Lưu/bỏ lưu → reload → danh sách cá nhân | 401/403/404/409; principal từ server, không nhận userId |
 | 15–16 | Thành viên ACTIVE; owner khi sửa/xóa | Nội dung và điểm → transaction → list/summary | 403 cross-owner; 409 duplicate; 422 invalid/null; PATCH độc lập field; xóa cuối trả average null/count 0 |
+| 17–18 | Staff ACTIVE, version và chi nhánh hợp lệ | Khóa → kiểm policy → Loan/Copy/Hold/audit/outbox/receipt → commit | 409 xung đột; rollback toàn bộ; retry trả snapshot gốc; người mượn bị khóa vẫn trả được |
+| 19 | Chủ Loan hoặc staff, người mượn ACTIVE | Kiểm hạn/lượt/WAITING → gia hạn + audit riêng → commit | 403 sai quyền, 409 tới hạn/hết lượt/có người chờ/version cũ; không gia hạn Loan đã trả |
+| 20 | Thành viên ACTIVE; chi nhánh hoạt động | Chọn Book/Edition → WAITING/READY → nhận hoặc hủy/hết hạn | Không tự đổi Edition; reader không đọc/hủy của người khác; READY hết hạn phân bổ người kế; UI chưa có |

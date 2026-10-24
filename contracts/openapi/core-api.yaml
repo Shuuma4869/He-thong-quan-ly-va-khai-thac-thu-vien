@@ -3,7 +3,7 @@ info:
   title: LAMS Core API
   version: 0.4.0
   description: >-
-    Core health, Identity/Auth, Member, Catalog, Inventory và Reader contribution API. Khi bật profile pilot, tất cả
+    Core health, Identity/Auth, Member, Catalog, Inventory, Circulation/Hold và Reader contribution API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
     X-LAMS-Client bằng 1; thiếu hoặc sai trả 403. Client trình duyệt tự gửi Origin.
     Local giữ tương thích với cấu hình SameSite=Lax.
@@ -935,8 +935,8 @@ paths:
       summary: Nhân viên cho mượn bản sách sẵn sàng
       description: >-
         LIBRARIAN/ADMIN ACTIVE còn quyền hiện hành. Core khóa người mượn rồi Book/Copy, kiểm policy, chi nhánh
-        và copyVersion; tạo Loan, đổi Copy, ghi audit/outbox trong một transaction. Chỉ nhận Copy AVAILABLE
-        ở mốc này; nhận sách giữ chỗ chưa triển khai. requestId là UUID do client tạo, dùng lại khi retry.
+        và copyVersion; tạo Loan, đổi Copy, ghi audit/outbox trong một transaction. Nhận Copy AVAILABLE khi không có
+        hàng chờ đủ điều kiện, hoặc ON_HOLD của đúng người nhận trước expiresAt. requestId dùng lại khi retry.
         Cùng actor/key/nội dung trả 201 với snapshot response gốc, kể cả Loan đã trả sau đó; không phải query hiện trạng.
         Cùng key khác nội dung trả 409. Key chỉ được lưu sau thành công; lỗi rollback có thể gửi lại cùng key.
       security: [{ bearerAuth: [] }]
@@ -963,7 +963,8 @@ paths:
       description: >-
         LIBRARIAN/ADMIN ACTIVE. Khóa Book/Copy rồi Loan. Đóng Loan, đổi Copy AVAILABLE, audit/outbox cùng transaction.
         Người mượn bị khóa vẫn được trả sách. Yêu cầu mới cho Loan đã trả hoặc version cũ trả 409.
-        Retry cùng actor/requestId/nội dung trả response gốc 200. Phân bổ Hold chưa triển khai tại mốc này.
+        Retry cùng actor/requestId/nội dung trả response gốc 200. Phân bổ Hold đồng bộ trong cùng transaction;
+        Copy có thể kết thúc ở ON_HOLD, copyVersion trong response là version sau phân bổ.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -977,6 +978,130 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /loans/{loanId}/renew:
+    parameters:
+      - { name: loanId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: renewLoan
+      tags: [Circulation]
+      summary: Gia hạn lượt mượn của mình hoặc thực hiện tại quầy
+      description: >-
+        Chủ lượt mượn hoặc LIBRARIAN/ADMIN còn quyền hiện hành. Người mượn phải ACTIVE và còn quyền đọc.
+        Loan đang mở, version đúng, Copy ON_LOAN tại chi nhánh ACTIVE; chưa đến hạn trả, chưa hết số lần gia hạn,
+        không có WAITING phù hợp Edition hoặc bất kỳ Edition tại chi nhánh này. Khi blockOverdue=true còn kiểm các Loan khác.
+        Hạn mới bằng hạn cũ cộng renewalDuration của policy hiện hành; lưu audit riêng, không sửa snapshot lúc mượn.
+        Retry cùng actor/requestId/nội dung trả snapshot gốc; key khác nội dung hoặc xung đột trả 409.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedRequest' }
+      responses:
+        '200': { description: Đã gia hạn hoặc kết quả gốc, content: { application/json: { schema: { $ref: '#/components/schemas/LoanCommandResult' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /holds:
+    post:
+      operationId: createHold
+      tags: [Hold]
+      summary: Giữ chỗ một đầu sách tại chi nhánh nhận
+      description: >-
+        Tài khoản ACTIVE còn READER/LIBRARIAN/ADMIN; readerId lấy từ principal. Một WAITING/READY cho cùng người/Book,
+        kể cả khác chi nhánh. editionId phải thuộc Book và anyEdition=false; hoặc editionId=null và anyEdition=true.
+        Chi nhánh phải ACTIVE. Hạn mức phát triển 10 yêu cầu đang mở/người, có thể cấu hình.
+        Có Copy phù hợp thì phân bổ FIFO theo queuedAt/id trong cùng transaction, response có thể READY.
+        Quota mượn đầy vẫn được xếp WAITING; chỉ phân bổ khi đủ điều kiện mượn. Retry cùng key/nội dung trả snapshot gốc 201.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HoldRequest' }
+      responses:
+        '201': { description: Đã tạo hoặc kết quả gốc, content: { application/json: { schema: { $ref: '#/components/schemas/Hold' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /holds/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getHold
+      tags: [Hold]
+      summary: Đọc giữ chỗ của mình hoặc tra cứu tại quầy
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Giữ chỗ hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/HoldView' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /holds/{id}/cancel:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: cancelHold
+      tags: [Hold]
+      summary: Chủ yêu cầu hủy giữ chỗ đang mở
+      description: >-
+        Chỉ chủ yêu cầu ACTIVE còn quyền đọc; staff không được hủy thay qua endpoint này.
+        version phải khớp Hold WAITING/READY. Hủy READY giải phóng Copy và phân bổ cho người kế tiếp cùng transaction.
+        Muốn đổi chi nhánh/ấn bản phải hủy rồi tạo mới, không giữ vị trí cũ. Retry cùng key/nội dung trả snapshot gốc.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedRequest' }
+      responses:
+        '200': { description: Đã hủy hoặc kết quả gốc, content: { application/json: { schema: { $ref: '#/components/schemas/Hold' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /me/holds:
+    get:
+      operationId: listMyHolds
+      tags: [Hold]
+      summary: Lịch sử giữ chỗ của tài khoản hiện tại
+      description: Không nhận readerId; queuedAt giảm dần rồi id tăng dần. Count/items cùng snapshot database.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách riêng tư, content: { application/json: { schema: { $ref: '#/components/schemas/HoldPage' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /holds/queue:
+    get:
+      operationId: listHoldQueue
+      tags: [Hold]
+      summary: Nhân viên xem hàng chờ của một đầu sách tại chi nhánh
+      description: Chỉ WAITING, queuedAt/id tăng dần; không trả danh sách người đọc cho reader.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bookId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: branchId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Hàng chờ, content: { application/json: { schema: { $ref: '#/components/schemas/HoldPage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /health:
     get:
@@ -1380,6 +1505,52 @@ components:
         requestId: { type: string, format: uuid }
         branchId: { type: string, format: uuid }
         version: { type: integer, format: int64, minimum: 0, description: Version Loan, không phải Copy. }
+    VersionedRequest:
+      type: object
+      required: [requestId, version]
+      properties:
+        requestId: { type: string, format: uuid }
+        version: { type: integer, format: int64, minimum: 0, description: Version của Hold hoặc Loan đang thao tác; chỉ nhận số nguyên JSON. }
+    HoldRequest:
+      type: object
+      required: [requestId, bookId, branchId, anyEdition]
+      properties:
+        requestId: { type: string, format: uuid }
+        bookId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        editionId: { type: [string, 'null'], format: uuid }
+        anyEdition: { type: boolean, description: Phải xác nhận rõ; true yêu cầu editionId null, false yêu cầu editionId thuộc Book. }
+    Hold:
+      type: object
+      required: [id, readerId, bookId, editionId, branchId, status, queuedAt, readyAt, expiresAt, closedAt, copyId, loanId, version, policyVersion, pickupSeconds]
+      properties:
+        id: { type: string, format: uuid }
+        readerId: { type: string, format: uuid }
+        bookId: { type: string, format: uuid }
+        editionId: { type: [string, 'null'], format: uuid, description: Null nghĩa là người đọc đã chọn bất kỳ ấn bản nào. }
+        branchId: { type: string, format: uuid }
+        status: { type: string, enum: [WAITING, READY, FULFILLED, CANCELLED, EXPIRED] }
+        queuedAt: { type: string, format: date-time }
+        readyAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        copyId: { type: [string, 'null'], format: uuid }
+        loanId: { type: [string, 'null'], format: uuid }
+        version: { type: integer, format: int64, minimum: 0 }
+        policyVersion: { type: string }
+        pickupSeconds: { type: integer, minimum: 1, maximum: 31622400 }
+    HoldView:
+      type: object
+      required: [hold, queuePosition]
+      properties:
+        hold: { $ref: '#/components/schemas/Hold' }
+        queuePosition: { type: [integer, 'null'], minimum: 1, description: Vị trí WAITING chung của Book tại Branch, chưa lọc Edition/eligibility; không phải ETA hoặc lời hứa thứ tự nhận. Null khi không còn WAITING. }
+    HoldPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/HoldView' } }
+        page: { $ref: '#/components/schemas/PageMetadata' }
     LoanCommandResult:
       type: object
       required: [loanId, copyId, readerId, editionId, branchId, borrowedAt, dueAt, returnedAt, renewalCount, version, copyVersion]

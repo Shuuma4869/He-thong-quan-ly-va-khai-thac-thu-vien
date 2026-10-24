@@ -20,6 +20,11 @@ public class CopyLockRepository {
                 (rs, row) -> rs.getObject(1, UUID.class), id);
         if (books.isEmpty()) throw new AuthFailure(404, "Không tìm thấy bản sách.");
         UUID book = books.getFirst();
+        return lockForBook(book, id);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public LockedCopy lockForBook(UUID book, UUID id) {
         lockBook(book);
         var rows = jdbc.query("""
                 SELECT c.id,c.edition_id,e.book_id,s.branch_id,b.status AS branch_status,c.status,c.version

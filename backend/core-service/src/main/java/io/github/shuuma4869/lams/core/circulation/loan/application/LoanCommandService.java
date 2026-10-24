@@ -33,12 +33,14 @@ public class LoanCommandService {
     private final CirculationAccess access;
     private final CommandExecutor commands;
     private final Clock clock;
+    private final io.github.shuuma4869.lams.core.hold.application.HoldAllocationService holds;
 
     public LoanCommandService(JdbcTemplate jdbc, LoanRepository loans, CopyLockRepository locks,
                               CopyStateService states, BorrowPolicyService policy, CirculationAccess access,
-                              CommandExecutor commands, Clock clock) {
+                              CommandExecutor commands, Clock clock, io.github.shuuma4869.lams.core.hold.application.HoldAllocationService holds) {
         this.jdbc = jdbc; this.loans = loans; this.locks = locks; this.states = states;
         this.policy = policy; this.access = access; this.commands = commands; this.clock = clock;
+        this.holds = holds;
     }
 
     public LoanCommandResult borrow(UUID actor, BorrowRequest request) {
@@ -64,9 +66,10 @@ public class LoanCommandService {
                     if (!copy.branchId().equals(request.branchId()) || !copy.branchStatus().equals("ACTIVE")) {
                         throw new AuthFailure(409, "Bản sách không ở chi nhánh đang hoạt động được yêu cầu.");
                     }
-                    if (copy.version() != request.copyVersion() || !copy.status().equals("AVAILABLE")) {
+                    if (copy.version() != request.copyVersion()) {
                         throw new AuthFailure(409, "Bản sách không còn sẵn sàng hoặc đã thay đổi; hãy tải lại.");
                     }
+                    var pickup = holds.requirePickupOrNoQueue(copy, request.readerId(), now);
                     var p = policy.current();
                     String snapshot = commands.encode(Map.of("version", p.version(), "maxActiveLoans", p.maxActiveLoans(),
                             "loanDuration", p.loanDuration().toString(), "maxRenewals", p.maxRenewals(),
@@ -76,6 +79,7 @@ public class LoanCommandService {
                             actor, now, policy.dueAt(now), null, null, 0, 0, p.version(), snapshot);
                     loans.insert(loan);
                     states.transition(copy, "ON_LOAN", actor, "Cho mượn sách", now);
+                    holds.fulfill(pickup, loan.id(), actor, now);
                     var result = LoanCommandResult.from(loan, copy.version() + 1);
                     event("COPY_BORROWED", result, now);
                     return result;
@@ -100,7 +104,7 @@ public class LoanCommandService {
                     jdbc.update("UPDATE loans SET returned_at=?,returned_by=?,version=version+1 WHERE id=?",
                             Timestamp.from(now), actor, loanId);
                     states.transition(copy, "AVAILABLE", actor, "Trả sách", now);
-                    var result = LoanCommandResult.from(loans.find(loanId).orElseThrow(), copy.version() + 1);
+                    var result = LoanCommandResult.from(loans.find(loanId).orElseThrow(), locks.lockForBook(copy.bookId(),copy.id()).version());
                     event("COPY_RETURNED", result, now);
                     return result;
                 });

@@ -18,6 +18,10 @@ E2E chạy riêng bằng `scripts/test-phase1-e2e.ps1`, yêu cầu Docker Linux,
 
 Vitest dùng test doubles ở lớp mạng để kiểm tra các trạng thái lỗi và race condition. E2E dùng API thật, không intercept dữ liệu Member. Kết quả mỗi lượt chạy xem trực tiếp ở terminal/CI; không lưu thêm file báo cáo audit hoặc nội dung PR trong source.
 
+Circulation/Hold: `LoanCommandIntegrationTest` kiểm mượn/trả, quota và retry; `HoldIntegrationTest` kiểm FIFO theo chi nhánh/ấn bản, nhận đúng người, hủy/hết hạn/phân bổ, gia hạn và tranh chấp transaction trên PostgreSQL. Clock điều khiển kiểm đúng deadline mà không chờ thật. Test chờ khóa dùng `pg_blocking_pids`; không dùng thời gian chạy làm bằng chứng khóa. `LoanSchemaTest` kiểm nâng V17 → V18 giữ Loan/receipt cũ và các constraint mới.
+
+Maven test tắt timer tự chạy của Hold để Spring context cache không tiếp tục dùng Testcontainer đã đóng. Nghiệp vụ job vẫn được gọi trực tiếp trên PostgreSQL trong `HoldIntegrationTest`; `HoldExpiryJobTest` kiểm con trỏ 100 Book/lượt và retry khi một Book lỗi. Ứng dụng bình thường mặc định bật timer. Bộ test backend này không thay cho E2E giao diện lưu thông hoặc Kafka delivery.
+
 Các regression bắt buộc của Phase 1: principal tự xem hồ sơ, DTO allowlist, GET không ghi dữ liệu, invalid/expired JWT, staff bị khóa hoặc thu hồi role khi JWT còn hạn, query literal `%`/`_`/`\`, SQL injection, phân trang ổn định khi trùng tên, debounce giữ focus, stale response và refresh đến muộn sau logout. UI phải xử lý loading/error/retry/empty, `profile: null`, deep link và reload/Back.
 
 Phase 2 bổ sung kiểm role hiện tại trong DB cho Catalog, Publisher read-only với Reader, Unicode NFKC, nâng cấp V11 từ dữ liệu cũ, collision migration không ghi dở, filter/count/pagination và rollback. Test concurrency phối hợp hai transaction PostgreSQL theo cả hai thứ tự khóa Shelf/Copy, không dựa vào sleep để đoán race. Media kiểm quyền, version, MIME/signature, dung lượng, timeout và không ghi dữ liệu khi kiểm nguồn thất bại.
