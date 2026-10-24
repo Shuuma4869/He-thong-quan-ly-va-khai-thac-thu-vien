@@ -35,5 +35,9 @@ public class HoldController {
                                      @RequestParam(required=false) String page,@RequestParam(required=false) String size) {
         return queries.queue(actor(token),bookId,branchId,page,size);
     }
+    @GetMapping("/holds/pickup-branches")
+    public HoldQueries.PickupBranches branches(JwtAuthenticationToken token,@RequestParam(required=false) String page,@RequestParam(required=false) String size) {
+        return queries.branches(actor(token),page,size);
+    }
     private static UUID actor(JwtAuthenticationToken token) {return UUID.fromString(token.getToken().getSubject());}
 }

@@ -335,6 +335,36 @@ class HoldIntegrationTest {
         mvc.perform(post(path).with(owner).contentType("application/json").content(json.writeValueAsString(version(1)))).andExpect(status().isForbidden());
     }
 
+    @Test void readerCanListOnlyActivePickupBranchesWithoutInventoryAdminAccess() throws Exception {
+        var f=fixture(); UUID disabled=branch();
+        jdbc.update("UPDATE branches SET status='DISABLED' WHERE id=?",disabled);
+        var principal=jwt().jwt(j->j.subject(f.reader.toString())).authorities(new SimpleGrantedAuthority("ROLE_READER"));
+        var response=mvc.perform(get("/api/v1/holds/pickup-branches").param("size","100").with(principal))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        var rows=json.readTree(response.getContentAsString()).get("items");
+        assertThat(rows.toString()).contains(f.branch.toString()).doesNotContain(disabled.toString(),"createdAt","updatedAt");
+        assertThat(rows.get(0).size()).isEqualTo(3);
+        mvc.perform(get("/api/v1/holds/pickup-branches")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/branches").with(principal)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/holds/pickup-branches").param("size","0").with(principal)).andExpect(status().isUnprocessableEntity());
+        jdbc.update("UPDATE users SET status='LOCKED' WHERE id=?",f.reader);
+        mvc.perform(get("/api/v1/holds/pickup-branches").with(principal)).andExpect(status().isForbidden());
+    }
+
+    @Test void holdViewsIncludeLabelsAndPreserveQueuePositionsAndPageOrder() {
+        var f=fixture(); loans.borrow(f.staff,borrow(f,f.reader));
+        var first=service.create(user("READER"),request(f,null,true)); tick();
+        var second=service.create(f.reader,request(f,f.edition,false));
+        var queue=queries.queue(f.staff,f.book,f.branch,"0","10");
+        assertThat(queue.items()).extracting(v->v.hold().id()).containsExactly(first.id(),second.id());
+        assertThat(queue.items()).extracting(HoldQueries.HoldView::queuePosition).containsExactly(1L,2L);
+        var mine=queries.mine(f.reader,"0","10").items().getFirst();
+        assertThat(mine.bookTitle()).isEqualTo("Sách thử giữ chỗ");assertThat(mine.branchName()).isEqualTo("Chi nhánh thử");
+        assertThat(queries.get(f.reader,second.id())).isEqualTo(mine);
+        service.cancel(f.reader,second.id(),version(0));
+        assertThat(queries.get(f.reader,second.id()).queuePosition()).isNull();
+    }
+
     private Fixture fixture() {
         UUID staff=user("LIBRARIAN"),reader=user("READER"),book=UUID.randomUUID(),branch=branch(),shelf=UUID.randomUUID();
         jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Sách thử giữ chỗ','sach thu giu cho')",book);

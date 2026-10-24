@@ -45,12 +45,15 @@ V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb0
 | P4-D1-09..12 | Hold V18, tạo/hủy/nhận, FIFO theo chi nhánh/Edition, allocation/expiry, query riêng tư | HoldIntegrationTest, LoanSchemaTest; không đồng nghĩa giao diện đã hoàn thành |
 | P4-D1-13 | Có vị trí hàng chờ, chưa có ETA theo ngày | Cần mô hình và kiểm thử độ bất định trước khi hiển thị ngày dự đoán |
 | P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
-| P4-D1-16..17 | Reader/Staff circulation UI chưa có | Command thật và query P4-D2-01 của Toan; thiếu dependency phải hiện rõ, không tạo dữ liệu giả |
+| P4-D1-16 | ReaderLoansPage/HoldCreatePage: xem Loan/Hold, giữ đúng ấn bản hoặc chọn bất kỳ, gia hạn/hủy có xác nhận | CirculationFlow kiểm retry cùng requestId, chặn double submit, lỗi và query; E2E Reader lưu thông cần đối chiếu CI/EXE đúng SHA |
+| P4-D1-17 | Staff circulation UI chưa có | Cần nối command/query thật cho quầy; thao tác API trong E2E Reader không thay nghiệm thu UI staff |
 | P4-D2-01..02 | LoanHistoryController/Service/Repository; `/me/loans`, `/loans`, `/loans/{id}` | Owner/current-role, filter borrowedAt/status/branch/copy, phân trang, giữ Edition/Branch lịch sử |
 | P4-D2-03..04 | CirculationReportService và LoanCsvExporter; `/reports/circulation(.csv)` | Nhóm Loan bắt đầu trong [from,to), hiện trạng tại asOf; timezone, 366 ngày/10000 nhóm, CSV không có danh tính người mượn |
 | P4-D2-05 | LoanHistoryIntegrationTest và LoanCsvExporterTest | PostgreSQL/HTTP, bộ lọc lỗi, quyền, biên thời gian, CSV/formula và GET không ghi; kiểm CI đúng SHA trước khi đánh dấu tích hợp |
 
 Chi tiết schema, cấu hình, retention và ranh giới kiểm thử ở [kiến trúc lưu thông](../02-kien-truc/circulation.md). Tất cả đường dẫn Java trong bảng tính từ package Core. Bảng này không đánh dấu cả Phase 4 hoàn thành.
+
+P4-D2-01..05 đã tích hợp qua PR #17 tại `d704b0c5459e7e5529ccef883df6846f7d149f1a`; head `236871c` đạt CI `40084875776` 5/5, Core 205 test và hồi quy EXE 9/9 với binary `f8b308d` vì frontend chưa đổi. CI main kiểm riêng tại `40119301261`. Các kết quả này không thay cho Reader UI được bổ sung sau PR #17.
 
 Phân công gốc vẫn giữ để truy vết tác giả. Quyết định ngày 24/10/2026 mở rộng triển khai trên nhánh Tuan tới phần còn thiếu của cả hai thành viên trong Phase 4–6, gồm P4-D2-01..05 (query/filter/report/CSV/tests). Không sửa nhánh Toan, không gán code gốc của Toan cho Tuan, không đánh dấu các task mới DONE trước khi có đầu ra và kiểm chứng.
 

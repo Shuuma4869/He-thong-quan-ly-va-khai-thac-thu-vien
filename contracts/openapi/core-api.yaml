@@ -1196,6 +1196,38 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /holds/pickup-branches:
+    get:
+      operationId: listPickupBranches
+      tags: [Hold]
+      summary: Danh sách chi nhánh đang nhận giữ chỗ
+      description: Tài khoản ACTIVE còn quyền đọc. Chỉ projection id/code/name của chi nhánh ACTIVE; không mở quyền quản trị Inventory. Count/items cùng snapshot, sort code/id. Chi nhánh vẫn được kiểm lại khi tạo Hold.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Trang chi nhánh nhận
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page]
+                properties:
+                  page: { $ref: '#/components/schemas/PageMetadata' }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, code, name]
+                      properties:
+                        id: { type: string, format: uuid }
+                        code: { type: string }
+                        name: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /holds/queue:
     get:
       operationId: listHoldQueue
@@ -1680,8 +1712,10 @@ components:
         pickupSeconds: { type: integer, minimum: 1, maximum: 31622400 }
     HoldView:
       type: object
-      required: [hold, queuePosition]
+      required: [hold, queuePosition, bookTitle, branchName]
       properties:
+        bookTitle: { type: string, description: Tên đầu sách hiện tại. }
+        branchName: { type: string, description: Tên chi nhánh nhận hiện tại. }
         hold: { $ref: '#/components/schemas/Hold' }
         queuePosition: { type: [integer, 'null'], minimum: 1, description: Vị trí WAITING chung của Book tại Branch, chưa lọc Edition/eligibility; không phải ETA hoặc lời hứa thứ tự nhận. Null khi không còn WAITING. }
     HoldPage:
