@@ -59,6 +59,8 @@ UI dùng `FavoriteButton`, `ReviewSection`, `RatingInput` và `MyLibraryPage`. Q
 
 Favorite và review cá nhân phân trang độc lập, size 10. Nếu xóa phần tử cuối ở trang cuối, trang đó có thể rỗng và người dùng quay lại trang trước; không tự báo mất toàn bộ dữ liệu. Một client khác sửa cùng field vẫn theo last database write wins, UI không phát hiện version conflict.
 
+Sau khi lưu hoặc xóa thành công, UI hủy các truy vấn đang chạy trong nhóm favorite/review của tài khoản rồi đánh dấu cache cần tải lại. Bước hủy bao gồm lượt đọc đầu tiên ở trang vừa mở: nếu chỉ invalidate, thư viện query có thể dùng tiếp request đã đọc dữ liệu trước khi lệnh xóa hoàn tất. Test giữ riêng response DELETE và response danh sách để kiểm trường hợp người dùng chuyển trang ngay, rồi cho response cũ về muộn; danh sách không được hiện lại mục đã xóa.
+
 `ReviewConcurrencyTest` dùng PostgreSQL Testcontainers, service thật và hai TransactionTemplate độc lập. Điểm đồng bộ chỉ chặn sau SELECT thật để hai PATCH cùng đọc bản cũ. Test khác giữ transaction DELETE Book và xác minh INSERT đang bị chặn bằng `pg_blocking_pids` trước khi commit. Không dùng mock database hoặc sleep ngẫu nhiên làm bằng chứng.
 
 Regression bao gồm hai field độc lập, cùng field, delete/update, xóa Book/insert, current-role/status, token hết hạn, owner, validation, aggregate và migration từ V13. Kết quả từng SHA ở CI/PR; tài liệu này mô tả cơ chế, không thay kết quả kiểm thử.

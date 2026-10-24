@@ -17,7 +17,11 @@ function Reviews({ book, owner }: { book: string; owner: string }) {
   const list = useQuery({ queryKey: ['reviews', owner, book, 'list', page], queryFn: ({ signal }) => listReviews(book, page, signal), retry: false });
   const mine = useQuery({ queryKey: ['reviews', owner, book, 'mine'], queryFn: ({ signal }) => myReviews(0, book, signal), retry: false });
   const summary = useQuery({ queryKey: ['reviews', owner, book, 'summary'], queryFn: ({ signal }) => ratingSummary(book, signal), retry: false });
-  const refresh = async () => { await client.invalidateQueries({ queryKey: ['reviews', owner] }); };
+  const refresh = async () => {
+    // Hủy cả lượt đọc đầu tiên để phản hồi cũ không ghi lại cache sau khi sửa/xóa.
+    await client.cancelQueries({ queryKey: ['reviews', owner] });
+    await client.invalidateQueries({ queryKey: ['reviews', owner] });
+  };
   return <section className="my-8 border-t border-line pt-6" aria-labelledby="reviews-heading">
     <h2 id="reviews-heading" className="section-title">Đánh giá của bạn đọc</h2>
     {notice && <p role="status">{notice}</p>}
