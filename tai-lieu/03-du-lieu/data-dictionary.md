@@ -26,7 +26,9 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | Loan (`loans`, V16) | Lần cho mượn một Copy; command mượn/trả ghi cùng Copy/audit/outbox | UUID id/copy/edition/reader/branch/borrowed_by/returned_by; borrowed/due/returned time; renewal_count, version; policy_version/snapshot JSONB; unique copy khi returned_at null, FK RESTRICT | Core/Circulation |
 | Command receipt (`circulation_requests`, V17) | Chống lặp lệnh theo nhân viên và requestId | PK actor_id/request_id; command; request_payload/response_payload JSONB; created_at; chỉ lưu cùng transaction thành công, chưa có dọn retention | Core/Circulation |
 | Copy state audit (`copy_state_changes`, V17) | Lịch sử chuyển trạng thái vật lý | copy_id; from/to_status; copy_version unique theo Copy; actor_id/actor_kind; reason; occurred_at; FK RESTRICT | Core/Inventory |
-| Hold | Vị trí chờ tài liệu | reader, book/edition preference, queue time, state, assigned copy, pickup TTL | Core/Hold |
+| Hold (`holds`, V18) | Yêu cầu giữ chỗ theo Book và chi nhánh | reader/book/branch FK; edition nullable nghĩa là bất kỳ ấn bản; queued/ready/expires/closed time; copy/loan FK; status, version, policy_version/pickup_seconds; unique active reader/book và READY/copy | Core/Hold |
+| Hold change (`hold_changes`, V18) | Lịch sử chuyển trạng thái giữ chỗ | hold_id, hold_version unique theo Hold; event_type; actor_id null khi job hệ thống; occurred_at | Core/Hold |
+| Loan extension (`loan_extensions`, V18) | Lịch sử gia hạn | loan_id/actor FK; unique loan/version; previous_due_at, due_at tăng, extended_at; policy_version/snapshot tại lúc gia hạn | Core/Circulation |
 | InventorySession | Phiên kiểm kê có phạm vi | branch/shelf scope, started/finished by, status, snapshot boundary | Core/Inventory |
 | SearchEvent | Một truy vấn đã ẩn danh/giảm PII | query normalized, filters, result count, session hash, time | Insight/Analytics |
 | DemandSignal | Tín hiệu nhu cầu quy chuẩn | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
@@ -37,12 +39,12 @@ V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book
 
 ## Các nhóm còn lại
 
-V16 thêm `loans`; V17 thêm receipt/audit, không backfill giao dịch hay đổi trạng thái Copy cũ. Chi tiết transaction, trạng thái dẫn xuất, FK, policy PROVISIONAL và retention xem [kiến trúc lưu thông](../02-kien-truc/circulation.md). `loan_extensions`/Hold chưa có migration ở mốc này.
+V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, không backfill giao dịch hay đổi trạng thái Copy cũ. Chi tiết transaction, trạng thái dẫn xuất, FK, policy PROVISIONAL và retention xem [kiến trúc lưu thông](../02-kien-truc/circulation.md). V18 dùng composite FK Book/Edition để ngăn chọn ấn bản thuộc đầu sách khác; quan hệ Copy/Loan đúng với Hold vẫn do command kiểm trong transaction.
 
 - Identity: `roles`, `user_roles`, `refresh_tokens`.
 - Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7.
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; `copy_location_history`, `inventory_scans`, `inventory_anomalies` còn chờ triển khai.
-- Circulation/reader còn chờ: `loan_extensions`, `hold_events`.
+- Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
 - Discovery: `search_documents`, `acquisition_recommendations`.
 - System: `notifications`, `system_policies`, `audit_logs`, `outbox_events`, `media_assets`.
 

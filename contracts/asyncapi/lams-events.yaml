@@ -2,7 +2,7 @@ asyncapi: 3.0.0
 info:
   title: LAMS Events
   version: 0.1.0
-  description: COPY_BORROWED/COPY_RETURNED đã được Core ghi outbox cùng giao dịch; Kafka delivery và consumer chưa triển khai. Các event khác vẫn planned.
+  description: Borrow/Return/Renew và vòng đời Hold được Core ghi outbox cùng giao dịch; Kafka delivery và consumer chưa triển khai. Discovery/Inventory events vẫn planned.
 defaultContentType: application/json
 servers:
   localKafka:
@@ -14,12 +14,15 @@ channels:
     messages:
       copyBorrowed: { $ref: '#/components/messages/COPY_BORROWED' }
       copyReturned: { $ref: '#/components/messages/COPY_RETURNED' }
+      loanRenewed: { $ref: '#/components/messages/LOAN_RENEWED' }
   holdEvents:
     address: lams.hold.events.v1
     messages:
       holdCreated: { $ref: '#/components/messages/HOLD_CREATED' }
       holdReady: { $ref: '#/components/messages/HOLD_READY' }
       holdExpired: { $ref: '#/components/messages/HOLD_EXPIRED' }
+      holdCancelled: { $ref: '#/components/messages/HOLD_CANCELLED' }
+      holdFulfilled: { $ref: '#/components/messages/HOLD_FULFILLED' }
   discoveryEvents:
     address: lams.discovery.events.v1
     messages:
@@ -63,9 +66,12 @@ components:
   messages:
     COPY_BORROWED: { name: COPY_BORROWED, title: Bản sách đã được mượn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
     COPY_RETURNED: { name: COPY_RETURNED, title: Bản sách đã được trả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
-    HOLD_CREATED: { name: HOLD_CREATED, title: Yêu cầu giữ chỗ đã tạo, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
-    HOLD_READY: { name: HOLD_READY, title: Yêu cầu giữ chỗ sẵn sàng nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
-    HOLD_EXPIRED: { name: HOLD_EXPIRED, title: Yêu cầu giữ chỗ hết hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
+    LOAN_RENEWED: { name: LOAN_RENEWED, title: Lượt mượn đã gia hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
+    HOLD_CREATED: { name: HOLD_CREATED, title: Yêu cầu giữ chỗ đã tạo, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
+    HOLD_READY: { name: HOLD_READY, title: Yêu cầu giữ chỗ sẵn sàng nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
+    HOLD_EXPIRED: { name: HOLD_EXPIRED, title: Yêu cầu giữ chỗ hết hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
+    HOLD_CANCELLED: { name: HOLD_CANCELLED, title: Yêu cầu giữ chỗ đã hủy, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
+    HOLD_FULFILLED: { name: HOLD_FULFILLED, title: Sách giữ chỗ đã được nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: outbox-implemented-delivery-pending }
     SEARCH_PERFORMED: { name: SEARCH_PERFORMED, title: Tìm kiếm đã thực hiện, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
     SEARCH_ZERO_RESULT: { name: SEARCH_ZERO_RESULT, title: Tìm kiếm không có kết quả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
     INVENTORY_MISMATCH_FOUND: { name: INVENTORY_MISMATCH_FOUND, title: Phát hiện sai lệch kiểm kê, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }

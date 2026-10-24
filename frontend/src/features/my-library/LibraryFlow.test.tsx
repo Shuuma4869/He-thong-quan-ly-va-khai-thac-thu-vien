@@ -64,6 +64,60 @@ it('yêu thích chờ server, chặn double click và tải lại trạng thái'
   expect(await screen.findByText('Chưa có sách yêu thích ở trang này.')).toBeInTheDocument();
 });
 
+it('đổi trang khi bỏ yêu thích đang chạy không giữ lại danh sách đọc trước khi xóa', async () => {
+  saved = true;
+  let finishDelete!: (response: Response) => void;
+  let staleList!: (response: Response) => void;
+  let listCalls = 0;
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (init.method === 'DELETE' && url.endsWith(`/me/favorites/${bookId}`)) {
+      return new Promise(resolve => { finishDelete = resolve; });
+    }
+    if (new URL(url).pathname.endsWith('/me/favorites') && ++listCalls === 1) {
+      return new Promise(resolve => { staleList = resolve; });
+    }
+    return Promise.resolve(result(url, init));
+  });
+  app(); fireEvent.click(await screen.findByRole('button', { name: 'Bỏ yêu thích' }));
+  await waitFor(() => expect(finishDelete).toBeDefined());
+  fireEvent.click(screen.getByRole('link', { name: 'Thư viện của tôi' }));
+  await waitFor(() => expect(staleList).toBeDefined());
+  saved = false;
+  await act(async () => finishDelete(new Response(null, { status: 204 })));
+  await waitFor(() => expect(listCalls).toBe(2));
+  expect(await screen.findByText('Chưa có sách yêu thích ở trang này.')).toBeInTheDocument();
+  await act(async () => staleList(Response.json(page([favorite]))));
+  expect(screen.queryByRole('link', { name: book.title })).not.toBeInTheDocument();
+});
+
+it('đổi trang khi xóa review đang chạy không giữ lại lịch sử đọc trước khi xóa', async () => {
+  review = { ...initialReview };
+  let finishDelete!: (response: Response) => void;
+  let staleList!: (response: Response) => void;
+  let listCalls = 0;
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (init.method === 'DELETE' && url.endsWith(`/reviews/${reviewId}`)) {
+      return new Promise(resolve => { finishDelete = resolve; });
+    }
+    const target = new URL(url);
+    if (target.pathname.endsWith('/me/reviews') && !target.searchParams.has('bookId') && ++listCalls === 1) {
+      return new Promise(resolve => { staleList = resolve; });
+    }
+    return Promise.resolve(result(url, init));
+  });
+  app(); fireEvent.click(await screen.findByRole('button', { name: 'Xóa đánh giá của tôi' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa đánh giá' }));
+  await waitFor(() => expect(finishDelete).toBeDefined());
+  fireEvent.click(screen.getByRole('link', { name: 'Thư viện của tôi' }));
+  await waitFor(() => expect(staleList).toBeDefined());
+  review = undefined;
+  await act(async () => finishDelete(new Response(null, { status: 204 })));
+  await waitFor(() => expect(listCalls).toBe(2));
+  expect(await screen.findByText('Bạn chưa có đánh giá ở trang này.')).toBeInTheDocument();
+  await act(async () => staleList(Response.json(page([initialReview]))));
+  expect(screen.queryByText('Nội dung của tôi')).not.toBeInTheDocument();
+});
+
 it('lỗi yêu thích không đổi trạng thái và không lộ thông tin nội bộ', async () => {
   fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(init.method === 'PUT'
     ? Response.json({ detail: 'SQL secret trace' }, { status: 500 }) : result(url, init)));

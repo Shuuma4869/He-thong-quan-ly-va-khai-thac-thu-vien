@@ -138,6 +138,8 @@
                     <argLine>-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
                     <systemPropertyVariables>
                         <api.version>1.44</api.version>
+                        <!-- Test gọi sweep trực tiếp để không còn timer dùng container đã đóng. -->
+                        <lams.circulation.hold-job-enabled>false</lams.circulation.hold-job-enabled>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

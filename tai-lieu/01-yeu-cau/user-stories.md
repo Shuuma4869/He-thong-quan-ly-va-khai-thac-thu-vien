@@ -1,6 +1,6 @@
 # User Stories và truy vết phạm vi học phần
 
-Nhóm hai thành viên; 16 stories bao gồm UI Phase 3; tình trạng kiểm thử/tích hợp phải đối chiếu từng SHA. API ở bảng tính từ `/api/v1`; tên test chỉ là vị trí kiểm chứng, không tự đồng nghĩa PASS. Evidence của release phải gắn SHA và CI; E2E cần kết quả riêng. Priority P1 trừ US-08/11/12 là P2.
+Nhóm hai thành viên; US-01–16 bao gồm UI Phase 3, US-17–20 bổ sung backend lưu thông/giữ chỗ; tình trạng kiểm thử/tích hợp phải đối chiếu từng SHA. API ở bảng tính từ `/api/v1`; tên test chỉ là vị trí kiểm chứng, không tự đồng nghĩa PASS. Evidence của release phải gắn SHA và CI; E2E cần kết quả riêng. Priority P1 trừ US-08/11/12 là P2.
 
 ## Stories và acceptance criteria
 
@@ -182,3 +182,42 @@ Là thành viên, tôi muốn cho điểm 1–5 và xem điểm trung bình củ
 - Test: ReviewIntegrationTest, LibraryFlow, library-api, E2E Phase 3. Trạng thái: IMPLEMENTED; TESTED/INTEGRATED đối chiếu đúng PR/SHA.
 
 Thiết kế chung: [Favorites/Reviews](../02-kien-truc/favorites-reviews.md), [W6](../06-giao-dien/wireframes.md), [ma trận test](../07-kiem-thu/story-test-matrix.md). Circulation/Hold/Inventory session/advanced search vẫn là roadmap, không thuộc đầu ra Phase 3.
+
+## Phase 4 — giao dịch tại quầy
+
+### US-17 / FR-17 / UC-17
+
+Là nhân viên, tôi muốn cho mượn đúng bản sách, đúng người và nhận lại kết quả cũ nếu phải gửi lại yêu cầu do mất mạng.
+
+- AC-17-01: chỉ staff ACTIVE còn quyền hiện hành; kiểm người mượn, quota, overdue, chi nhánh và version Copy. Hai người tranh bản cuối chỉ có một Loan đang mở.
+- AC-17-02: cùng nhân viên/requestId/nội dung không tạo Loan thứ hai; nội dung khác với key cũ trả 409; rollback không để sót Copy/audit/outbox/receipt.
+- API: POST `/loans`; schema Loan V16, receipt/audit V17. Test: LoanCommandIntegrationTest và LoanSchemaTest trên PostgreSQL thật.
+- Trạng thái tại PR #15: backend đã triển khai; giao diện quầy và E2E hành trình mượn còn chờ. Không coi regression EXE Phase 3 là bằng chứng UI cho US-17.
+
+### US-18 / FR-18 / UC-18
+
+Là nhân viên, tôi muốn nhận trả đúng lượt mượn và giữ nguyên lịch sử giao dịch.
+
+- AC-18-01: đúng chi nhánh, Loan còn mở và đúng version; Return mới cho Loan đã trả bị từ chối, retry cùng key nhận kết quả gốc. Người mượn bị khóa vẫn được trả sách.
+- AC-18-02: Loan, Copy, audit và outbox thay đổi cùng transaction; khi có giữ chỗ phải phân bổ trong transaction trước khi trả kết quả.
+- API: POST `/loans/{loanId}/return`. Test mốc PR #15: LoanCommandIntegrationTest, chưa kiểm AC-18-02 với Hold vì Hold chưa triển khai tại mốc đó.
+- Trạng thái hiện tại: backend Return đã nối phân bổ Hold, kiểm bằng HoldIntegrationTest; UI và E2E lưu thông còn chờ.
+
+### US-19 / FR-19 / UC-19
+
+Là người mượn hoặc nhân viên, tôi muốn gia hạn lượt mượn hợp lệ mà không ảnh hưởng quyền của người đang chờ sách.
+
+- AC-19-01: chỉ chủ lượt mượn hoặc staff còn quyền; người mượn ACTIVE, chưa tới hạn, còn lượt gia hạn và không có WAITING phù hợp tại chi nhánh.
+- AC-19-02: hạn mới tính từ hạn cũ; tăng count/version, lưu lịch sử chính sách gia hạn, không thay snapshot lúc mượn. Retry không gia hạn thêm; renew/return đồng thời không mất cập nhật.
+- API: POST `/loans/{loanId}/renew`. Test: HoldIntegrationTest; bảng `loan_extensions` V18.
+- Trạng thái: backend đã có; giao diện và E2E lưu thông chưa hoàn thành.
+
+### US-20 / FR-20 / UC-20
+
+Là người đọc, tôi muốn giữ đúng ấn bản cần dùng tại chi nhánh nhận, theo dõi và hủy yêu cầu của mình.
+
+- AC-20-01: chọn Edition cụ thể hoặc xác nhận bất kỳ Edition, không tự thay ISBN; một WAITING/READY mỗi người/Book kể cả khác chi nhánh.
+- AC-20-02: FIFO trong các yêu cầu phù hợp; một Copy chỉ có một READY; trả/hủy/hết hạn phân bổ lại cùng transaction. Đúng hạn nhận đã hết hiệu lực, kể cả job chạy chậm.
+- AC-20-03: reader không xem/hủy của người khác; staff chỉ được tra cứu, không có quyền hủy thay ngầm. Đổi phạm vi cần hủy/tạo mới, mất vị trí cũ.
+- API: POST `/holds`, POST `/holds/{id}/cancel`, GET `/holds/{id}`, GET `/me/holds`, GET `/holds/queue` cho staff.
+- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest. Trạng thái: backend đã có; UI, ETA theo ngày và E2E còn chờ.

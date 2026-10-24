@@ -28,10 +28,12 @@ public class CopyStateService {
     private final BookCopyRepository copies;
     private final CirculationAccess access;
     private final CommandExecutor commands;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public CopyStateService(JdbcTemplate jdbc, CopyLockRepository locks, BookCopyRepository copies,
-                            CirculationAccess access, CommandExecutor commands) {
+                            CirculationAccess access, CommandExecutor commands, org.springframework.context.ApplicationEventPublisher events) {
         this.jdbc = jdbc; this.locks = locks; this.copies = copies; this.access = access; this.commands = commands;
+        this.events = events;
     }
 
     public BookCopy change(UUID actor, UUID copyId, UUID requestId, long version, String target, String reason) {
@@ -76,5 +78,6 @@ public class CopyStateService {
                 VALUES (?,?,?,?,?,?,?,?,?)
                 """, UUID.randomUUID(), copy.id(), copy.status(), target, copy.version() + 1, actor,
                 actor == null ? "SYSTEM" : "HUMAN", reason, Timestamp.from(now));
+        if (target.equals("AVAILABLE")) events.publishEvent(new CopyAvailable(copy.id(), copy.bookId(), actor, now));
     }
 }

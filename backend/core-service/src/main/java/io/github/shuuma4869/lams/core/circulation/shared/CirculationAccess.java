@@ -11,6 +11,14 @@ public class CirculationAccess {
     private final AuthService identity;
     public CirculationAccess(AuthService identity) { this.identity = identity; }
 
+    public void reader(UUID actor) {
+        io.github.shuuma4869.lams.core.catalog.shared.CatalogAccess.requireReader(identity, actor);
+    }
+
+    public void ownerOrStaff(UUID actor, UUID owner) {
+        if (actor.equals(owner)) reader(actor); else staff(actor);
+    }
+
     public void staff(UUID actor) {
         var user = identity.currentUser(actor);
         if (user.roles().stream().noneMatch(r -> r == RoleCode.ADMIN || r == RoleCode.LIBRARIAN)) {

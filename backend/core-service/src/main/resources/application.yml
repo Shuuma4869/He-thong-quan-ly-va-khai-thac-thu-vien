@@ -37,6 +37,9 @@ server:
 
 lams:
   circulation:
+    max-active-holds: ${CIRCULATION_MAX_ACTIVE_HOLDS:10}
+    hold-job-enabled: ${CIRCULATION_HOLD_JOB_ENABLED:true}
+    hold-job-delay-ms: ${CIRCULATION_HOLD_JOB_DELAY_MS:30000}
     policy:
       # Giá trị phát triển PROVISIONAL; đổi version khi thay chính sách.
       version: ${CIRCULATION_POLICY_VERSION:dev-provisional-v1}

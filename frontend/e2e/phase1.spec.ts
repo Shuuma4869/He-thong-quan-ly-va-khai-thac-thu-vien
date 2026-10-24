@@ -76,7 +76,11 @@ test('Phase 2.5 lịch sử ISBN lưu thật, reload và xóa theo owner', async
   await page.reload();
   await page.getByRole('button',{name:'Lịch sử tra cứu ISBN',exact:true}).click();
   await expect(page.getByRole('button',{name:'Mở lại 9780132350884'})).toBeVisible();
+  // Tra lại vẫn gọi provider thật; timeout nguồn 5 giây còn cần thời gian xử lý và trả HTTP.
+  const replayResponse=page.waitForResponse(response=>response.request().method()==='POST'
+    && /\/metadata\/history\/[a-f0-9-]+\/replay$/.test(new URL(response.url()).pathname),{timeout:30000});
   await page.getByRole('button',{name:'Mở lại 9780132350884'}).click();
+  expect((await replayResponse).status()).toBe(200);
   await expect(page.getByText(/Kết quả tra lại nguồn hiện tại/)).toBeVisible();
   for (const viewport of [{width:1440,height:900},{width:390,height:844}]) {
     await page.setViewportSize(viewport);

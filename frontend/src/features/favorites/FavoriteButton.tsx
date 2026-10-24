@@ -13,7 +13,11 @@ function FavoriteControl({ owner, book }: { owner: string; book: string }) {
   const sending = useRef(false);
   const state = useQuery({ queryKey: ['favorites', owner, 'state', book], queryFn: ({ signal }) => favoriteState(book, signal), retry: false, staleTime: 0 });
   const change = useMutation({ mutationFn: async (saved: boolean) => { if (saved) await removeFavorite(book); else await saveFavorite(book); },
-    onSuccess: async () => { await client.invalidateQueries({ queryKey: ['favorites', owner] }); } });
+    onSuccess: async () => {
+      // Danh sách vừa mở có thể đang đọc dữ liệu trước khi lệnh lưu hoàn tất.
+      await client.cancelQueries({ queryKey: ['favorites', owner] });
+      await client.invalidateQueries({ queryKey: ['favorites', owner] });
+    } });
   const toggle = async () => {
     if (sending.current || !state.isSuccess) return;
     sending.current = true;
