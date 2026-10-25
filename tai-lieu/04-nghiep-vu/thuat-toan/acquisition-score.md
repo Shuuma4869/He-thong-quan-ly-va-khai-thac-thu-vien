@@ -1,6 +1,6 @@
 # Điểm nhu cầu bổ sung sách
 
-Insight có bộ tính điểm `acquisition-v1` nhận số liệu tổng hợp theo Book, chi nhánh và khoảng thời gian. Đây là hàm tính thuần: cùng đầu vào cho cùng kết quả; chưa đọc Core, lưu recommendation hoặc tự đưa ra quyết định mua. Khi read projection Phase 7 của Toàn được review, luồng tạo đề xuất mới được nối vào số liệu thật.
+Insight có bộ tính điểm `acquisition-v1` nhận số liệu tổng hợp theo Book, chi nhánh và khoảng thời gian. Đây là hàm tính thuần: cùng đầu vào cho cùng kết quả; chưa đọc Core, lưu recommendation hoặc tự đưa ra quyết định mua. [Hợp đồng nguồn](../../05-api-va-event/acquisition-read-contract.md) nêu tín hiệu nào Core hiện có và cách giữ `null` khi chưa đủ lịch sử. Khi read projection Phase 7 của Toàn được review, luồng tạo đề xuất mới được nối vào số liệu thật.
 
 | Thành phần | Chuẩn hóa | Trọng số |
 |---|---|---:|
