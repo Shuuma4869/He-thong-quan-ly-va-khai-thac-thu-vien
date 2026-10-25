@@ -29,7 +29,11 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | Hold (`holds`, V18) | Yêu cầu giữ chỗ theo Book và chi nhánh | reader/book/branch FK; edition nullable nghĩa là bất kỳ ấn bản; queued/ready/expires/closed time; copy/loan FK; status, version, policy_version/pickup_seconds; unique active reader/book và READY/copy | Core/Hold |
 | Hold change (`hold_changes`, V18) | Lịch sử chuyển trạng thái giữ chỗ | hold_id, hold_version unique theo Hold; event_type; actor_id null khi job hệ thống; occurred_at | Core/Hold |
 | Loan extension (`loan_extensions`, V18) | Lịch sử gia hạn | loan_id/actor FK; unique loan/version; previous_due_at, due_at tăng, extended_at; policy_version/snapshot tại lúc gia hạn | Core/Circulation |
-| InventorySession | Phiên kiểm kê có phạm vi | branch/shelf scope, started/finished by, status, snapshot boundary | Core/Inventory |
+| InventorySession (`inventory_sessions`, V20) | Phiên kiểm kê có phạm vi | branch/shelf, người mở/chốt, OPEN/FINALIZED/CANCELLED, version, giới hạn 5.000 bản chụp và 20.000 scan; một phiên OPEN mỗi chi nhánh | Core/Inventory |
+| InventorySnapshot (`inventory_snapshots`, V20) | Bản chụp Copy khi mở phiên | session/copy, barcode, branch/shelf, status, copy_version; không FK tới Copy sống để giữ bằng chứng | Core/Inventory |
+| InventoryScan (`inventory_scans`, V20) | Lượt quét append-only | client_scan_id duy nhất trong phiên, barcode/kệ/người quét/thời điểm server; retry qua biên nhận giao dịch | Core/Inventory |
+| InventoryAnomaly (`inventory_anomalies`, V20) | Bất thường đã chốt | sáu kind, evidence JSONB cố định, Copy có thể null, thời điểm phát hiện | Core/Inventory |
+| InventoryResolution (`inventory_resolutions`, V21) | Quyết định rà soát của nhân viên | duy nhất theo anomaly; REVIEWED hoặc MOVE_TO_SCANNED_SHELF, reason, version Copy, actor và thời điểm | Core/Inventory |
 | SearchEvent | Một truy vấn đã ẩn danh/giảm PII | query normalized, filters, result count, session hash, time | Insight/Analytics |
 | DemandSignal | Tín hiệu nhu cầu quy chuẩn | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
 
@@ -43,7 +47,7 @@ V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, khô
 
 - Identity: `roles`, `user_roles`, `refresh_tokens`.
 - Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7.
-- Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; `copy_location_history`, `inventory_scans`, `inventory_anomalies` còn chờ triển khai.
+- Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; phiên/snapshot/scan/anomaly ở V20 và resolution ở V21. `copy_location_history` chuyên biệt chưa có; quyết định chuyển kệ từ kiểm kê được truy qua resolution và version Copy.
 - Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
 - Discovery: `search_documents`, `acquisition_recommendations`.
 - System: `notifications`, `system_policies`, `audit_logs`, `outbox_events`, `media_assets`.

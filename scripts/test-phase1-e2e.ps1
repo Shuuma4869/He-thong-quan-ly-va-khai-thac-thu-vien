@@ -1,7 +1,8 @@
-param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable)
+param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable, [string]$MavenExecutable, [string]$Grep)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 $projectRoot = Get-LamsRoot
+$maven = if ($MavenExecutable) { (Resolve-Path -LiteralPath $MavenExecutable).Path } else { '.\mvnw.cmd' }
 if ($Desktop) { $CorePort = 8080; $InsightPort = 3000 }
 $ports = if ($Desktop) { @($CorePort, $InsightPort, $DebugPort) } else { @($CorePort, $InsightPort, $FrontendPort) }
 foreach ($port in $ports) {
@@ -87,7 +88,7 @@ try {
     Invoke-LamsNative 'docker' @('exec', $container, 'createdb', '-U', 'lams', 'lams_insight_test') 'Không tạo được database Insight tạm'
     $env:INSIGHT_DATABASE_URL = "postgresql://lams:$($env:POSTGRES_PASSWORD)@127.0.0.1:$dbPort/lams_insight_test"
     Push-Location (Join-Path $projectRoot 'backend\core-service')
-    try { Invoke-LamsNative '.\mvnw.cmd' @('-DskipTests', 'package') 'Core package thất bại' }
+    try { Invoke-LamsNative $maven @('-DskipTests', 'package') 'Core package thất bại' }
     finally { Pop-Location }
     $launchCore = @{
         FilePath = (Get-Command java.exe).Source; ArgumentList = @('-jar', 'target/core-service-0.1.0-SNAPSHOT.jar')
@@ -141,7 +142,11 @@ try {
     Wait-TestHttp "http://127.0.0.1:$FrontendPort/"
     }
     Push-Location (Join-Path $projectRoot 'frontend')
-    try { Invoke-LamsNative 'npm' @('run', 'test:e2e') 'E2E Auth/Member/Catalog thất bại' }
+    try {
+        $arguments = @('run', 'test:e2e')
+        if ($Grep) { $arguments += @('--', '--grep', $Grep) }
+        Invoke-LamsNative 'npm' $arguments 'E2E Auth/Member/Catalog thất bại'
+    }
     finally { Pop-Location }
     if ($Desktop) { Write-Output 'DESKTOP_E2E_PASS' } else { Write-Output 'WEB_E2E_PASS' }
 } finally {
