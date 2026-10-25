@@ -80,6 +80,8 @@ jobs:
         with: { node-version: '22.23.3', cache: npm, cache-dependency-path: '**/package-lock.json' }
       - run: npm ci
         working-directory: backend/insight-service
+      - run: npm audit --audit-level=high
+        working-directory: backend/insight-service
       - run: npm run prisma:validate && npm run prisma:generate && npm test && npm run build
         working-directory: backend/insight-service
         env:
@@ -87,6 +89,8 @@ jobs:
       - run: npm run test:integration
         working-directory: backend/insight-service
       - run: npm ci
+        working-directory: frontend
+      - run: npm audit --audit-level=high
         working-directory: frontend
       - run: npm run typecheck && npm test && npm run lint && npm run build
         working-directory: frontend
