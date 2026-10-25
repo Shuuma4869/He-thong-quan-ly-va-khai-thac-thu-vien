@@ -1,12 +1,36 @@
 openapi: 3.1.0
 info:
-  title: LAMS Insight metadata API
+  title: LAMS Insight API
   version: 0.1.0
   description: Tra cứu ứng viên từ nhà cung cấp; không ghi Core và không tự duyệt ảnh.
 servers:
   - url: http://localhost:3000/api/v1
 security: [{ bearerAuth: [] }]
 paths:
+  /health:
+    get:
+      operationId: insightHealth
+      summary: Trạng thái Insight và kết nối consumer thông báo
+      security: []
+      description: HTTP 200 là liveness. status DEGRADED khi consumer được bật nhưng chưa tham gia group; không thay kiểm tra readiness hoặc đánh giá độ trễ backlog.
+      responses:
+        '200':
+          description: Trạng thái service
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [service, status, timestamp, notifications]
+                properties:
+                  service: { type: string, const: lams-insight-service }
+                  status: { type: string, enum: [UP, DEGRADED] }
+                  timestamp: { type: string, format: date-time }
+                  notifications:
+                    type: object
+                    required: [enabled, connected]
+                    properties:
+                      enabled: { type: boolean }
+                      connected: { type: boolean }
   /metadata/books/{isbn13}:
     get:
       operationId: lookupBookMetadata

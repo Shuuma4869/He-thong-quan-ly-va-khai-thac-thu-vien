@@ -27,3 +27,29 @@ model MetadataLookup {
   @@index([ownerId, isbn13])
   @@map("metadata_lookups")
 }
+
+model ConsumedCirculationEvent {
+  eventId    String   @id @map("event_id") @db.Uuid
+  digest     String   @db.Char(64)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  @@map("consumed_circulation_events")
+}
+
+// Thông báo trạng thái mới nhất theo giao dịch; không chứa tên/email hoặc snapshot Catalog.
+model CirculationNotice {
+  aggregateType    String   @map("aggregate_type") @db.VarChar(8)
+  aggregateId      String   @map("aggregate_id") @db.Uuid
+  aggregateVersion BigInt   @map("aggregate_version")
+  eventId          String   @unique @map("event_id") @db.Uuid
+  eventType        String   @map("event_type") @db.VarChar(40)
+  readerId         String   @map("reader_id") @db.Uuid
+  occurredAt       DateTime @map("occurred_at") @db.Timestamptz(6)
+  receivedAt       DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  dueAt            DateTime? @map("due_at") @db.Timestamptz(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  @@id([aggregateType, aggregateId])
+  @@index([readerId, occurredAt, aggregateId])
+  @@map("circulation_notices")
+}
