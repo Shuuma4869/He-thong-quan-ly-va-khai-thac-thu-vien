@@ -16,7 +16,7 @@ Borrow nhận Copy AVAILABLE khi không có hàng chờ phù hợp đủ điều
 
 API bảo trì chỉ cho IN_PROCESS → AVAILABLE/WITHDRAWN, AVAILABLE → LOST/DAMAGED, DAMAGED → IN_PROCESS/WITHDRAWN, LOST → IN_PROCESS. Bắt buộc lý do/version, kiểm quyền hiện hành và không còn Loan mở. Mỗi thay đổi tăng Copy version, ghi trạng thái trước/sau, actor và thời điểm. WITHDRAWN không có đường khôi phục thông thường. Trường version mới chỉ nhận số nguyên JSON int64, không tự cắt phần thập phân.
 
-COPY_BORROWED/COPY_RETURNED/LOAN_RENEWED và HOLD_CREATED/READY/FULFILLED/CANCELLED/EXPIRED nằm trong `outbox_events` sau commit. Publisher tùy chọn chuyển các fact này sang Kafka; consumer và thông báo chưa triển khai. `version=1` là phiên bản envelope; `aggregateVersion` là version Loan/Hold để consumer xử lý sự kiện đến sai thứ tự. Giao dịch mượn/trả không gọi Kafka; publisher dùng transaction riêng. Xem [vận hành outbox](../05-api-va-event/outbox-delivery.md).
+COPY_BORROWED/COPY_RETURNED/LOAN_RENEWED và HOLD_CREATED/READY/FULFILLED/CANCELLED/EXPIRED nằm trong `outbox_events` sau commit. Publisher tùy chọn chuyển các fact này sang Kafka; Insight consumer lưu trạng thái thông báo nội bộ và receipt dedupe, chưa có hộp thông báo UI. `version=1` là phiên bản envelope; `aggregateVersion` là version Loan/Hold để consumer xử lý sự kiện đến sai thứ tự. Giao dịch mượn/trả không gọi Kafka; publisher dùng transaction riêng. Xem [outbox](../05-api-va-event/outbox-delivery.md) và [consumer](../05-api-va-event/circulation-notifications.md).
 
 ## Loan và tính toàn vẹn
 

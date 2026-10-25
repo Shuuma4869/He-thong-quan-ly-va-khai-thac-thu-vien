@@ -7,11 +7,11 @@ import { OpenLibraryProvider } from './open-library.service';
 import { GoogleBooksProvider } from './google-books.service';
 import { WikimediaProvider } from './wikimedia.service';
 import { MediaNormalizer } from './media-normalizer.service';
-import { PrismaService } from './history/prisma.service';
+import { PrismaModule } from '../../shared/prisma.module';
 import { HistoryRepository } from './history/history.repository';
 import { HistoryService } from './history/history.service';
 import { HistoryController } from './history/history.controller';
 
-@Module({controllers:[MetadataController,HistoryController],providers:[PrismaService,HistoryRepository,HistoryService,MetadataGuard,MetadataService,ProviderHttp,
+@Module({imports:[PrismaModule],controllers:[MetadataController,HistoryController],providers:[HistoryRepository,HistoryService,MetadataGuard,MetadataService,ProviderHttp,
   OpenLibraryProvider,GoogleBooksProvider,WikimediaProvider,MediaNormalizer]})
 export class MetadataModule {}

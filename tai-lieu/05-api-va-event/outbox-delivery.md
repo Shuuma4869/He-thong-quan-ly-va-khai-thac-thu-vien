@@ -13,7 +13,7 @@ Mặc định `OUTBOX_ENABLED=false`. Khi tắt, fact vẫn được lưu trong 
 
 Broker lấy từ `KAFKA_BOOTSTRAP_SERVERS`. Cấu hình SASL/TLS dùng các thuộc tính `spring.kafka` tương ứng của Spring Boot, không đưa credential vào source. Compose hiện chỉ phù hợp phát triển: một broker, plaintext, chưa có volume Kafka bền vững. Không bật pipeline dùng chung chỉ vì Compose báo healthy; cần kiểm volume, backup, replication, retention và consumer trước. Khi container broker bị tạo lại, dữ liệu đã ACK có thể mất; `published_at` trong Core không tự phát hiện hoặc phục hồi trường hợp đó.
 
-Consumer Insight chưa triển khai ở mốc publisher. Chưa có hộp thông báo, dedupe hay DLQ phía consumer. Không gọi đây là pipeline hoàn chỉnh và không bật publisher trên production trong đợt này.
+Consumer Insight được bổ sung sau PR publisher; xem [tiếp nhận sự kiện](circulation-notifications.md) để kiểm dedupe, thứ tự và DLQ. Chưa có hộp thông báo UI. Hai phía mặc định tắt; không bật publisher trên production trong đợt này.
 
 ## Khóa, ACK và retry
 
