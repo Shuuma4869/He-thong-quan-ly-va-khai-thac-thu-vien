@@ -1,3 +1,4 @@
+param([switch]$IncludeMinio)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
@@ -39,9 +40,11 @@ try {
     Push-Location (Join-Path $projectRoot 'backend\insight-service')
     try { Invoke-LamsNative 'node' @('scripts/kafka-smoke.mjs') 'Kafka external host produce/consume thất bại' } finally { Pop-Location }
 
-    $response = Invoke-WebRequest -UseBasicParsing -Uri "http://localhost:$minioPort/minio/health/live" -TimeoutSec 10
-    if ($response.StatusCode -ne 200) { throw 'MinIO health không trả HTTP 200.' }
-    Write-Host '[OK] MinIO health.' -ForegroundColor Green
+    if ($IncludeMinio) {
+        $response = Invoke-WebRequest -UseBasicParsing -Uri "http://localhost:$minioPort/minio/health/live" -TimeoutSec 10
+        if ($response.StatusCode -ne 200) { throw 'MinIO health không trả HTTP 200.' }
+        Write-Host '[OK] MinIO health.' -ForegroundColor Green
+    }
 } finally { Pop-Location }
 
 Write-Host 'Smoke test hạ tầng hoàn tất.' -ForegroundColor Green

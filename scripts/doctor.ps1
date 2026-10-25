@@ -49,9 +49,7 @@ else { Write-WarningMessage 'Chưa có .env; bootstrap sẽ copy từ .env.examp
 $ports = @(
     @{ Name = 'PostgreSQL'; Value = [int](Get-LamsSetting 'POSTGRES_PORT' '15432') },
     @{ Name = 'Redis'; Value = [int](Get-LamsSetting 'REDIS_PORT' '16379') },
-    @{ Name = 'Kafka'; Value = [int](Get-LamsSetting 'KAFKA_PORT' '19092') },
-    @{ Name = 'MinIO API'; Value = [int](Get-LamsSetting 'MINIO_API_PORT' '19000') },
-    @{ Name = 'MinIO Console'; Value = [int](Get-LamsSetting 'MINIO_CONSOLE_PORT' '19001') }
+    @{ Name = 'Kafka'; Value = [int](Get-LamsSetting 'KAFKA_PORT' '19092') }
 )
 
 foreach ($item in $ports) {

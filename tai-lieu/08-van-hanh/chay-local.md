@@ -21,6 +21,7 @@ Từ `<thu-muc-du-an>`:
 ```
 
 Bootstrap không ghi đè `.env` đã tồn tại và không xóa volume. Flyway chạy khi Core khởi động; Prisma migration được bootstrap deploy.
+Mặc định Compose chỉ khởi động PostgreSQL, Redis và Kafka. MinIO không phục vụ ảnh Catalog hiện tại nên nằm trong profile `media` và không tiêu thụ tài nguyên khi khởi động thông thường.
 
 ## Chạy ứng dụng
 
@@ -52,10 +53,12 @@ Health:
 | PostgreSQL | `localhost:15432` | `postgres:5432` |
 | Redis | `localhost:16379` | `redis:6379` |
 | Kafka | `localhost:19092` | `kafka:29092` |
-| MinIO API | `localhost:19000` | `minio:9000` |
-| MinIO Console | `localhost:19001` | `minio:9001` |
+| MinIO API (tùy chọn) | `localhost:19000` | `minio:9000` |
+| MinIO Console (tùy chọn) | `localhost:19001` | `minio:9001` |
 
 Ứng dụng chạy trực tiếp trên host dùng các giá trị `localhost` trong `.env`. Container ứng dụng phải được truyền URL service-name/internal-port; không dùng host port hoặc `localhost` để gọi container khác.
+
+Chỉ khi cần kiểm tra MinIO riêng, chạy `docker compose --profile media up -d --build --wait minio` rồi `.\scripts\smoke-test.ps1 -IncludeMinio`. Profile này không xóa hoặc tạo lại volume khi dừng. Nếu máy đã có container MinIO chạy từ cấu hình cũ và không còn dùng, `docker compose stop minio` sẽ hạ dịch vụ mà giữ dữ liệu.
 
 ## Database và migration
 
