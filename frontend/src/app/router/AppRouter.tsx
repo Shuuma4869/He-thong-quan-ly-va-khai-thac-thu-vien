@@ -1,6 +1,8 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ReaderLayout } from '../layouts/ReaderLayout';
 import { StaffLayout } from '../layouts/StaffLayout';
+import { PublicLayout } from '../layouts/PublicLayout';
 import { LoginPage } from '../../features/auth/LoginPage';
 import { RegisterPage } from '../../features/auth/RegisterPage';
 import { GuestRoute, ProtectedRoute, RoleGuard } from '../../features/auth/AuthGuards';
@@ -8,30 +10,38 @@ import { ReaderHomePage } from '../../features/discovery/ReaderHomePage';
 import { StaffDashboardPage } from '../../features/analytics/StaffDashboardPage';
 import { NotFoundPage } from '../../shared/components/NotFoundPage';
 import { ProfilePage } from '../../features/profile/ProfilePage';
-import { MemberListPage } from '../../features/members/MemberListPage';
 import { CatalogPage } from '../../features/catalog/CatalogPage';
 import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
-import { StaffCatalogPage } from '../../features/catalog/StaffCatalogPage';
 import { MyLibraryPage } from '../../features/my-library/MyLibraryPage';
-import { ReaderLoansPage } from '../../features/circulation/ReaderLoansPage';
 import { HoldCreatePage } from '../../features/circulation/HoldCreatePage';
-import { StaffCirculationPage } from '../../features/circulation/StaffCirculationPage';
-import { CirculationReportPage } from '../../features/circulation/CirculationReportPage';
+const MemberListPage = lazy(() => import('../../features/members/MemberListPage').then(value => ({ default: value.MemberListPage })));
+const StaffCatalogPage = lazy(() => import('../../features/catalog/StaffCatalogPage').then(value => ({ default: value.StaffCatalogPage })));
+const ReaderLoansPage = lazy(() => import('../../features/circulation/ReaderLoansPage').then(value => ({ default: value.ReaderLoansPage })));
+const StaffCirculationPage = lazy(() => import('../../features/circulation/StaffCirculationPage').then(value => ({ default: value.StaffCirculationPage })));
+const CirculationReportPage = lazy(() => import('../../features/circulation/CirculationReportPage').then(value => ({ default: value.CirculationReportPage })));
+const InventorySessionsPage = lazy(() => import('../../features/inventory/InventorySessionsPage').then(value => ({ default: value.InventorySessionsPage })));
+const InventorySessionPage = lazy(() => import('../../features/inventory/InventorySessionPage').then(value => ({ default: value.InventorySessionPage })));
+
+function Deferred({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
+}
 
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<ReaderLayout />}>
+      <Route path="/" element={<PublicLayout />}>
         <Route index element={<ReaderHomePage />} />
+      </Route>
+      <Route element={<ReaderLayout />}>
+        <Route path="sach" element={<CatalogPage />} />
+        <Route path="sach/:bookId" element={<BookDetailPage />} />
+        <Route path="tac-gia/:authorId" element={<AuthorDetailPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="ho-so" element={<ProfilePage />} />
           <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
-          <Route path="muon-va-giu-cho" element={<ReaderLoansPage />} />
+          <Route path="muon-va-giu-cho" element={<Deferred><ReaderLoansPage /></Deferred>} />
           <Route path="giu-cho/:bookId/:editionId" element={<HoldCreatePage />} />
-          <Route path="sach" element={<CatalogPage />} />
-          <Route path="sach/:bookId" element={<BookDetailPage />} />
-          <Route path="tac-gia/:authorId" element={<AuthorDetailPage />} />
         </Route>
       </Route>
       <Route element={<GuestRoute />}>
@@ -42,10 +52,12 @@ export function AppRouter() {
       <Route path="/nhan-vien" element={<StaffLayout />}>
         <Route index element={<Navigate to="bang-dieu-khien" replace />} />
         <Route path="bang-dieu-khien" element={<StaffDashboardPage />} />
-        <Route path="thanh-vien" element={<MemberListPage />} />
-        <Route path="danh-muc" element={<StaffCatalogPage />} />
-        <Route path="luu-thong" element={<StaffCirculationPage />} />
-        <Route path="bao-cao-luu-thong" element={<CirculationReportPage />} />
+        <Route path="thanh-vien" element={<Deferred><MemberListPage /></Deferred>} />
+        <Route path="danh-muc" element={<Deferred><StaffCatalogPage /></Deferred>} />
+        <Route path="luu-thong" element={<Deferred><StaffCirculationPage /></Deferred>} />
+        <Route path="bao-cao-luu-thong" element={<Deferred><CirculationReportPage /></Deferred>} />
+        <Route path="kiem-ke" element={<Deferred><InventorySessionsPage /></Deferred>} />
+        <Route path="kiem-ke/:sessionId" element={<Deferred><InventorySessionPage /></Deferred>} />
       </Route>
       </Route></Route>
       <Route path="*" element={<NotFoundPage />} />

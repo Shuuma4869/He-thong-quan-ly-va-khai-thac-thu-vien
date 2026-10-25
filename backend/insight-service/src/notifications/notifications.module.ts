@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { PrismaModule } from '../shared/prisma.module';
+import { NotificationRepository } from './notification.repository';
+import { LoanEventsConsumer } from './loan-events.consumer';
 
-/** Boundary cho điều phối thông báo; provider thực tế sẽ được chọn sau. */
-@Module({})
+@Module({ imports: [PrismaModule], providers: [NotificationRepository, LoanEventsConsumer], exports: [LoanEventsConsumer] })
 export class NotificationsModule {}

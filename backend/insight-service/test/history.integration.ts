@@ -37,7 +37,7 @@ beforeAll(async () => {
   repository = new HistoryRepository(db);
 }, 90000);
 afterAll(async () => {
-  if (db) await db.onModuleDestroy();
+  if (db) await db.onApplicationShutdown();
   if (created && docker('inspect', '--format', '{{index .Config.Labels "lams.test"}}', container) === container) docker('rm', '-f', '-v', container);
   if (previous === undefined) delete process.env.INSIGHT_DATABASE_URL; else process.env.INSIGHT_DATABASE_URL = previous;
 });

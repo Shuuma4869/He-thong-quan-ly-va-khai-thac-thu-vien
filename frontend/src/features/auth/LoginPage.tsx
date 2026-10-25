@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
@@ -21,7 +20,6 @@ export function LoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const reduceMotion = useReducedMotion();
   const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { identifier: '', password: '', remember: false },
@@ -40,7 +38,7 @@ export function LoginPage() {
     <main className="login-page">
       <AuthHero />
       <section className="login-form-panel">
-        <motion.div initial={reduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="w-full max-w-md">
+        <div className="login-form-enter w-full max-w-md">
           <p className="eyebrow">Đăng nhập</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">Chào mừng bạn quay lại</h2>
           <p className="mt-3 text-muted">Đăng nhập để tiếp tục sử dụng LAMS.</p>
@@ -52,7 +50,7 @@ export function LoginPage() {
             <button className="button-primary w-full" disabled={isSubmitting} type="submit">{isSubmitting ? 'Đang xử lý…' : 'Đăng nhập'}</button>
           </form>
           <p className="mt-7 text-center text-sm text-muted">Chưa có tài khoản? <Link className="text-link" to="/dang-ky">Đăng ký</Link></p>
-        </motion.div>
+        </div>
       </section>
     </main>
   );

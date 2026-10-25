@@ -117,6 +117,27 @@ class FavoriteIntegrationTest {
     }
 
     @Test
+    void batchStateUsesCurrentAccountAndRejectsDuplicateIds() throws Exception {
+        UUID owner = user("READER"), other = user("READER");
+        UUID saved = book("Saved on card"), unsaved = book("Unsaved on card");
+        mvc.perform(put("/api/v1/me/favorites/{bookId}", saved).with(token(owner, "READER")))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/me/favorites/states").with(token(owner, "READER"))
+                        .param("bookId", saved.toString(), unsaved.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].saved").value(true))
+                .andExpect(jsonPath("$.items[1].saved").value(false));
+        mvc.perform(get("/api/v1/me/favorites/states").with(token(other, "READER"))
+                        .param("bookId", saved.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].saved").value(false));
+        mvc.perform(get("/api/v1/me/favorites/states").with(token(owner, "READER"))
+                        .param("bookId", saved.toString(), saved.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/api/v1/me/favorites/states").param("bookId", saved.toString()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void anonymousLockedAndRevokedUsersAreRejected() throws Exception {
         UUID book = book("Protected favorite");
         mvc.perform(get("/api/v1/me/favorites")).andExpect(status().isUnauthorized());

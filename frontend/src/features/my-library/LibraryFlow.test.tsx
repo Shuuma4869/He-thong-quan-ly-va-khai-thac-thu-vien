@@ -212,13 +212,13 @@ it('logout rồi đổi tài khoản không hiện favorite/review hay response 
   saved = true; app('/thu-vien-cua-toi');
   await screen.findByRole('link', { name: book.title }); await waitFor(() => expect(late).toBeDefined());
   fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
-  await screen.findByRole('heading', { name: /Mỗi cuốn sách mở ra một góc nhìn/ });
+  await screen.findByRole('heading', { name: /Cuốn sách tiếp theo/ });
   fireEvent.click(screen.getAllByRole('link', { name: 'Đăng nhập' })[0]);
   await screen.findByLabelText('Email hoặc mã thành viên');
   fireEvent.change(screen.getByLabelText('Email hoặc mã thành viên'), { target: { value: 'other@example.test' } });
   fireEvent.change(screen.getByLabelText('Mật khẩu', { exact: true }), { target: { value: 'Password-test-123' } });
   fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
-  fireEvent.click(await screen.findByRole('link', { name: 'Thư viện của tôi' }));
+  fireEvent.click((await screen.findAllByRole('link', { name: 'Thư viện của tôi' }))[0]);
   await screen.findByText('Bạn chưa có đánh giá ở trang này.');
   await act(async () => late(Response.json(page([initialReview]))));
   expect(screen.queryByText('Nội dung của tôi')).not.toBeInTheDocument();

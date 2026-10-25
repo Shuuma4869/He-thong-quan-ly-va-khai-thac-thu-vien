@@ -1,30 +1,21 @@
-# Hybrid search ranking
+# Xếp hạng tra cứu Catalog
 
-## Input
-Query đã normalize, filters, locale, candidate từ FTS/trigram/vector và availability projection.
+Đầu vào là từ khóa tối đa 500 ký tự, bộ lọc tác giả/thể loại, số trang và kích thước trang. `sort=relevance` chỉ hợp lệ khi có từ khóa. Core bỏ dấu và chuyển chữ thường bằng PostgreSQL `unaccent`; tên Book lưu thêm dạng tra cứu và `tsvector` qua trigger V22.
 
-## Output
-Trang kết quả có score, reason code nội bộ và recovery suggestion nếu zero-result.
+Ứng viên đến từ tên chứa từ khóa, full text tên/mô tả, tên gần đúng bằng `pg_trgm`, tác giả chứa từ khóa hoặc ISBN 13 đúng. Điều kiện gần đúng yêu cầu ít nhất ba ký tự. Bộ lọc tác giả và thể loại được áp dụng trước khi tính tổng/trang.
 
-## Invariant
-Filter quyền/visibility áp dụng trước trả kết quả; cùng index/ranking version cho kết quả deterministic; không để popularity xóa relevance.
+Điểm ở phiên bản đầu:
 
-## Pseudo-code
-```text
-lexical = FTS(query)
-fuzzy = trigram(query) when needed
-semantic = vector(query) when enabled
-candidates = reciprocalRankFusion(lexical, fuzzy, semantic)
-score = relevance + boundedAvailabilityBoost + boundedQualityBoost
-filter; stableSort(score, bookId); paginate
-if empty -> suggest spelling / relax one filter / emit zero-result
-```
+| Điều kiện ưu tiên đầu tiên | Điểm |
+|---|---:|
+| ISBN 13 đúng | 150 |
+| Toàn bộ tên đúng | 120 |
+| Tiền tố tên đúng | 80 |
+| Full text tên/mô tả | 50 + min(`ts_rank_cd`, 1) × 10 |
+| Tên tác giả chứa từ khóa | 45 |
+| Tên chứa từ khóa | 35 |
+| Tên gần đúng | `similarity` × 20 |
 
-## Edge cases
-Query rỗng; tiếng Việt có/không dấu; ISBN; typo ngắn; filter loại hết kết quả; book chưa có vector; index lag.
+Mỗi Book lấy điều kiện đầu tiên khớp theo bảng; nếu bằng điểm thì ID quyết định thứ tự. Đây là quy tắc xác định, không cộng độ phổ biến hay số sao vào điểm. Rating/availability không can thiệp xếp hạng. Trang kết quả và tổng được đọc trong cùng transaction; phân trang bằng request khác có thể thay đổi khi Catalog được sửa.
 
-## Concurrency concerns
-Index update idempotent theo aggregate version; pagination dùng stable cursor nếu dữ liệu đổi nhanh. Không đọc nửa document khi reindex.
-
-## Test scenarios
-Exact title thắng fuzzy; ISBN exact; không dấu; deterministic tie; stale event bị bỏ; zero-result recovery; permission filter.
+Kiểm thử cần giữ: tiếng Việt có/không dấu, ISBN đúng, tên tác giả, tên đúng đứng trước tiền tố, thứ tự trang ổn định, bộ lọc, query chứa cú pháp SQL và từ khóa rỗng. Trước khi thay đổi điểm hoặc bật vector, phải benchmark trên dữ liệu có quy mô, chốt phiên bản xếp hạng và cập nhật contract/test. `pgvector` chưa được bật.

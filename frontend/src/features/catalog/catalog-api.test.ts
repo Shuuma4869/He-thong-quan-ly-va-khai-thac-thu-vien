@@ -22,11 +22,13 @@ it('kiểm tra URL, giữ filters và chỉ gửi tham số hỗ trợ', () => {
   expect(parseCatalogQuery(new URLSearchParams('authorId=invalid')).success).toBe(false);
   const parsed=parseCatalogQuery(new URLSearchParams('query=a%26b&size=1&page=2&unknown=value'));
   expect(parsed.success).toBe(true);
-  if (parsed.success) expect(catalogParams(parsed.data).toString()).toBe('query=a%26b&page=2&size=1');
+  if (parsed.success) expect(catalogParams(parsed.data).toString()).toBe('query=a%26b&page=2&size=1&sort=relevance');
+  const title=parseCatalogQuery(new URLSearchParams('query=sach&sort=title'));
+  if (title.success) expect(catalogParams(title.data).get('sort')).toBe('title');
 });
 it('không coi payload sai schema là danh sách trống', async () => {
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({items:[]})));
-  await expect(getBooks({query:'',authorId:'',categoryId:'',page:0,size:20})).rejects.toThrow();
+  await expect(getBooks({query:'',authorId:'',categoryId:'',page:0,size:20,sort:'title'})).rejects.toThrow();
 });
 it('Copy update giữ version, không tự gửi trạng thái lưu thông', async () => {
   const id='11111111-1111-4111-8111-111111111111';

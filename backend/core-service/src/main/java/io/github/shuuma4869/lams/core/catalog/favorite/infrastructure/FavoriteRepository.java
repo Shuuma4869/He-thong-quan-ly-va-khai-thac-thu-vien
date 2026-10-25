@@ -2,9 +2,12 @@ package io.github.shuuma4869.lams.core.catalog.favorite.infrastructure;
 
 import io.github.shuuma4869.lams.core.catalog.favorite.domain.Favorite;
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -28,6 +31,16 @@ public class FavoriteRepository {
                         + "JOIN books b ON b.id=f.book_id WHERE f.user_id=? AND f.book_id=?",
                 (rs, row) -> map(rs.getObject("book_id", UUID.class), rs.getString("title"),
                         rs.getTimestamp("created_at")), userId, bookId).stream().findFirst();
+    }
+
+    public Set<UUID> savedBookIds(UUID userId, List<UUID> bookIds) {
+        if (bookIds.isEmpty()) return Set.of();
+        String placeholders = String.join(",", Collections.nCopies(bookIds.size(), "?"));
+        Object[] args = new Object[bookIds.size() + 1];
+        args[0] = userId;
+        for (int i = 0; i < bookIds.size(); i++) args[i + 1] = bookIds.get(i);
+        return jdbc.query("SELECT book_id FROM favorites WHERE user_id=? AND book_id IN (" + placeholders + ")",
+                (rs, row) -> rs.getObject("book_id", UUID.class), args).stream().collect(Collectors.toSet());
     }
 
     public Optional<Timestamp> insertIfAbsent(UUID userId, UUID bookId) {

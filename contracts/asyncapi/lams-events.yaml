@@ -2,7 +2,7 @@ asyncapi: 3.0.0
 info:
   title: LAMS Events
   version: 0.1.0
-  description: Borrow/Return/Renew và vòng đời Hold được Core ghi outbox cùng giao dịch. Publisher tùy chọn gửi Kafka với at-least-once và giữ eventId qua retry; consumer chưa triển khai. Discovery/Inventory events vẫn planned.
+  description: Borrow/Return/Renew và vòng đời Hold được Core ghi outbox cùng giao dịch. Publisher/consumer tùy chọn dùng at-least-once, dedupe bền vững và version aggregate; lỗi xử lý đi DLQ sau retry. Discovery/Inventory events vẫn planned.
 defaultContentType: application/json
 servers:
   localKafka:
@@ -28,6 +28,10 @@ channels:
     messages:
       searchPerformed: { $ref: '#/components/messages/SEARCH_PERFORMED' }
       searchZeroResult: { $ref: '#/components/messages/SEARCH_ZERO_RESULT' }
+  notificationFailures:
+    address: lams.notifications.dlq.v1
+    messages:
+      notificationFailure: { $ref: '#/components/messages/NOTIFICATION_FAILURE' }
   inventoryEvents:
     address: lams.inventory.events.v1
     messages:
@@ -45,6 +49,18 @@ operations:
     action: send
     channel: { $ref: '#/channels/discoveryEvents' }
     x-status: planned
+  circulationConsume:
+    action: receive
+    channel: { $ref: '#/channels/circulationEvents' }
+    x-status: implemented-opt-in
+  holdConsume:
+    action: receive
+    channel: { $ref: '#/channels/holdEvents' }
+    x-status: implemented-opt-in
+  notificationFailurePublish:
+    action: send
+    channel: { $ref: '#/channels/notificationFailures' }
+    x-status: implemented-opt-in
   plannedInventoryPublish:
     action: send
     channel: { $ref: '#/channels/inventoryEvents' }
@@ -64,14 +80,35 @@ components:
         aggregateVersion: { type: integer, minimum: 0, description: Version nghiệp vụ của aggregate; Loan bắt đầu từ 0, khác version envelope. }
         data: { type: object, additionalProperties: true }
   messages:
-    COPY_BORROWED: { name: COPY_BORROWED, title: Bản sách đã được mượn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    COPY_RETURNED: { name: COPY_RETURNED, title: Bản sách đã được trả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    LOAN_RENEWED: { name: LOAN_RENEWED, title: Lượt mượn đã gia hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    HOLD_CREATED: { name: HOLD_CREATED, title: Yêu cầu giữ chỗ đã tạo, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    HOLD_READY: { name: HOLD_READY, title: Yêu cầu giữ chỗ sẵn sàng nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    HOLD_EXPIRED: { name: HOLD_EXPIRED, title: Yêu cầu giữ chỗ hết hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    HOLD_CANCELLED: { name: HOLD_CANCELLED, title: Yêu cầu giữ chỗ đã hủy, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
-    HOLD_FULFILLED: { name: HOLD_FULFILLED, title: Sách giữ chỗ đã được nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: publisher-opt-in-consumer-pending }
+    NOTIFICATION_FAILURE:
+      name: NOTIFICATION_FAILURE
+      title: Sự kiện chưa xử lý được trong Insight
+      x-status: implemented-opt-in
+      payload:
+        type: object
+        required: [version, source, reason, payloadSha256, event]
+        properties:
+          version: { type: integer, const: 1 }
+          source:
+            type: object
+            required: [topic, partition, offset]
+            properties:
+              topic: { type: string }
+              partition: { type: integer, minimum: 0 }
+              offset: { type: string, pattern: '^[0-9]+$' }
+          reason: { type: string }
+          payloadSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+          event:
+            type: [object, 'null']
+            description: Chỉ trường chuẩn hóa phục vụ thông báo; envelope lỗi không lưu raw payload. Replay dùng fact gốc đã đối chiếu, không gửi object này trực tiếp vào topic nguồn.
+    COPY_BORROWED: { name: COPY_BORROWED, title: Bản sách đã được mượn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    COPY_RETURNED: { name: COPY_RETURNED, title: Bản sách đã được trả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    LOAN_RENEWED: { name: LOAN_RENEWED, title: Lượt mượn đã gia hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    HOLD_CREATED: { name: HOLD_CREATED, title: Yêu cầu giữ chỗ đã tạo, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    HOLD_READY: { name: HOLD_READY, title: Yêu cầu giữ chỗ sẵn sàng nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    HOLD_EXPIRED: { name: HOLD_EXPIRED, title: Yêu cầu giữ chỗ hết hạn, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    HOLD_CANCELLED: { name: HOLD_CANCELLED, title: Yêu cầu giữ chỗ đã hủy, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
+    HOLD_FULFILLED: { name: HOLD_FULFILLED, title: Sách giữ chỗ đã được nhận, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: implemented-opt-in }
     SEARCH_PERFORMED: { name: SEARCH_PERFORMED, title: Tìm kiếm đã thực hiện, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
     SEARCH_ZERO_RESULT: { name: SEARCH_ZERO_RESULT, title: Tìm kiếm không có kết quả, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
     INVENTORY_MISMATCH_FOUND: { name: INVENTORY_MISMATCH_FOUND, title: Phát hiện sai lệch kiểm kê, payload: { $ref: '#/components/schemas/EventEnvelope' }, x-status: planned }
