@@ -2,7 +2,7 @@
 
 ## Bài toán và mục tiêu
 
-LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, kiểm kê và dữ liệu nhu cầu. Hiện dự án đã có Auth, Member chỉ đọc và giao diện desktop Windows; các nghiệp vụ thư viện sẽ được phát triển theo từng giai đoạn.
+LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, kiểm kê và dữ liệu nhu cầu. Ứng dụng đã có giao diện Windows bằng Tauri, Catalog, lưu thông/giữ chỗ và phiên kiểm kê. Các chức năng tìm kiếm nâng cao và đề xuất bổ sung sách được triển khai theo từng PR, không suy trạng thái hoàn thành từ tài liệu thiết kế.
 
 ## Actors
 
@@ -12,15 +12,15 @@ LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư vi
 
 ## Scope
 
-Repository hiện có Tauri/WebView2 + React, Spring, NestJS, PostgreSQL, Redis, Kafka, MinIO, contract, tài liệu vận hành và kiểm thử. Auth và Member/Profile chỉ đọc đã được triển khai: self profile, staff list mã/tên/status, tìm/lọc/sort/page. Profile bổ sung/PATCH đang hoãn; catalog, bản sách, mượn/trả/gia hạn và giữ chỗ là các phần việc tiếp theo. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
+Repository dùng Tauri/WebView2 + React, Spring Core, NestJS Insight và PostgreSQL. Auth/Member/Profile chỉ đọc, Catalog/Edition/Copy, Favorites/Reviews/Rating, mượn/trả/gia hạn, giữ chỗ, lịch sử và báo cáo lưu thông, duyệt ảnh, lịch sử ISBN và kiểm kê kệ đã có luồng nghiệp vụ và test. Catalog có tìm kiếm từ vựng được xếp hạng; taxonomy/alias là phần việc tích hợp riêng. Redis, Kafka và MinIO có cấu hình hoặc vai trò kiến trúc riêng, không được coi là điều kiện để các luồng trên hoạt động. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
 
 ## Ngoài phạm vi hiện tại
 
-Chưa có CRUD nghiệp vụ thư viện, semantic search, thuật toán phân bổ giữ chỗ, kiểm kê theo kệ, đề xuất bổ sung sách, tích hợp metadata/email thật hoặc triển khai production.
+Chưa có tìm kiếm ngữ nghĩa/vector, đề xuất bổ sung sách được duyệt thành quy trình mua, dữ liệu zero-result search, tích hợp email ngoài hoặc triển khai production đã nghiệm thu. Metadata tra cứu từ nhà cung cấp vẫn cần nhân viên xác nhận trước khi ghi vào Catalog; Google Books đang tắt.
 
 ## Flagship features định hướng
 
-Smart Discovery, Smart Hold & Availability, Live Shelf Audit và Demand-to-Acquisition Intelligence hiện mới có tài liệu thiết kế, chưa có luồng nghiệp vụ hoàn chỉnh.
+Smart Hold & Availability và Live Shelf Audit đã có các luồng giao dịch/kiểm kê chính. Smart Discovery hiện có metadata lookup và tìm kiếm từ vựng, chưa có semantic search. Demand-to-Acquisition Intelligence vẫn ở giai đoạn thiết kế.
 
 ## Glossary
 
