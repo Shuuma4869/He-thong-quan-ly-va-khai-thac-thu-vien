@@ -44,7 +44,8 @@ V16 `loans` và policy đã tích hợp qua PR #14, merge `bc5151039efd4826e9eb0
 | P4-D1-05 | LoanRenewalService, `/loans/{id}/renew`, audit V18 | Chặn quá hạn/hết lượt/WAITING phù hợp; cạnh tranh renew/return, snapshot policy gia hạn riêng |
 | P4-D1-09..12 | Hold V18, tạo/hủy/nhận, FIFO theo chi nhánh/Edition, allocation/expiry, query riêng tư | HoldIntegrationTest, LoanSchemaTest; không đồng nghĩa giao diện đã hoàn thành |
 | P4-D1-13 | HoldEtaService/HoldEtaModel và nút tính ETA trong thẻ WAITING | Mô phỏng có điều kiện theo Edition/Branch, dueAt và chu kỳ pickup/mượn; từ chối ngày khi quá hạn/thiếu nguồn lực/scope lớn; HoldEtaModelTest, HoldEtaIntegrationTest, HoldEstimate và E2E Reader |
-| P4-D1-14..15 | Outbox publisher và consumer thông báo chưa có | Cùng transaction Core, Kafka thật, retry/dedup/out-of-order/DLQ; không coi bảng outbox V1 là pipeline |
+| P4-D1-14 | OutboxPublisher/Repository/Job, V19; opt-in, retry và ACK trong transaction riêng | OutboxPublisherIntegrationTest với PostgreSQL/Kafka thật, lỗi DB sau ACK, worker cạnh tranh; OutboxMigrationTest nâng V18. Chờ gate của commit bàn giao |
+| P4-D1-15 | Consumer thông báo chưa có | Cần dedup bền vững, out-of-order, retry/DLQ và replay; publisher riêng chưa phải pipeline hoàn chỉnh |
 | P4-D1-16 | ReaderLoansPage/HoldCreatePage: xem Loan/Hold, giữ đúng ấn bản hoặc chọn bất kỳ, gia hạn/hủy có xác nhận | CirculationFlow kiểm retry cùng requestId, chặn double submit, lỗi và query; E2E Reader lưu thông cần đối chiếu CI/EXE đúng SHA |
 | P4-D1-17 | StaffCirculationPage/MemberPicker: tìm người, quét mã, xác nhận mượn/trả/gia hạn, lịch sử theo người/chi nhánh/bản | StaffCirculationFlow kiểm xác nhận, version, retry, lỗi và bộ lọc; E2E quầy thực hiện command bằng UI rồi kiểm dữ liệu Core |
 | P4-D2-01..02 | LoanHistoryController/Service/Repository; `/me/loans`, `/loans`, `/loans/{id}` | Owner/current-role, filter borrowedAt/status/branch/copy, phân trang, giữ Edition/Branch lịch sử |
@@ -57,7 +58,9 @@ P4-D2-01..05 đã tích hợp qua PR #17 tại `d704b0c5459e7e5529ccef883df6846f
 
 Reader UI tích hợp qua PR #18 tại `c748a009dc1b8d333fe3065e2498aac85ec25a65`. Head `7ea5463` đạt CI `40124723019` 5/5 và EXE 10/10 với frontend cùng source. Bằng chứng này chưa bao gồm quầy và báo cáo UI bổ sung sau đó; các lượt kiểm của giao diện mới phải đối chiếu theo head/CI riêng.
 
-Quầy mượn trả và báo cáo UI tích hợp qua PR #19 tại `2a52628d1f3d85eef23fdea7756c8fbf7273adbe`. Head `ff2c469` đạt CI `40142240799` 5/5, Core 208 test và EXE 11/11, gồm tải CSV và reload ứng dụng sau tải. Bản EXE này chưa có ETA; kiểm chứng ETA phải dùng bản build và lượt chạy mới. CI main sau merge được theo dõi riêng, không suy từ CI của PR.
+Quầy mượn trả và báo cáo UI tích hợp qua PR #19 tại `2a52628d1f3d85eef23fdea7756c8fbf7273adbe`. Head `ff2c469` đạt CI `40142240799` 5/5, Core 208 test và EXE 11/11, gồm tải CSV và reload ứng dụng sau tải. CI main sau merge `40146844000` đạt 5/5. Bản EXE này chưa có ETA; kiểm chứng ETA phải dùng bản build và lượt chạy mới.
+
+ETA tích hợp qua PR #20 tại `bffa90d40c5e318de48a6eb0f8b881803a096c98`. Head `a42367b` đạt CI `40147032938` 5/5, Core 220 test, frontend 137 Vitest + 4 test cấu hình và EXE mới 11/11; SHA256 EXE `F0B4372DBD5FA946060BB28DF8BCF8D5DE6348D0BD9FFAFF61BE77BFAD54423C`. Đây là bằng chứng luồng tính có điều kiện và hồi quy chức năng, chưa phải đánh giá sai số dự báo trên dữ liệu vận hành. Theo dõi CI merge main riêng trước lần tích hợp tiếp theo.
 
 Phân công gốc vẫn giữ để truy vết tác giả. Quyết định ngày 24/10/2026 mở rộng triển khai trên nhánh Tuan tới phần còn thiếu của cả hai thành viên trong Phase 4–6, gồm P4-D2-01..05 (query/filter/report/CSV/tests). Không sửa nhánh Toan, không gán code gốc của Toan cho Tuan, không đánh dấu các task mới DONE trước khi có đầu ra và kiểm chứng.
 
