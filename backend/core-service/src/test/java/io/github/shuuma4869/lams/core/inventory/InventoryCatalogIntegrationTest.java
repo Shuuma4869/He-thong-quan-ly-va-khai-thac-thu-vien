@@ -1,6 +1,7 @@
 package io.github.shuuma4869.lams.core.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.inventory.copy.application.InventoryScopeQueryService;
 import io.github.shuuma4869.lams.core.inventory.copy.domain.InventoryScopeFilter;
 import io.github.shuuma4869.lams.core.inventory.copy.infrastructure.InventoryScopeRepository;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,12 +60,12 @@ class InventoryCatalogIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("lams.auth.jwt-secret", () -> "integration-test-secret-with-at-least-32-bytes");
-        registry.add("lams.inventory.scope-batch-size", () -> 1);
+        registry.add("lams.inventory.scope-batch-size", () -> 1000);
     }
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
-    @Autowired JdbcTemplate jdbc;
+    @MockitoSpyBean JdbcTemplate jdbc;
     @Autowired InventoryScopeQueryService inventoryScope;
     @Autowired PlatformTransactionManager transactionManager;
     @MockitoSpyBean InventoryScopeRepository inventoryScopeRepository;
@@ -158,6 +163,16 @@ class InventoryCatalogIntegrationTest {
                 .path("id").asText());
         return UUID.fromString(postJson(token, "/api/v1/books/" + bookId + "/editions",
                 Map.of("publicationYear", 2020), 201).path("id").asText());
+    }
+
+    private void insertAvailableCopies(UUID editionId, UUID shelfId, int count, String barcodePrefix) {
+        var rows = new ArrayList<Object[]>(count);
+        for (int i = 0; i < count; i++) {
+            rows.add(new Object[]{UUID.randomUUID(), editionId,
+                    barcodePrefix + String.format(Locale.ROOT, "%05d", i), shelfId, "AVAILABLE", 0L});
+        }
+        jdbc.batchUpdate("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status,version) VALUES (?,?,?,?,?,?)",
+                rows);
     }
 
     @Test
@@ -337,6 +352,95 @@ class InventoryCatalogIntegrationTest {
     }
 
     @Test
+    void snapshotRejectsScopesAbove5000WithoutTruncatingAndBoundsEmptyFilter() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "LIMIT", "Snapshot limit");
+        UUID shelf = shelf(token, branch, "L-1", "Limit shelf");
+        UUID editionId = edition(token);
+        var filtered = new InventoryScopeFilter(branch, null, shelf, null, "AVAILABLE");
+
+        insertAvailableCopies(editionId, shelf, 4_999, "BELOW-");
+        assertThat(inventoryScope.snapshot(actor, filtered)).hasSize(4_999);
+
+        jdbc.update("DELETE FROM book_copies");
+        insertAvailableCopies(editionId, shelf, 5_000, "EXACT-");
+        assertThat(inventoryScope.snapshot(actor, filtered)).hasSize(5_000);
+
+        jdbc.update("DELETE FROM book_copies");
+        insertAvailableCopies(editionId, shelf, 5_001, "OVER-");
+        assertThatThrownBy(() -> inventoryScope.snapshot(actor, filtered))
+                .isInstanceOfSatisfying(AuthFailure.class, failure -> assertThat(failure.status()).isEqualTo(422));
+        assertThatThrownBy(() -> inventoryScope.snapshot(actor,
+                new InventoryScopeFilter(null, null, null, null, null)))
+                .isInstanceOfSatisfying(AuthFailure.class, failure -> assertThat(failure.status()).isEqualTo(422));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM book_copies", Integer.class)).isEqualTo(5_001);
+    }
+
+    @Test
+    void pageCountAndItemsUseOneRepeatableReadSnapshotAcrossConcurrentUpdate() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "PAGE-SNAPSHOT", "Page snapshot");
+        UUID shelf = shelf(token, branch, "P-1", "Page shelf");
+        UUID editionId = edition(token);
+        UUID firstId = UUID.fromString(postJson(token, "/api/v1/copies", Map.of(
+                "editionId", editionId, "barcode", "PAGE-A", "shelfId", shelf), 201).path("id").asText());
+        UUID lastId = UUID.fromString(postJson(token, "/api/v1/copies", Map.of(
+                "editionId", editionId, "barcode", "PAGE-Z-LAST", "shelfId", shelf), 201).path("id").asText());
+        insertAvailableCopies(editionId, shelf, 999, "PAGE-M-");
+        jdbc.update("UPDATE book_copies SET status='AVAILABLE' WHERE id IN (?,?)", firstId, lastId);
+
+        var countRead = new CountDownLatch(1);
+        var allowItemsQuery = new CountDownLatch(1);
+        var paused = new AtomicBoolean();
+        var pageBackendPid = new AtomicInteger();
+        doAnswer(invocation -> {
+            String sql = invocation.getArgument(0);
+            Object count = invocation.callRealMethod();
+            if (sql.startsWith("SELECT count(*) FROM book_copies c JOIN shelves s ON s.id=c.shelf_id")
+                    && paused.compareAndSet(false, true)) {
+                assertThat(jdbc.queryForObject("SHOW transaction_isolation", String.class))
+                        .isEqualTo("repeatable read");
+                pageBackendPid.set(jdbc.queryForObject("SELECT pg_backend_pid()", Integer.class));
+                countRead.countDown();
+                if (!allowItemsQuery.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out between page count and item query.");
+                }
+            }
+            return count;
+        }).when(jdbc).queryForObject(any(String.class), any(Class.class), any(Object[].class));
+
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            var future = executor.submit(() -> inventoryScope.page(actor,
+                    new InventoryScopeFilter(branch, null, shelf, null, "AVAILABLE"), "0", "100"));
+            assertThat(countRead.await(10, TimeUnit.SECONDS)).isTrue();
+            Integer writerBackendPid = new TransactionTemplate(transactionManager).execute(transaction -> {
+                int pid = jdbc.queryForObject("SELECT pg_backend_pid()", Integer.class);
+                jdbc.update("UPDATE book_copies SET status='LOST',version=version+1 WHERE id=?", firstId);
+                return pid;
+            });
+            assertThat(writerBackendPid).isNotEqualTo(pageBackendPid.get());
+            allowItemsQuery.countDown();
+            var page = future.get(10, TimeUnit.SECONDS);
+
+            assertThat(page.page().totalElements()).isEqualTo(1_001);
+            assertThat(page.items()).hasSize(100);
+            assertThat(page.items()).extracting("copyId").contains(firstId);
+            assertThat(page.items()).extracting("status").containsOnly("AVAILABLE");
+            assertThat(page.items()).extracting("version").containsOnly(0L);
+            assertThat(jdbc.queryForObject("SELECT status FROM book_copies WHERE id=?", String.class, firstId))
+                    .isEqualTo("LOST");
+            assertThat(jdbc.queryForObject("SELECT version FROM book_copies WHERE id=?", Long.class, firstId))
+                    .isEqualTo(1L);
+        } finally {
+            allowItemsQuery.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void repeatableReadSnapshotKeepsAllKeysetBatchesAtOneDatabaseState() throws Exception {
         String token = staffToken();
         UUID actor = actorId(token);
@@ -346,9 +450,10 @@ class InventoryCatalogIntegrationTest {
         var first = postJson(token, "/api/v1/copies", Map.of("editionId", edition,
                 "barcode", "SNAP-A", "shelfId", shelf), 201);
         var second = postJson(token, "/api/v1/copies", Map.of("editionId", edition,
-                "barcode", "SNAP-B", "shelfId", shelf), 201);
+                "barcode", "SNAP-Z-LAST", "shelfId", shelf), 201);
         UUID firstId = UUID.fromString(first.path("id").asText());
         UUID secondId = UUID.fromString(second.path("id").asText());
+        insertAvailableCopies(edition, shelf, 999, "SNAP-M-");
         jdbc.update("UPDATE book_copies SET status='AVAILABLE' WHERE id IN (?,?)", firstId, secondId);
 
         var firstBatchRead = new CountDownLatch(1);
@@ -378,9 +483,10 @@ class InventoryCatalogIntegrationTest {
             allowSnapshotToContinue.countDown();
             var snapshot = future.get(10, TimeUnit.SECONDS);
 
-            assertThat(snapshot).extracting("copyId").containsExactly(firstId, secondId);
-            assertThat(snapshot).extracting("status").containsExactly("AVAILABLE", "AVAILABLE");
-            assertThat(snapshot).extracting("version").containsExactly(0L, 0L);
+            assertThat(snapshot).hasSize(1_001);
+            assertThat(snapshot).extracting("copyId").contains(firstId, secondId);
+            assertThat(snapshot).extracting("status").containsOnly("AVAILABLE");
+            assertThat(snapshot).extracting("version").containsOnly(0L);
             assertThat(jdbc.queryForObject("SELECT status FROM book_copies WHERE id=?", String.class, secondId))
                     .isEqualTo("LOST");
             assertThat(jdbc.queryForObject("SELECT version FROM book_copies WHERE id=?", Long.class, secondId))
