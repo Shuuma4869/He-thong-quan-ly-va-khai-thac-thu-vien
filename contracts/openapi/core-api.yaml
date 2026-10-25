@@ -1172,6 +1172,26 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+  /holds/{id}/estimate:
+    get:
+      operationId: estimateHold
+      tags: [Hold]
+      summary: Ước tính có điều kiện cho giữ chỗ của mình hoặc staff
+      description: >-
+        Đọc cùng snapshot, không ghi ETA hoặc phân bổ Copy. Mô phỏng hàng chờ tới yêu cầu hiện tại theo ấn bản và chi nhánh,
+        giả định người trước vẫn nhận vào cuối hạn, trả đúng hạn, không gia hạn và policy không đổi.
+        Đây không phải cam kết, khoảng tin cậy hoặc cận trên. Nếu nguồn lực liên quan đã tới/quá hạn,
+        dữ liệu không nhất quán hoặc phạm vi vượt 500 yêu cầu/500 bản lưu thông, estimatedAt là null và có reason.
+        Không xuất danh tính người đứng trước, mã Copy hoặc Loan của họ. asOf là lúc đọc, policyVersion là chính sách mô phỏng.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Ước tính hoặc lý do chưa có ngày dự kiến, content: { application/json: { schema: { $ref: '#/components/schemas/HoldEstimate' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
   /holds/{id}/cancel:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1726,6 +1746,20 @@ components:
         version: { type: integer, format: int64, minimum: 0 }
         policyVersion: { type: string }
         pickupSeconds: { type: integer, minimum: 1, maximum: 31622400 }
+    HoldEstimate:
+      type: object
+      required: [holdId, holdVersion, asOf, estimatedAt, reason, policyVersion, compatibleCopies, waitingAhead]
+      properties:
+        holdId: { type: string, format: uuid }
+        holdVersion: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        asOf: { type: string, format: date-time }
+        estimatedAt: { type: [string, 'null'], format: date-time }
+        reason:
+          type: string
+          enum: [CONDITIONAL, READY, CLOSED, AWAITING_EXPIRY, BRANCH_INACTIVE, READER_INELIGIBLE, SCOPE_TOO_LARGE, INCONSISTENT_COPY, OVERDUE_COPY, FUTURE_QUEUE_TIME, NO_COMPATIBLE_COPY, QUEUE_CHANGED]
+        policyVersion: { type: string }
+        compatibleCopies: { type: integer, minimum: 0, maximum: 500, description: Số bản lưu thông phù hợp phạm vi ấn bản; 0 khi chưa đọc hoặc vượt giới hạn. }
+        waitingAhead: { type: integer, minimum: 0, maximum: 499, description: Số WAITING phía trước cùng Book/Branch, gồm các ấn bản khác; 0 khi chưa đọc hoặc vượt giới hạn. }
     HoldView:
       type: object
       required: [hold, queuePosition, bookTitle, branchName]

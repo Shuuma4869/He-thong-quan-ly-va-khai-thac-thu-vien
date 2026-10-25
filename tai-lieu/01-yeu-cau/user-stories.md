@@ -219,8 +219,9 @@ Là người đọc, tôi muốn giữ đúng ấn bản cần dùng tại chi n
 - AC-20-01: chọn Edition cụ thể hoặc xác nhận bất kỳ Edition, không tự thay ISBN; một WAITING/READY mỗi người/Book kể cả khác chi nhánh.
 - AC-20-02: FIFO trong các yêu cầu phù hợp; một Copy chỉ có một READY; trả/hủy/hết hạn phân bổ lại cùng transaction. Đúng hạn nhận đã hết hiệu lực, kể cả job chạy chậm.
 - AC-20-03: reader không xem/hủy của người khác; staff chỉ được tra cứu, không có quyền hủy thay ngầm. Đổi phạm vi cần hủy/tạo mới, mất vị trí cũ.
+- AC-20-04: chủ yêu cầu/staff được tính ETA có điều kiện, có asOf/policyVersion; không ghi ETA thành dữ liệu nghiệp vụ. Không tạo ngày giả khi thiếu bản phù hợp, có bản liên quan tới/quá hạn hoặc dữ liệu vượt phạm vi mô phỏng. UI nói rõ giả định và chưa phải thông báo nhận sách.
 - API: POST `/holds`, POST `/holds/{id}/cancel`, GET `/holds/{id}`, GET `/me/holds`, GET `/holds/queue` cho staff.
-- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest, CirculationFlow và E2E Reader lưu thông. Backend và Reader UI đã có; ETA theo ngày còn chờ. Không dùng kết quả của commit trước Reader UI để nghiệm thu giao diện mới.
+- Test: HoldIntegrationTest, HoldExpiryJobTest, LoanSchemaTest, CirculationFlow, HoldEtaModelTest, HoldEtaIntegrationTest, HoldEstimate và E2E Reader lưu thông. ETA là mô phỏng theo giả định, chưa được hiệu chỉnh bằng dữ liệu vận hành. Không dùng kết quả của commit trước Reader UI/ETA để nghiệm thu giao diện mới.
 
 ### US-21 / FR-21 / UC-21
 

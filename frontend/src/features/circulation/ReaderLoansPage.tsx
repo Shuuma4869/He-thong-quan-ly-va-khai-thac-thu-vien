@@ -7,6 +7,7 @@ import { cancelHold, getLoans, getMyHolds, renewLoan, type HoldView, type Loan }
 import { CirculationError } from './CirculationStates';
 import { formatTime, holdLabels, loanLabels } from './circulation-labels';
 import { useCirculationCommand } from './use-circulation-command';
+import { HoldEstimate } from './HoldEstimate';
 
 export function ReaderLoansPage() {
   const { user } = useAuth();
@@ -68,7 +69,8 @@ function HoldCard({ owner, view, reload }: { owner: string; view: HoldView; relo
   return <article className="editorial-card"><h3 className="font-semibold"><Link className="text-link" to={`/sach/${hold.bookId}`}>{view.bookTitle}</Link></h3>
     <p className="my-2">{view.branchName} · {holdLabels[hold.status]}</p>
     <p>{hold.editionId ? 'Giữ đúng ấn bản đã chọn.' : 'Bạn đã chọn nhận bất kỳ ấn bản nào của đầu sách này.'}</p>
-    {view.queuePosition && <p className="my-2">Vị trí trong hàng chờ đầu sách tại chi nhánh: {view.queuePosition}. Thứ tự nhận còn phụ thuộc ấn bản và điều kiện mượn; chưa có ngày dự kiến.</p>}
+    {view.queuePosition && <p className="my-2">Vị trí trong hàng chờ đầu sách tại chi nhánh: {view.queuePosition}. Thứ tự nhận còn phụ thuộc ấn bản và điều kiện mượn.</p>}
+    {hold.status === 'WAITING' && <HoldEstimate owner={owner} holdId={hold.id} version={hold.version}/>}
     {hold.status === 'READY' && hold.expiresAt && <p className="my-2">Hạn nhận: <strong>{formatTime(hold.expiresAt)}</strong>. Vui lòng tải lại khi đến quầy.</p>}
     {(hold.status === 'WAITING' || hold.status === 'READY') && !confirm && <button className="button-secondary mt-3" onClick={() => setConfirm(true)}>Hủy giữ chỗ</button>}
     {confirm && <div role="group" aria-label="Xác nhận hủy giữ chỗ"><p className="my-3">Hủy yêu cầu này? Nếu đặt lại, bạn sẽ vào cuối hàng chờ phù hợp.</p>
