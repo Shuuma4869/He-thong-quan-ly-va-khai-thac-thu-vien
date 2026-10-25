@@ -586,7 +586,7 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
     title: `Tập truyện ${suffix}`, authorIds: [author.id], categoryIds: [],
   });
   const isbnStem = `978${String(parseInt(suffix, 16)).padStart(9, '0').slice(-9)}`;
-  const checkDigit = (10 - [...isbnStem].reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10) % 10;
+  const checkDigit = (10 - Array.from(isbnStem).reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10) % 10;
   const isbn = `${isbnStem}${checkDigit}`;
   await createCatalog(request, headers, `/books/${prefix.id}/editions`, { isbn13: isbn });
   await navigate(page, `/sach?query=duong%20ve%20${suffix}&sort=relevance&size=1`);
