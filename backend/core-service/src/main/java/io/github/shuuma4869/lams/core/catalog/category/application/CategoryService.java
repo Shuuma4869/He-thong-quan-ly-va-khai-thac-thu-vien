@@ -1,7 +1,9 @@
 package io.github.shuuma4869.lams.core.catalog.category.application;
 
 import io.github.shuuma4869.lams.core.catalog.category.domain.Category;
+import io.github.shuuma4869.lams.core.catalog.category.infrastructure.CategoryAliasRepository;
 import io.github.shuuma4869.lams.core.catalog.category.infrastructure.CategoryRepository;
+import io.github.shuuma4869.lams.core.catalog.category.infrastructure.CategoryTermLock;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.identity.application.AuthService;
 import io.github.shuuma4869.lams.core.catalog.shared.CatalogAccess;
@@ -12,6 +14,7 @@ import java.util.Locale;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -19,18 +22,26 @@ public class CategoryService {
     public record PageMetadata(int number, int size, long totalElements, long totalPages) {}
     public record CategoryPage(List<Category> items, PageMetadata page) {}
     private final CategoryRepository categories;
+    private final CategoryAliasRepository aliases;
+    private final CategoryTermLock termLock;
     private final AuthService identity;
 
-    public CategoryService(CategoryRepository categories, AuthService identity) {
+    public CategoryService(CategoryRepository categories, CategoryAliasRepository aliases,
+                           CategoryTermLock termLock, AuthService identity) {
         this.categories = categories;
+        this.aliases = aliases;
+        this.termLock = termLock;
         this.identity = identity;
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Category create(UUID actorId, String name) {
         requireStaff(actorId);
         String display = normalizeDisplay(name);
-        try { return categories.create(new Category(UUID.randomUUID(), display), normalizeKey(display)); }
+        String normalized = normalizeKey(display);
+        termLock.acquire();
+        ensureNoAliasCollision(normalized);
+        try { return categories.create(new Category(UUID.randomUUID(), display), normalized); }
         catch (DataIntegrityViolationException duplicate) {
             throw new AuthFailure(409, "Tên thể loại đã tồn tại.");
         }
@@ -48,13 +59,16 @@ public class CategoryService {
         return new CategoryPage(result.items(), new PageMetadata(page, size, result.totalElements(), pages));
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Category update(UUID actorId, UUID id, String name) {
         requireStaff(actorId);
         find(id);
         String display = normalizeDisplay(name);
+        String normalized = normalizeKey(display);
+        termLock.acquire();
+        ensureNoAliasCollision(normalized);
         try {
-            if (!categories.update(new Category(id, display), normalizeKey(display)))
+            if (!categories.update(new Category(id, display), normalized))
                 throw new AuthFailure(404, "Không tìm thấy thể loại.");
         } catch (DataIntegrityViolationException duplicate) {
             throw new AuthFailure(409, "Tên thể loại đã tồn tại.");
@@ -62,19 +76,25 @@ public class CategoryService {
         return new Category(id, display);
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void delete(UUID actorId, UUID id) {
         requireStaff(actorId);
         find(id);
+        termLock.acquire();
         try {
             if (!categories.delete(id)) throw new AuthFailure(404, "Không tìm thấy thể loại.");
         } catch (DataIntegrityViolationException referenced) {
-            throw new AuthFailure(409, "Không thể xóa thể loại đang được sách tham chiếu.");
+            throw new AuthFailure(409, "Không thể xóa thể loại đang được sách hoặc bí danh tham chiếu.");
         }
     }
 
     private Category find(UUID id) {
         return categories.findById(id).orElseThrow(() -> new AuthFailure(404, "Không tìm thấy thể loại."));
+    }
+    private void ensureNoAliasCollision(String normalizedName) {
+        if (aliases.aliasKeyExists(normalizedName, null)) {
+            throw new AuthFailure(409, "Tên thể loại đã được dùng làm bí danh.");
+        }
     }
     private void requireStaff(UUID id) {
         var actor = identity.currentUser(id);
