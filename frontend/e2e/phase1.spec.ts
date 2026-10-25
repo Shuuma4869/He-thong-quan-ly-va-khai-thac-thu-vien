@@ -535,6 +535,7 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn m
   expect((await request.get(`${core}/public/catalog/books?query=${suffix}`)).status()).toBe(200);
   expect((await request.post(`${core}/books`, { data: { title: 'Không được ghi' } })).status()).toBe(401);
   await navigate(page, '/');
+  await page.reload();
   await expect(page.getByRole('heading', { name: /Cuốn sách tiếp theo/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sách mới cập nhật' })).toBeVisible();
   await expect(page.getByRole('link', { name: category.name, exact: true })).toBeVisible();
