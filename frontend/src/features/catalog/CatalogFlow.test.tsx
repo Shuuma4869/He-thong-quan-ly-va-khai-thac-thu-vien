@@ -83,8 +83,13 @@ it('Reader không mở được staff route', async () => {
   app('/nhan-vien/danh-muc'); expect(await screen.findByText('403 · Không có quyền truy cập')).toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/books?'))).toBe(false);
 });
-it('anonymous về đăng nhập', async () => {
-  fetchMock.mockResolvedValue(Response.json({},{status:401})); app(); expect(await screen.findByLabelText('Email hoặc mã thành viên')).toBeInTheDocument();
+it('anonymous mở được danh mục công khai nhưng vẫn không có quyền ghi', async () => {
+  fetchMock.mockImplementation((url: string) => Promise.resolve(url.endsWith('/auth/refresh')
+    ? Response.json({}, { status: 401 }) : Response.json(response(url))));
+  app();
+  expect(await screen.findByRole('link', { name: book.title })).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/public/catalog/books?'))).toBe(true);
+  expect(screen.getAllByRole('link', { name: 'Đăng nhập' }).length).toBeGreaterThan(0);
 });
 it('staff tạo Author, refetch và delete có xác nhận/FK conflict', async () => {
   role='LIBRARIAN'; let stored=false;

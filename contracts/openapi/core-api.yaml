@@ -7,13 +7,113 @@ info:
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
     X-LAMS-Client bằng 1; thiếu hoặc sai trả 403. Client trình duyệt tự gửi Origin.
     Local giữ tương thích với cấu hình SameSite=Lax.
-    Catalog GET (Author, Category, Publisher, Book, Edition, media), Favorites, Reviews và Rating
-    yêu cầu tài khoản ACTIVE còn role hiện hành trong database. Ghi Catalog/media và mọi API Inventory
+    Catalog GET quản trị/Reader cũ, Favorites, Reviews và Rating yêu cầu tài khoản ACTIVE còn role hiện hành
+    trong database. GET /public/catalog/* chỉ đọc thông tin thư mục và ảnh Edition được duyệt,
+    giới hạn 300 request/phút theo IP kết nối và tối đa 50 mục/trang; không trả thông tin người duyệt.
+    Ghi Catalog/media và mọi API Inventory
     chỉ dành cho LIBRARIAN/ADMIN ACTIVE còn quyền trong database; JWT cũ không giữ quyền đã thu hồi.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
 paths:
+  /public/catalog/books:
+    get:
+      operationId: listPublicBooks
+      tags: [PublicCatalog]
+      summary: Tìm tác phẩm công khai; bìa lấy từ ấn bản mới nhất có ảnh được duyệt
+      description: Ảnh Google Books chưa bật. Có thể sắp xếp theo tên hoặc mới cập nhật cùng bộ lọc. Giới hạn 300 request/phút/IP.
+      security: []
+      parameters:
+        - { in: query, name: query, schema: { type: string, maxLength: 500 } }
+        - { in: query, name: authorId, schema: { type: string, format: uuid } }
+        - { in: query, name: categoryId, schema: { type: string, format: uuid } }
+        - { in: query, name: sort, schema: { type: string, enum: [title, updated], default: title } }
+        - { in: query, name: page, schema: { type: integer, minimum: 0, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Trang sách công khai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/PublicBook' } }
+                  page: { $ref: '#/components/schemas/PageMetadata' }
+        '422': { description: Bộ lọc không hợp lệ }
+        '429': { description: 'Vượt giới hạn tra cứu theo IP, xem Retry-After' }
+  /public/catalog/books/{id}:
+    get:
+      operationId: getPublicBook
+      tags: [PublicCatalog]
+      summary: Chi tiết tác phẩm công khai
+      security: []
+      parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200':
+          description: Tác phẩm và bìa đã duyệt nếu có
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicBook' }
+        '404': { description: Không có tác phẩm }
+        '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/books/{id}/editions:
+    get:
+      operationId: listPublicEditions
+      tags: [PublicCatalog]
+      summary: Các ấn bản thuộc tác phẩm, tối đa 50 mục/trang
+      security: []
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: page, schema: { type: integer, minimum: 0, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Trang ấn bản
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Edition' } }
+                  page: { $ref: '#/components/schemas/PageMetadata' }
+        '404': { description: Không có tác phẩm }
+        '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/{kind}:
+    get:
+      operationId: listPublicNames
+      tags: [PublicCatalog]
+      summary: Liệt kê tác giả hoặc thể loại
+      security: []
+      parameters:
+        - { in: path, name: kind, required: true, schema: { type: string, enum: [authors, categories] } }
+        - { in: query, name: page, schema: { type: integer, minimum: 0, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200': { description: Trang tên và UUID tác giả/thể loại }
+        '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/{kind}/{id}:
+    get:
+      operationId: getPublicName
+      tags: [PublicCatalog]
+      summary: Tên tác giả hoặc thể loại theo UUID
+      security: []
+      parameters:
+        - { in: path, name: kind, required: true, schema: { type: string, enum: [authors, categories] } }
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tên và UUID }
+        '404': { description: Không có mục }
+  /public/catalog/editions/{id}/media:
+    get:
+      operationId: getPublicEditionCover
+      tags: [PublicCatalog]
+      summary: Ảnh ấn bản đã duyệt, không trả thông tin nhân viên
+      security: []
+      parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: '{media:null} nếu chưa có ảnh được duyệt hoặc nguồn Google Books đang tắt' }
+        '429': { description: Vượt giới hạn tra cứu }
   /auth/register:
     post:
       operationId: register
@@ -110,6 +210,40 @@ paths:
       responses:
         '200': { description: Trang Favorites của principal hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/FavoritePage' } } } }
         '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /me/favorites/states:
+    get:
+      operationId: getMyFavoriteStates
+      tags: [Favorites]
+      summary: Kiểm trạng thái yêu thích cho tối đa 50 sách trong một lần đọc
+      description: Chỉ trả trạng thái của tài khoản hiện tại; không đưa dữ liệu này vào projection công khai.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: bookId
+          in: query
+          required: true
+          schema: { type: array, minItems: 1, maxItems: 50, uniqueItems: true, items: { type: string, format: uuid } }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Trạng thái theo thứ tự bookId trong request
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [bookId, saved]
+                      properties:
+                        bookId: { type: string, format: uuid }
+                        saved: { type: boolean }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
@@ -1605,6 +1739,30 @@ components:
         categories:
           type: array
           items: { $ref: '#/components/schemas/BookRelatedItem' }
+    PublicCover:
+      type: object
+      required: [editionId, imageUrl, source, sourceUrl, license, licenseUrl, attribution, approvedAt]
+      properties:
+        editionId: { type: string, format: uuid }
+        imageUrl: { type: string, format: uri }
+        source: { type: string, enum: [open-library, wikimedia] }
+        sourceUrl: { type: string, format: uri }
+        license: { type: string }
+        licenseUrl: { type: string, format: uri }
+        attribution: { type: string }
+        approvedAt: { type: string, format: date-time }
+    PublicBook:
+      type: object
+      required: [id, title, description, authors, categories, cover, averageRating, ratingCount]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        authors: { type: array, items: { $ref: '#/components/schemas/BookRelatedItem' } }
+        categories: { type: array, items: { $ref: '#/components/schemas/BookRelatedItem' } }
+        cover: { anyOf: [{ $ref: '#/components/schemas/PublicCover' }, { type: 'null' }] }
+        averageRating: { type: [number, 'null'], minimum: 1, maximum: 5, description: 'null khi chưa có đánh giá' }
+        ratingCount: { type: integer, minimum: 0 }
     BookPage:
       type: object
       required: [items, page]

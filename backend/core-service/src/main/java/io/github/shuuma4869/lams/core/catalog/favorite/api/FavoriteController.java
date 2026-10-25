@@ -3,6 +3,7 @@ package io.github.shuuma4869.lams.core.catalog.favorite.api;
 import io.github.shuuma4869.lams.core.catalog.favorite.application.FavoriteService;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,6 +50,12 @@ public class FavoriteController {
     @GetMapping("/{bookId}")
     public FavoriteService.FavoriteState state(JwtAuthenticationToken token, @PathVariable("bookId") String bookId) {
         return favorites.state(actor(token), uuid("bookId", bookId));
+    }
+
+    @GetMapping("/states")
+    public FavoriteService.FavoriteStates states(JwtAuthenticationToken token,
+            @RequestParam("bookId") List<UUID> bookIds) {
+        return favorites.states(actor(token), bookIds);
     }
 
     @DeleteMapping("/{bookId}")

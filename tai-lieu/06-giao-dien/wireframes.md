@@ -2,6 +2,20 @@
 
 Wireframe là bản bố cục chức năng, không phải screenshot chứng minh runtime. Đối chiếu component và đo trên web/desktop trước nghiệm thu UI.
 
+## W0 — Landing và không gian thư viện
+
+```text
+Landing /: Header ngang → hero ảnh thư viện → tìm sách nổi → thể loại từ Core
+           → sách mới cập nhật → sách lọc theo thể loại từ Core → giới thiệu
+           → tạo tài khoản → footer.
+
+Workspace: Sidebar trái | Header gọn (tìm sách, tài khoản)
+                       | Nội dung: bộ lọc → lưới bìa sách → phân trang.
+Mobile: header có nút menu; sidebar là drawer có nền che, Escape và giữ focus.
+```
+
+Khách được xem tác phẩm, tác giả và ấn bản công khai. Ảnh bìa trên card lấy từ ấn bản mới nhất trong số các ấn bản có ảnh được nhân viên duyệt; nếu không có, card dùng bìa chữ. Các thao tác lưu sách, đánh giá, mượn và giữ chỗ vẫn yêu cầu đăng nhập. Tìm kiếm trên landing chuyển filter thật vào URL Catalog; không thông báo thành công trước khi Core trả dữ liệu.
+
 ## W1 — Đăng nhập/đăng ký
 
 ```text
@@ -40,10 +54,13 @@ W2 mapping US-04/05. Reader không có trang staff; loading thay bảng, empty c
 ## W3 — Danh mục / Book / Author detail
 
 ```text
-+ Header ----------------------------------------------------+
-| Danh mục: [Từ khóa] [Tác giả v] [Thể loại v]                  |
-| Card sách       Card sách       Card sách                  |
-| [Trước]         Trang / tổng                   [Sau]        |
++ Sidebar ---+ Header gọn -----------------------------------+
+| Khám phá   | Danh mục: [Từ khóa] [Tác giả v] [Thể loại v]   |
+| Thư viện   | Card bìa sách   Card bìa sách   Card bìa sách  |
+| Hồ sơ      | [Trước]   Trang / tổng   [Sau]                |
++------------+-----------------------------------------------+
+| Card sách: bìa đã duyệt / placeholder, tiêu đề, tác giả      |
+|              thể loại, link chi tiết; không có rating giả    |
 +------------------------------------------------------------+
 | Book detail: Ảnh đã duyệt | Tiêu đề / tác giả / thể loại     |
 | Mô tả                                                       |

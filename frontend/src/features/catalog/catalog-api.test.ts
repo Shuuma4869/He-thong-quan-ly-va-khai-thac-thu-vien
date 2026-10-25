@@ -26,7 +26,7 @@ it('kiểm tra URL, giữ filters và chỉ gửi tham số hỗ trợ', () => {
 });
 it('không coi payload sai schema là danh sách trống', async () => {
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({items:[]})));
-  await expect(getBooks({query:'',authorId:'',categoryId:'',page:0,size:20})).rejects.toThrow();
+  await expect(getBooks({query:'',authorId:'',categoryId:'',page:0,size:20,sort:'title'})).rejects.toThrow();
 });
 it('Copy update giữ version, không tự gửi trạng thái lưu thông', async () => {
   const id='11111111-1111-4111-8111-111111111111';

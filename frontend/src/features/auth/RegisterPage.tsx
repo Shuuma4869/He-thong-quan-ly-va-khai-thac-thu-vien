@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
@@ -22,7 +21,6 @@ export function RegisterPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const reduceMotion = useReducedMotion();
   const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<RegisterForm>({
     resolver: zodResolver(schema),
     defaultValues: { fullName: '', email: '', password: '', confirmPassword: '' },
@@ -37,7 +35,7 @@ export function RegisterPage() {
   };
   return <main className="login-page">
     <AuthHero />
-    <section className="login-form-panel"><motion.div initial={reduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="w-full max-w-md">
+    <section className="login-form-panel"><div className="login-form-enter w-full max-w-md">
       <p className="eyebrow">Tài khoản mới</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">Tạo tài khoản</h2>
       <p className="mt-3 text-muted">Điền thông tin cơ bản để bắt đầu sử dụng thư viện.</p>
       <form className="mt-8 grid gap-5" onSubmit={handleSubmit(submit)} noValidate>
@@ -49,6 +47,6 @@ export function RegisterPage() {
         <button className="button-primary w-full" disabled={isSubmitting} type="submit">{isSubmitting ? 'Đang xử lý…' : 'Đăng ký'}</button>
       </form>
       <p className="mt-7 text-center text-sm text-muted">Đã có tài khoản? <Link className="text-link" to="/dang-nhap">Đăng nhập</Link></p>
-    </motion.div></section>
+    </div></section>
   </main>;
 }
