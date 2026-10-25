@@ -73,7 +73,7 @@ npm run prisma:deploy
 
 Các lệnh Prisma cần `INSIGHT_DATABASE_URL` đã được nạp vào môi trường terminal. Từ root PowerShell có thể dùng `. .\scripts\common.ps1` rồi `Import-LamsEnv` trước khi `cd`; không in URL/secret ra log. Bootstrap đã thực hiện bước này.
 
-Không dùng `prisma db push` thay migration. Core chạy chuỗi Flyway V1–V15 trên database mới; V14/V15 thuộc backend Favorites/Reviews/Rating. Insight chạy foundation và `202610230001_metadata_lookup_history`. Sau khi pull thay đổi Phase 2.5 vào môi trường có dữ liệu: sao lưu theo quy trình vận hành, chạy `npm ci`, `npm run prisma:generate`, `npm run prisma:deploy` tại Insight trước khi restart. Frontend cũng cần `npm ci` vì bổ sung React-Bootstrap. Không dùng database development để thử migration thất bại.
+Không dùng `prisma db push` thay migration. Core hiện chạy Flyway đến V22 trên database mới; Insight có foundation, lịch sử tra cứu ISBN và notification read model. Khi cập nhật một môi trường có dữ liệu, sao lưu theo quy trình vận hành rồi chạy `npm ci`, `npm run prisma:generate`, `npm run prisma:deploy` tại Insight trước khi restart. Chạy `npm ci` tại frontend nếu lockfile đổi. Không dùng database development để thử migration thất bại.
 
 Insight từ Phase 2.5 yêu cầu PostgreSQL sẵn sàng khi khởi động. Nếu không kết nối được, sửa cấu hình/database trước; không thay bằng JSON hoặc bỏ lifecycle Prisma. Kiểm database cô lập bằng `npm run test:integration`; hành trình UI thật bằng `.\scripts\test-phase1-e2e.ps1` tại root, thêm `-Desktop` cho EXE đã build. Xem [vòng đời ORM](../02-kien-truc/metadata-history-orm.md).
 
