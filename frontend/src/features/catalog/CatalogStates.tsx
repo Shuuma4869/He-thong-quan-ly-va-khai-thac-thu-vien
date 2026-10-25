@@ -12,9 +12,9 @@ export function CatalogError({ error, retry }: { error: Error; retry: () => void
 }
 export function Pagination({ page, onChange }: { page: Page; onChange: (page: number) => void }) {
   return <nav className="my-5 flex flex-wrap items-center gap-3" aria-label="Phân trang">
-    <button className="button-secondary" disabled={page.number === 0} onClick={() => onChange(page.number - 1)}>Trang trước</button>
+    <button type="button" className="button-secondary" disabled={page.number === 0} onClick={() => onChange(page.number - 1)}>Trang trước</button>
     <span>Trang {page.number + 1} / {Math.max(1, page.totalPages)} · {page.totalElements} kết quả</span>
-    <button className="button-secondary" disabled={page.number + 1 >= page.totalPages} onClick={() => onChange(page.number + 1)}>Trang sau</button>
-    {page.number > 0 && page.totalElements === 0 && <button className="button-secondary" onClick={() => onChange(0)}>Về trang đầu</button>}
+    <button type="button" className="button-secondary" disabled={page.number + 1 >= page.totalPages} onClick={() => onChange(page.number + 1)}>Trang sau</button>
+    {page.number > 0 && page.totalElements === 0 && <button type="button" className="button-secondary" onClick={() => onChange(0)}>Về trang đầu</button>}
   </nav>;
 }

@@ -15,6 +15,7 @@ const staffGroups: Group[] = [
   { title: 'Vận hành', items: [
     { label: 'Bảng điều khiển', to: '/nhan-vien/bang-dieu-khien', icon: BarChart3 },
     { label: 'Quầy lưu thông', to: '/nhan-vien/luu-thong', icon: ClipboardList },
+    { label: 'Kiểm kê kệ sách', to: '/nhan-vien/kiem-ke', icon: BookCopy },
     { label: 'Báo cáo mượn', to: '/nhan-vien/bao-cao-luu-thong', icon: BarChart3 },
   ] },
   { title: 'Danh mục & tài khoản', items: [

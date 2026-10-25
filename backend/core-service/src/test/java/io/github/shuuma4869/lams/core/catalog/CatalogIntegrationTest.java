@@ -39,10 +39,11 @@ class CatalogIntegrationTest {
     @Test
     void freshDatabaseAppliesAllCatalogAndInventoryMigrations() {
         assertThat(jdbc.queryForObject("SELECT version FROM flyway_schema_history WHERE success "
-                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(19);
+                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(21);
         for (String table : new String[]{"authors", "categories", "publishers", "books", "book_authors",
                 "book_categories", "editions", "branches", "shelves", "book_copies", "catalog_media_references",
-                "favorites", "reviews", "loans", "circulation_requests", "copy_state_changes"}) {
+                "favorites", "reviews", "loans", "circulation_requests", "copy_state_changes",
+                "inventory_sessions", "inventory_snapshots", "inventory_scans", "inventory_anomalies", "inventory_resolutions"}) {
             assertThat(jdbc.queryForObject("SELECT to_regclass(?) IS NOT NULL", Boolean.class,
                     "public." + table)).as("bảng %s", table).isTrue();
         }

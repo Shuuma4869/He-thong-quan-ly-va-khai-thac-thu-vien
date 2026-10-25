@@ -525,6 +525,54 @@ test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thậ
   await page.screenshot({path:'test-results/catalog-staff-copy.png',fullPage:true});
 });
 
+test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận chuyển Copy', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Kiểm kê ${suffix}`, authorIds: [], categoryIds: [] });
+  const edition = await createCatalog(request, headers, `/books/${book.id}/editions`, { isbn13: '9780140328721' });
+  const branch = await createCatalog(request, headers, '/branches', { code: `K-${suffix}`, name: `Chi nhánh kiểm kê ${suffix}` });
+  const registered = await createCatalog(request, headers, '/shelves', { branchId: branch.id, code: 'K1', label: 'Kệ đăng ký', sortOrder: 0 });
+  const observed = await createCatalog(request, headers, '/shelves', { branchId: branch.id, code: 'K2', label: 'Kệ quét thấy', sortOrder: 1 });
+  const copy = await createCatalog(request, headers, '/copies', { editionId: edition.id, shelfId: registered.id, barcode: `KK-${suffix}` });
+  const ready = await request.post(`${core}/copies/${copy.id}/state`, { headers,
+    data: { requestId: randomUUID(), version: copy.version, status: 'AVAILABLE', reason: 'Đã kiểm tra bản sách kiểm thử' } });
+  expect(ready.status()).toBe(200);
+  const reader = await request.post(`${core}/auth/login`, { data: { identifier: accounts.READER.email, password, remember: false } });
+  expect((await request.get(`${core}/inventory-sessions`, { headers: { Authorization: `Bearer ${(await reader.json()).accessToken}` } })).status()).toBe(403);
+
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/nhan-vien/kiem-ke');
+  await page.getByRole('button', { name: 'Chọn chi nhánh', exact: true }).click();
+  await page.getByRole('radio', { name: new RegExp(`K-${suffix.toUpperCase()}`) }).click();
+  await page.getByRole('button', { name: 'Mở phiên kiểm kê' }).click();
+  await expect(page).toHaveURL(/\/nhan-vien\/kiem-ke\/[a-f0-9-]{36}/);
+  await expect(page.getByText(/1 bản trong snapshot/)).toBeVisible();
+  await page.getByRole('radio', { name: 'K2 · Kệ quét thấy' }).click();
+  await page.getByRole('textbox', { name: 'Mã vạch' }).fill(`KK-${suffix}`);
+  await page.getByRole('button', { name: 'Ghi nhận scan' }).click();
+  await expect(page.getByText(/Đã nhận: KK-/)).toBeVisible();
+  await expect(page.getByText(/1 lượt quét/).first()).toBeVisible();
+  await page.getByLabel(/Đã kiểm tra các lượt quét/).check();
+  await page.getByRole('button', { name: 'Chốt phiên' }).click();
+  await expect(page.getByRole('heading', { name: 'Sai kệ' })).toBeVisible();
+  await page.getByLabel('Cách xử lý').selectOption('MOVE_TO_SCANNED_SHELF');
+  await page.getByLabel('Lý do và kết quả kiểm tra').fill('Đã đối chiếu bản sách tại kệ K2');
+  await page.getByLabel('Tôi đã kiểm tra bản sách hiện tại và xác nhận quyết định này.').check();
+  await page.getByRole('button', { name: 'Lưu kết quả rà soát' }).click();
+  await expect(page.getByText(/Đã chuyển về kệ quét/)).toBeVisible();
+  const updated = await request.get(`${core}/copies/${copy.id}`, { headers });
+  expect(updated.status()).toBe(200);
+  expect((await updated.json()).shelfId).toBe(observed.id);
+  await page.reload();
+  await expect(page.getByText(/Đã chuyển về kệ quét/)).toBeVisible();
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/inventory-${width}.png`, fullPage: true });
+  }
+  if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
+});
+
 test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn mốc responsive', async ({ page, request }) => {
   test.setTimeout(120_000);
   const headers = await staffApi(request);

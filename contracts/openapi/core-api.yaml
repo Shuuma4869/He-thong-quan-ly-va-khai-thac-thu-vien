@@ -114,6 +114,268 @@ paths:
       responses:
         '200': { description: '{media:null} nếu chưa có ảnh được duyệt hoặc nguồn Google Books đang tắt' }
         '429': { description: Vượt giới hạn tra cứu }
+  /inventory-sessions:
+    post:
+      operationId: startInventorySession
+      tags: [Inventory]
+      summary: Mở phiên và chụp snapshot tối đa 5000 Copy trong một chi nhánh hoặc kệ
+      description: Chỉ staff ACTIVE hiện hành. Mỗi chi nhánh tối đa một phiên OPEN để tránh scope chồng lấn. Cùng actor/requestId và nội dung trả receipt cũ; khác nội dung trả 409. Không sửa Copy.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestId, branchId]
+              properties:
+                requestId: { type: string, format: uuid }
+                branchId: { type: string, format: uuid }
+                shelfId: { type: [string, 'null'], format: uuid }
+      responses:
+        '201':
+          description: Phiên và metadata snapshot, kể cả replay
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InventorySession' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có chi nhánh hoặc kệ }
+        '409': { description: 'Chi nhánh tắt, phiên OPEN còn tồn tại hoặc key xung đột' }
+        '422': { description: Scope sai hoặc vượt giới hạn }
+    get:
+      operationId: listInventorySessions
+      tags: [Inventory]
+      summary: Staff xem phiên theo chi nhánh/trạng thái, thứ tự openedAt/id giảm dần
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: branchId, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string, enum: [OPEN, FINALIZED, CANCELLED] } }
+        - { in: query, name: page, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Trang phiên kiểm kê
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/InventorySession' } }
+                  page: { $ref: '#/components/schemas/InventoryPagination' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '422': { description: Bộ lọc hoặc phân trang không hợp lệ }
+  /inventory-sessions/{id}:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+    get:
+      operationId: getInventorySession
+      tags: [Inventory]
+      summary: Staff đọc scope, version và trạng thái phiên
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Phiên
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InventorySession' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên }
+  /inventory-sessions/{id}/snapshot:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+    get:
+      operationId: getInventorySnapshot
+      tags: [Inventory]
+      summary: Staff đọc snapshot cố định, thứ tự Copy UUID tăng dần
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Trang bằng chứng Copy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/InventoryCopyEvidence' } }
+                  page: { $ref: '#/components/schemas/InventoryPagination' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên }
+        '422': { description: Phân trang không hợp lệ }
+  /inventory-sessions/{id}/scans:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+    post:
+      operationId: appendInventoryScan
+      tags: [Inventory]
+      summary: Lưu scan append-only, tối đa 20000 scan mỗi phiên
+      description: >-
+        Chỉ staff ACTIVE hiện hành. Kệ quét phải thuộc scope phiên; mã không tồn tại vẫn được lưu làm bằng chứng.
+        clientScanId là khóa retry của actor; giữ nguyên khi mạng lỗi. Retry đúng payload trả kết quả cũ kể cả sau finalize,
+        key đổi nội dung hoặc scan mới sau chốt trả 409. clientScannedAt tùy chọn, từ openedAt trừ 5 phút đến server now cộng 5 phút;
+        thứ tự xử lý dùng receivedAt/id của server, không tin đồng hồ thiết bị. Không sửa Copy.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clientScanId, barcode, shelfId]
+              properties:
+                clientScanId: { type: string, format: uuid }
+                barcode: { type: string, minLength: 1, maxLength: 100 }
+                shelfId: { type: string, format: uuid }
+                clientScannedAt: { type: [string, 'null'], format: date-time }
+      responses:
+        '201':
+          description: Scan đã lưu hoặc receipt cũ
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/InventoryScan' }
+                  - type: object
+                    required: [sessionId, sessionVersion]
+                    properties:
+                      sessionId: { type: string, format: uuid }
+                      sessionVersion: { type: integer, minimum: 0 }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên hoặc kệ }
+        '409': { description: Phiên đã chốt/hủy hoặc key xung đột }
+        '422': { description: 'Dữ liệu sai, ngoài scope hoặc quá giới hạn' }
+    get:
+      operationId: listInventoryScans
+      tags: [Inventory]
+      summary: Staff đọc scan theo receivedAt/id tăng dần
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Trang scan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/InventoryScan' } }
+                  page: { $ref: '#/components/schemas/InventoryPagination' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên }
+        '422': { description: Phân trang không hợp lệ }
+  /inventory-sessions/{id}/finalize:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+    post:
+      operationId: finalizeInventorySession
+      tags: [Inventory]
+      summary: Staff đóng tập scan và lưu bằng chứng bất thường
+      description: Kiểm version phiên; scan cạnh tranh làm version cũ trả 409. Cùng requestId trả receipt cũ; key mới không chốt lại. Không tự sửa trạng thái hoặc vị trí Copy.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InventoryCloseRequest' }
+      responses:
+        '200':
+          description: Phiên FINALIZED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InventorySession' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên }
+        '409': { description: 'Version cũ, đã chốt/hủy hoặc key xung đột' }
+        '422': { description: Dữ liệu không hợp lệ }
+  /inventory-sessions/{id}/cancel:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+    post:
+      operationId: cancelInventorySession
+      tags: [Inventory]
+      summary: Staff hủy phiên đang mở, bắt buộc ghi lý do
+      description: Kiểm version và requestId như finalize; giữ nguyên snapshot/scan, không sinh anomaly từ phiên đã hủy.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InventoryCloseRequest' }
+      responses:
+        '200':
+          description: Phiên CANCELLED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InventorySession' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên }
+        '409': { description: 'Version cũ, đã chốt/hủy hoặc key xung đột' }
+        '422': { description: Thiếu lý do hoặc dữ liệu không hợp lệ }
+  /inventory-sessions/{id}/anomalies:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+    get:
+      operationId: listInventoryAnomalies
+      tags: [Inventory]
+      summary: Staff đọc bằng chứng đã chốt, không tính lại từ Copy sống
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Trang bất thường; rỗng trước finalize hoặc khi đã hủy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/InventoryAnomaly' } }
+                  page: { $ref: '#/components/schemas/InventoryPagination' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên }
+        '422': { description: Phân trang không hợp lệ }
+  /inventory-sessions/{id}/anomalies/{anomalyId}/resolution:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      - { in: path, name: anomalyId, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: resolveInventoryAnomaly
+      tags: [Inventory]
+      summary: Nhân viên ghi nhận rà soát hoặc xác nhận chuyển bản sách về kệ đã quét
+      description: >-
+        Chỉ áp dụng cho bất thường thuộc phiên FINALIZED. Mỗi bất thường có một quyết định; cùng actor/requestId/payload
+        trả lại biên nhận cũ. REVIEWED giữ nguyên Copy và lưu lý do. MOVE_TO_SCANNED_SHELF chỉ dành cho sai kệ/chi nhánh,
+        dùng kệ từ scan đã lưu; từ chối nếu Copy khác version lúc chốt, mã vạch/kệ/chi nhánh thay đổi hoặc Copy đang mượn/giữ chỗ.
+        Không tự đổi trạng thái Copy và không kết luận bản chưa quét đã mất.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InventoryResolutionRequest' }
+      responses:
+        '201':
+          description: Biên nhận quyết định rà soát
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InventoryResolution' }
+        '401': { description: Chưa đăng nhập }
+        '403': { description: Không còn quyền nhân viên }
+        '404': { description: Không có phiên hoặc bất thường }
+        '409': { description: 'Copy/phiên đã thay đổi, bất thường đã xử lý hoặc key xung đột' }
+        '422': { description: 'Hành động, lý do hoặc version không hợp lệ' }
   /auth/register:
     post:
       operationId: register
@@ -1543,6 +1805,94 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/ProblemDetail' }
   schemas:
+    InventoryCloseRequest:
+      type: object
+      required: [requestId, version]
+      properties:
+        requestId: { type: string, format: uuid }
+        version: { type: integer, minimum: 0 }
+        reason: { type: [string, 'null'], maxLength: 500, description: Bắt buộc không rỗng khi hủy }
+    InventoryPagination:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page: { type: integer, minimum: 0, maximum: 10000 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+    InventoryResolutionRequest:
+      type: object
+      required: [requestId, action, reason]
+      properties:
+        requestId: { type: string, format: uuid }
+        action: { type: string, enum: [REVIEWED, MOVE_TO_SCANNED_SHELF] }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        expectedCopyVersion: { type: [integer, 'null'], minimum: 0 }
+    InventoryResolution:
+      type: object
+      required: [id, anomalyId, action, reason, copyVersionSeen, copyVersionAfter, resolvedBy, resolvedAt]
+      properties:
+        id: { type: string, format: uuid }
+        anomalyId: { type: string, format: uuid }
+        action: { type: string, enum: [REVIEWED, MOVE_TO_SCANNED_SHELF] }
+        reason: { type: string }
+        copyVersionSeen: { type: [integer, 'null'], minimum: 0 }
+        copyVersionAfter: { type: [integer, 'null'], minimum: 0 }
+        resolvedBy: { type: string, format: uuid }
+        resolvedAt: { type: string, format: date-time }
+    InventorySession:
+      type: object
+      required: [id, branchId, shelfId, openedBy, openedAt, status, version, snapshotCount, scanCount, closedAt, closedBy, closeReason]
+      properties:
+        id: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        shelfId: { type: [string, 'null'], format: uuid }
+        openedBy: { type: string, format: uuid }
+        openedAt: { type: string, format: date-time }
+        status: { type: string, enum: [OPEN, FINALIZED, CANCELLED] }
+        version: { type: integer, minimum: 0 }
+        snapshotCount: { type: integer, minimum: 0, maximum: 5000 }
+        scanCount: { type: integer, minimum: 0, maximum: 20000 }
+        closedAt: { type: [string, 'null'], format: date-time }
+        closedBy: { type: [string, 'null'], format: uuid }
+        closeReason: { type: [string, 'null'] }
+    InventoryCopyEvidence:
+      type: object
+      required: [id, barcode, branchId, shelfId, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        barcode: { type: string }
+        branchId: { type: string, format: uuid }
+        shelfId: { type: string, format: uuid }
+        status: { type: string }
+        version: { type: integer, minimum: 0 }
+    InventoryScan:
+      type: object
+      required: [id, clientScanId, barcode, branchId, shelfId, scannedBy, receivedAt, clientScannedAt]
+      properties:
+        id: { type: string, format: uuid }
+        clientScanId: { type: string, format: uuid }
+        barcode: { type: string }
+        branchId: { type: string, format: uuid }
+        shelfId: { type: string, format: uuid }
+        scannedBy: { type: string, format: uuid }
+        receivedAt: { type: string, format: date-time }
+        clientScannedAt: { type: [string, 'null'], format: date-time }
+    InventoryAnomaly:
+      type: object
+      required: [id, kind, copyId, evidence, detectedAt, resolution]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [WRONG_SHELF, EXPECTED_BUT_MISSING, STATUS_MISMATCH, WRONG_BRANCH, UNKNOWN_BARCODE, DUPLICATE_SCAN] }
+        copyId: { type: [string, 'null'], format: uuid }
+        evidence:
+          type: object
+          description: Snapshot và trạng thái Copy lúc đối chiếu, scan liên quan, firstScanId khi quét trùng; các giá trị có thể null khi không tồn tại. Nội dung cố định sau finalize, không phải lệnh sửa Copy.
+        detectedAt: { type: string, format: date-time }
+        resolution:
+          oneOf:
+            - { $ref: '#/components/schemas/InventoryResolution' }
+            - { type: 'null' }
     Role:
       type: string
       enum: [READER, LIBRARIAN, ADMIN]

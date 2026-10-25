@@ -12,9 +12,10 @@ Staff Catalog có vùng “Lịch sử tra cứu ISBN” (không route mới), o
 | Staff | Dashboard | Đã có; yêu cầu quyền nhân viên |
 | Staff | Danh sách thành viên, tìm/lọc/sort/phân trang | Đã triển khai Phase 1C; API /members |
 | Staff | Catalog quản lý Author/Category/Publisher/Book/Edition/Branch/Shelf/Copy; duyệt ảnh | Phase 2 |
-| Staff | Circulation Desk, Hold Queue | `/nhan-vien/luu-thong` đã có; kiểm kê đang phát triển, chưa có route UI |
+| Staff | Circulation Desk, Hold Queue | `/nhan-vien/luu-thong` đã có |
+| Staff | Kiểm kê kệ, scan và rà soát bất thường | `/nhan-vien/kiem-ke` và `/nhan-vien/kiem-ke/:sessionId`; dùng Core API, chưa có camera/offline |
 | Admin | Users/Roles, Policies, Audit, Settings | MVP |
 | Admin | Analytics, Acquisition | Advanced |
 | Reader | Semantic suggestions, alternative edition ETA | Advanced |
 
-Route hiện có `/`, `/dang-nhap`, `/dang-ky`, `/ho-so`, `/thu-vien-cua-toi`, `/muon-va-giu-cho`, `/sach`, `/sach/:bookId`, `/tac-gia/:authorId`, `/nhan-vien/bang-dieu-khien`, `/nhan-vien/thanh-vien`, `/nhan-vien/danh-muc`, `/nhan-vien/luu-thong`, `/nhan-vien/bao-cao-luu-thong` và trang 404. Catalog và trang tác phẩm/tác giả đọc được khi chưa đăng nhập qua projection công khai; Profile/My Library yêu cầu đăng nhập; route nhân viên chỉ cho `LIBRARIAN` hoặc `ADMIN`. Bộ lọc Member/Catalog giữ state trong URL. Book Detail tách Edition; không hiển thị số bản sẵn có giả. Profile vẫn chỉ đọc.
+Route hiện có `/`, `/dang-nhap`, `/dang-ky`, `/ho-so`, `/thu-vien-cua-toi`, `/muon-va-giu-cho`, `/sach`, `/sach/:bookId`, `/tac-gia/:authorId`, `/nhan-vien/bang-dieu-khien`, `/nhan-vien/thanh-vien`, `/nhan-vien/danh-muc`, `/nhan-vien/luu-thong`, `/nhan-vien/bao-cao-luu-thong`, `/nhan-vien/kiem-ke`, `/nhan-vien/kiem-ke/:sessionId` và trang 404. Catalog và trang tác phẩm/tác giả đọc được khi chưa đăng nhập qua projection công khai; Profile/My Library yêu cầu đăng nhập; route nhân viên chỉ cho `LIBRARIAN` hoặc `ADMIN`. Bộ lọc Member/Catalog giữ state trong URL. Book Detail tách Edition; không hiển thị số bản sẵn có giả. Profile vẫn chỉ đọc.

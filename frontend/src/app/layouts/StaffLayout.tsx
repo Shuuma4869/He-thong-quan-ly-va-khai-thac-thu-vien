@@ -18,7 +18,8 @@ export function StaffLayout() {
         <header className="library-topbar">
           <button ref={trigger} type="button" className="library-menu-button" aria-label="Mở menu nhân viên"
             aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={21}/></button>
-          <span className="library-topbar-section">Nền tảng vận hành thư viện</span>
+          <span className="library-topbar-section"><span className="library-topbar-section-full">Nền tảng vận hành thư viện</span>
+            <span className="library-topbar-section-short">LAMS</span></span>
           <Link className="library-topbar-search" to="/sach">Xem danh mục</Link>
           <span className="library-topbar-user">{auth.user?.fullName}</span>
           <button className="library-topbar-action" type="button" onClick={() => void signOut()}>Đăng xuất</button>

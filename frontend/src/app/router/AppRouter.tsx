@@ -20,6 +20,8 @@ const StaffCatalogPage = lazy(() => import('../../features/catalog/StaffCatalogP
 const ReaderLoansPage = lazy(() => import('../../features/circulation/ReaderLoansPage').then(value => ({ default: value.ReaderLoansPage })));
 const StaffCirculationPage = lazy(() => import('../../features/circulation/StaffCirculationPage').then(value => ({ default: value.StaffCirculationPage })));
 const CirculationReportPage = lazy(() => import('../../features/circulation/CirculationReportPage').then(value => ({ default: value.CirculationReportPage })));
+const InventorySessionsPage = lazy(() => import('../../features/inventory/InventorySessionsPage').then(value => ({ default: value.InventorySessionsPage })));
+const InventorySessionPage = lazy(() => import('../../features/inventory/InventorySessionPage').then(value => ({ default: value.InventorySessionPage })));
 
 function Deferred({ children }: { children: ReactNode }) {
   return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
@@ -54,6 +56,8 @@ export function AppRouter() {
         <Route path="danh-muc" element={<Deferred><StaffCatalogPage /></Deferred>} />
         <Route path="luu-thong" element={<Deferred><StaffCirculationPage /></Deferred>} />
         <Route path="bao-cao-luu-thong" element={<Deferred><CirculationReportPage /></Deferred>} />
+        <Route path="kiem-ke" element={<Deferred><InventorySessionsPage /></Deferred>} />
+        <Route path="kiem-ke/:sessionId" element={<Deferred><InventorySessionPage /></Deferred>} />
       </Route>
       </Route></Route>
       <Route path="*" element={<NotFoundPage />} />
