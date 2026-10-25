@@ -16,7 +16,7 @@ export class ApiTransportError extends ApiError {
   }
 }
 
-async function send(url: string, init: RequestInit, signal?: AbortSignal) {
+async function send(url: string, init: RequestInit, signal?: AbortSignal, binary = false) {
   const controller = new AbortController();
   let timedOut = false;
   const abort = () => controller.abort(signal?.reason);
@@ -27,7 +27,7 @@ async function send(url: string, init: RequestInit, signal?: AbortSignal) {
     const response = await fetch(url, { ...init, signal: controller.signal });
     let data: unknown;
     if (response.status !== 204) {
-      try { data = await response.json(); }
+      try { data = binary && response.ok ? await response.blob() : await response.json(); }
       catch (error) {
         if (controller.signal.aborted) throw error;
         if (response.ok) throw new ApiError(502, 'Máy chủ trả dữ liệu không hợp lệ.');
@@ -52,7 +52,7 @@ let pendingRefresh: Promise<boolean> | null = null;
 
 export function configureCoreAuth(hooks: AuthHooks | null) { authHooks = hooks; pendingRefresh = null; }
 
-async function request<T>(baseUrl: string | undefined, method: Method, path: string, body?: unknown, retry = true, signal?: AbortSignal): Promise<T> {
+async function request<T>(baseUrl: string | undefined, method: Method, path: string, body?: unknown, retry = true, signal?: AbortSignal, binary = false): Promise<T> {
   if (!baseUrl) throw new ApiError(503, 'Dịch vụ này chưa được cấu hình ở môi trường hiện tại.');
   const hooks = authHooks;
   const generation = hooks?.generation?.();
@@ -61,7 +61,7 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
   if (token) headers.Authorization = `Bearer ${token}`;
   const { response, data } = await send(`${baseUrl}${path}`, {
     method, headers, credentials: 'include', body: body === undefined ? undefined : JSON.stringify(body),
-  }, signal);
+  }, signal, binary);
   const protectedRequest = !['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path.split('?')[0]);
   const sameSession = () => authHooks === hooks && hooks?.generation?.() === generation;
   if (protectedRequest && !sameSession()) throw new ApiError(401, 'Phiên đăng nhập đã thay đổi.');
@@ -69,7 +69,7 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
     signal?.throwIfAborted();
     // A late 401 must not restore a session after logout or refresh a newer login.
     if (hooks.token() !== token) {
-      if (hooks.token()) return request<T>(baseUrl, method, path, body, false, signal);
+      if (hooks.token()) return request<T>(baseUrl, method, path, body, false, signal, binary);
     } else {
       if (!pendingRefresh) {
         const attempt = hooks.refresh().catch(() => false).finally(() => {
@@ -79,7 +79,7 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
       }
       const refreshed = await pendingRefresh;
       signal?.throwIfAborted();
-      if (refreshed && sameSession() && hooks.token()) return request<T>(baseUrl, method, path, body, false, signal);
+      if (refreshed && sameSession() && hooks.token()) return request<T>(baseUrl, method, path, body, false, signal, binary);
       if (sameSession() && hooks.token() === token) hooks.clear();
     }
   }
@@ -101,6 +101,7 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
 function api(baseUrl: string | undefined) {
   return {
     get: <T>(path: string, retry = true, signal?: AbortSignal) => request<T>(baseUrl, 'GET', path, undefined, retry, signal),
+    download: (path: string, signal?: AbortSignal) => request<Blob>(baseUrl, 'GET', path, undefined, true, signal, true),
     post: <T>(path: string, body?: unknown, retry = true) => request<T>(baseUrl, 'POST', path, body, retry),
     put: <T>(path: string, body?: unknown) => request<T>(baseUrl, 'PUT', path, body),
     patch: <T>(path: string, body?: unknown) => request<T>(baseUrl, 'PATCH', path, body),

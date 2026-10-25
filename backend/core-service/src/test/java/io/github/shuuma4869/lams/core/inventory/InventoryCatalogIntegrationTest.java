@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 class InventoryCatalogIntegrationTest {
     @Container
@@ -57,6 +59,27 @@ class InventoryCatalogIntegrationTest {
         jdbc.update("DELETE FROM categories");
         jdbc.update("DELETE FROM publishers");
         jdbc.update("DELETE FROM branches");
+    }
+
+    @Test void barcodeLookupIsExactReadOnlyAndRequiresCurrentStaff() throws Exception {
+        String token=staffToken(); UUID branch=branch(token,"LOOKUP","Chi nhánh tra cứu");
+        UUID shelf=shelf(token,branch,"L1","Kệ tra cứu"),edition=edition(token);
+        var copy=postJson(token,"/api/v1/copies",Map.of("editionId",edition,"barcode","A_%'/?","shelfId",shelf),201);
+        String path="/api/v1/copies/by-barcode";
+        mvc.perform(get(path).header("Authorization","Bearer "+token).param("barcode"," A_%'/? "))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(copy.path("id").asText()))
+                .andExpect(jsonPath("$.version").value(0)).andExpect(jsonPath("$.status").value("IN_PROCESS"));
+        for(String missing:List.of("A_%","a_%'/?","' OR 1=1--"))
+            mvc.perform(get(path).header("Authorization","Bearer "+token).param("barcode",missing)).andExpect(status().isNotFound());
+        for(String invalid:List.of(" ","A".repeat(101)))
+            mvc.perform(get(path).header("Authorization","Bearer "+token).param("barcode",invalid)).andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("barcode","A_%'/?")).andExpect(status().isUnauthorized());
+        var user=mvc.perform(get("/api/v1/auth/me").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn();
+        UUID actor=UUID.fromString(json.readTree(user.getResponse().getContentAsString()).path("id").asText());
+        jdbc.update("DELETE FROM user_roles WHERE user_id=? AND role_code='LIBRARIAN'",actor);
+        mvc.perform(get(path).header("Authorization","Bearer "+token).param("barcode","A_%'/?")).andExpect(status().isForbidden());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM book_copies",Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT version FROM book_copies WHERE id=?",Long.class,UUID.fromString(copy.path("id").asText()))).isZero();
     }
 
     private String staffToken() throws Exception {

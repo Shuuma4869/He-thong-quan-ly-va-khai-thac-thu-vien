@@ -18,6 +18,7 @@ public class BookCopyRepository {
     public BookCopyRepository(JdbcTemplate jdbc){this.jdbc=jdbc;}
     public void create(BookCopy c){jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status,version) VALUES (?,?,?,?,?,0)",c.id(),c.editionId(),c.barcode(),c.shelfId(),"IN_PROCESS");}
     public Optional<BookCopy> find(UUID id){return jdbc.query(SELECT+"WHERE c.id=?",(r,n)->map(r),id).stream().findFirst();}
+    public Optional<BookCopy> findBarcode(String barcode){return jdbc.query(SELECT+"WHERE c.barcode=?",(r,n)->map(r),barcode).stream().findFirst();}
     public CopyPage list(UUID editionId,UUID shelfId,String status,int page,int size){
         var clauses=new ArrayList<String>();var args=new ArrayList<Object>();
         if(editionId!=null){clauses.add("c.edition_id=?");args.add(editionId);}if(shelfId!=null){clauses.add("c.shelf_id=?");args.add(shelfId);}if(status!=null){clauses.add("c.status=?");args.add(status);}
