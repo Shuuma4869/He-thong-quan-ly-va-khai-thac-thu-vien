@@ -576,8 +576,9 @@ test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận ch
 test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang ổn định', async ({ page, request }) => {
   const headers = await staffApi(request);
   const author = await createCatalog(request, headers, '/authors', { name: `Nguyễn Bình ${suffix}` });
+  const category = await createCatalog(request, headers, '/categories', { name: `Khảo cứu ${suffix}` });
   const exact = await createCatalog(request, headers, '/books', {
-    title: `Đường về ${suffix}`, description: 'Một câu chuyện', authorIds: [], categoryIds: [],
+    title: `Đường về ${suffix}`, description: 'Một câu chuyện', authorIds: [], categoryIds: [category.id],
   });
   const prefix = await createCatalog(request, headers, '/books', {
     title: `Đường về ${suffix} nhà`, authorIds: [], categoryIds: [],
@@ -606,6 +607,15 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
   });
   expect(isbnSearch.status()).toBe(200);
   expect((await isbnSearch.json()).items[0].id).toBe(prefix.id);
+  await navigate(page, '/sach');
+  await page.getByLabel('Tên thể loại hoặc bí danh').fill(category.name);
+  await expect.poll(() => {
+    const location = new URL(page.url());
+    const params = desktopEndpoint ? new URLSearchParams(location.hash.split('?')[1] ?? '') : location.searchParams;
+    return params.get('categoryTerm');
+  }).toBe(category.name);
+  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toHaveCount(0);
 });
 
 test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn mốc responsive', async ({ page, request }) => {

@@ -82,7 +82,7 @@ function CategoryBooks({ categories }: { categories: Named[] }) {
   const [selected, setSelected] = useState(categories[0].id);
   const active = categories.find(item => item.id === selected) ?? categories[0];
   const books = useQuery({ queryKey: ['landing', 'category-books', active.id],
-    queryFn: ({ signal }) => getBooks({ query: '', authorId: '', categoryId: active.id,
+    queryFn: ({ signal }) => getBooks({ query: '', authorId: '', categoryId: active.id, categoryTerm: '',
       page: 0, size: 4, sort: 'updated' }, signal), retry: false });
   return <section className="landing-section landing-container" aria-labelledby="landing-category-books-title">
     <div className="landing-section-head"><div><p className="eyebrow">Từ những thể loại bạn quan tâm</p>

@@ -2,6 +2,7 @@ package io.github.shuuma4869.lams.core.catalog.publicapi;
 
 import io.github.shuuma4869.lams.core.catalog.book.domain.Book;
 import io.github.shuuma4869.lams.core.catalog.book.infrastructure.BookRepository;
+import io.github.shuuma4869.lams.core.catalog.category.infrastructure.CategoryAliasRepository;
 import io.github.shuuma4869.lams.core.catalog.edition.domain.Edition;
 import io.github.shuuma4869.lams.core.catalog.edition.infrastructure.EditionRepository;
 import io.github.shuuma4869.lams.core.catalog.shared.CatalogText;
@@ -32,23 +33,38 @@ public class PublicCatalogService {
                            BigDecimal averageRating, long ratingCount) {}
     private record Rating(BigDecimal average, long count) {}
     private final BookRepository books;
+    private final CategoryAliasRepository categoryAliases;
     private final EditionRepository editions;
     private final JdbcTemplate jdbc;
     private final NamedParameterJdbcTemplate named;
 
-    public PublicCatalogService(BookRepository books, EditionRepository editions, JdbcTemplate jdbc,
+    public PublicCatalogService(BookRepository books, CategoryAliasRepository categoryAliases,
+                                EditionRepository editions, JdbcTemplate jdbc,
                                 NamedParameterJdbcTemplate named) {
-        this.books = books; this.editions = editions; this.jdbc = jdbc; this.named = named;
+        this.books = books; this.categoryAliases = categoryAliases;
+        this.editions = editions; this.jdbc = jdbc; this.named = named;
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public Result<BookCard> books(int page, int size, String query, UUID authorId, UUID categoryId, String sort) {
+    public Result<BookCard> books(int page, int size, String query, UUID authorId, UUID categoryId,
+                                  String categoryTerm, String sort) {
         bounds(page, size, 50);
         String term = CatalogText.key(query);
         if (term.length() > 500) throw invalid("Từ khóa không được vượt quá 500 ký tự.");
         if (!sort.equals("title") && !sort.equals("updated") && !sort.equals("relevance"))
             throw invalid("Kiểu sắp xếp không hợp lệ.");
         if (sort.equals("relevance") && term.isBlank()) throw invalid("Cần từ khóa để sắp xếp theo mức độ phù hợp.");
+        if (categoryTerm != null) {
+            if (categoryId != null) throw invalid("Chỉ chọn một cách lọc thể loại.");
+            String display = CatalogText.display(categoryTerm);
+            String key = CatalogText.key(display);
+            if (display.isEmpty() || display.length() > 150 || key.length() > 150)
+                throw invalid("Tên thể loại hoặc bí danh không hợp lệ.");
+            var matches = categoryAliases.findTermMatches(key);
+            if (matches.size() > 1) throw new AuthFailure(409, "Tên thể loại khớp với nhiều Category chuẩn.");
+            if (matches.isEmpty()) return new Result<>(List.of(), metadata(page, size, 0));
+            categoryId = matches.getFirst().id();
+        }
         var listed = term.isBlank() ? books.list(page, size, term, authorId, categoryId, sort)
                 : books.search(page, size, term, authorId, categoryId, sort);
         var ids = listed.items().stream().map(Book::id).toList();

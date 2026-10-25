@@ -30,8 +30,11 @@ export type Named = z.infer<typeof named>;
 const integer = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
 export const catalogQuerySchema = z.object({ query: z.string().max(500).default(''),
   authorId: z.union([z.string().uuid(), z.literal('')]).default(''), categoryId: z.union([z.string().uuid(), z.literal('')]).default(''),
+  categoryTerm: z.string().max(150).default(''),
   page: integer(0, 0, 2147483647), size: integer(20, 1, 50), sort: z.enum(['title', 'updated', 'relevance']).default('title') })
-  .refine(value => value.sort !== 'relevance' || value.query.trim().length > 0);
+  .refine(value => value.sort !== 'relevance' || value.query.trim().length > 0)
+  .refine(value => !value.categoryId || !value.categoryTerm)
+  .refine(value => !value.categoryTerm || value.categoryTerm.trim().length > 0);
 export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 export function parseCatalogQuery(params: URLSearchParams) {
   const values = Object.fromEntries(params);

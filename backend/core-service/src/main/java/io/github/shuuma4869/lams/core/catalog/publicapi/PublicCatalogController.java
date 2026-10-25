@@ -19,8 +19,9 @@ public class PublicCatalogController {
     public PublicCatalogService.Result<PublicCatalogService.BookCard> books(
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String query, @RequestParam(required = false) UUID authorId,
-            @RequestParam(required = false) UUID categoryId, @RequestParam(defaultValue = "title") String sort) {
-        return catalog.books(page, size, query, authorId, categoryId, sort);
+            @RequestParam(required = false) UUID categoryId, @RequestParam(required = false) String categoryTerm,
+            @RequestParam(defaultValue = "title") String sort) {
+        return catalog.books(page, size, query, authorId, categoryId, categoryTerm, sort);
     }
     @GetMapping("/books/{id}")
     public PublicCatalogService.BookCard book(@PathVariable UUID id) { return catalog.book(id); }

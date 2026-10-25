@@ -16,8 +16,8 @@ export function CatalogPage() {
   </section>;
 }
 function CatalogResults({ value, onNavigate }: { value: CatalogQuery; onNavigate: (params: URLSearchParams) => void }) {
-  const { user } = useAuth(); const { query, authorId, categoryId, page, size, sort } = value;
-  const update = useCallback((patch: Partial<CatalogQuery>) => onNavigate(catalogParams({ query, authorId, categoryId, page, size, sort, ...patch })), [query,authorId,categoryId,page,size,sort,onNavigate]);
+  const { user } = useAuth(); const { query, authorId, categoryId, categoryTerm, page, size, sort } = value;
+  const update = useCallback((patch: Partial<CatalogQuery>) => onNavigate(catalogParams({ query, authorId, categoryId, categoryTerm, page, size, sort, ...patch })), [query,authorId,categoryId,categoryTerm,page,size,sort,onNavigate]);
   const result = useQuery({ queryKey: ['catalog',user?.id,'books',value], queryFn: ({ signal }) => getBooks(value,signal), retry: false });
   return <><BookFilters value={value} onChange={update} />
     {result.isPending ? <p role="status" className="py-8">Đang tải sách…</p> : result.isError ? <CatalogError error={result.error} retry={() => void result.refetch()} />

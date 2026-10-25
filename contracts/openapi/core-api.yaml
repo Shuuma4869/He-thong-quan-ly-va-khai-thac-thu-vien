@@ -24,12 +24,15 @@ paths:
       description: >-
         Ảnh Google Books chưa bật. sort=relevance yêu cầu query; tìm theo tên, mô tả,
         tác giả hoặc ISBN, hỗ trợ không dấu và gần đúng theo tên. Thứ tự điểm và ID ổn định
-        trong một request, các trang request khác nhau không phải snapshot. Giới hạn 300 request/phút/IP.
+        trong một request, các trang request khác nhau không phải snapshot. categoryTerm lọc theo
+        tên Category chuẩn hoặc Alias đã khai báo; không dùng đồng thời với categoryId. Alias nhập nhằng
+        trả 409, tên không tồn tại trả trang rỗng. Giới hạn 300 request/phút/IP.
       security: []
       parameters:
         - { in: query, name: query, schema: { type: string, maxLength: 500 } }
         - { in: query, name: authorId, schema: { type: string, format: uuid } }
         - { in: query, name: categoryId, schema: { type: string, format: uuid } }
+        - { in: query, name: categoryTerm, schema: { type: string, maxLength: 150 } }
         - { in: query, name: sort, schema: { type: string, enum: [title, updated, relevance], default: title } }
         - { in: query, name: page, schema: { type: integer, minimum: 0, default: 0 } }
         - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
@@ -44,6 +47,7 @@ paths:
                   items: { type: array, items: { $ref: '#/components/schemas/PublicBook' } }
                   page: { $ref: '#/components/schemas/PageMetadata' }
         '422': { description: Bộ lọc không hợp lệ }
+        '409': { description: Tên Category hoặc Alias nhập nhằng }
         '429': { description: 'Vượt giới hạn tra cứu theo IP, xem Retry-After' }
   /public/catalog/books/{id}:
     get:

@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogText;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -147,6 +148,46 @@ class PublicCatalogIntegrationTest {
         jdbc.update("UPDATE books SET title='Đường mới',normalized_title='đường mới' WHERE id=?", exact);
         mvc.perform(get(path).param("query", "duong moi").param("sort", "relevance"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(exact.toString()));
+    }
+
+    @Test void categoryAliasFilterUsesOneCanonicalCategoryAndRejectsAmbiguity() throws Exception {
+        UUID science = UUID.randomUUID(), literature = UUID.randomUUID();
+        UUID scienceBook = UUID.randomUUID(), literatureBook = UUID.randomUUID();
+        String canonical = "Khoa học " + science.toString().substring(0, 8);
+        String other = "Văn học " + literature.toString().substring(0, 8);
+        try {
+        jdbc.update("INSERT INTO categories(id,name,normalized_name) VALUES (?,?,?),(?,?,?)",
+                science, canonical, CatalogText.key(canonical), literature, other, CatalogText.key(other));
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Nghiên cứu thiên văn','nghiên cứu thiên văn'),"
+                + "(?,'Tập thơ khác','tập thơ khác')", scienceBook, literatureBook);
+        jdbc.update("INSERT INTO book_categories(book_id,category_id) VALUES (?,?),(?,?)",
+                scienceBook, science, literatureBook, literature);
+        jdbc.update("INSERT INTO category_aliases(id,category_id,alias_name,normalized_alias) VALUES (?,?,?,?)",
+                UUID.randomUUID(), science, "Thiên văn học", CatalogText.key("Thiên văn học"));
+
+        String path = "/api/v1/public/catalog/books";
+        mvc.perform(get(path).param("categoryTerm", "  THIÊN VĂN HỌC  ").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(scienceBook.toString()));
+        mvc.perform(get(path).param("categoryTerm", canonical))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(scienceBook.toString()));
+        mvc.perform(get(path).param("categoryTerm", "Không có bí danh này"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        mvc.perform(get(path).param("categoryTerm", "Thiên văn học").param("categoryId", literature.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("categoryTerm", "  "))
+                .andExpect(status().isUnprocessableEntity());
+
+        jdbc.update("INSERT INTO category_aliases(id,category_id,alias_name,normalized_alias) VALUES (?,?,?,?)",
+                UUID.randomUUID(), science, "Dữ liệu nhập sai", CatalogText.key(other));
+        mvc.perform(get(path).param("categoryTerm", other))
+                .andExpect(status().isConflict());
+        } finally {
+            jdbc.update("DELETE FROM category_aliases WHERE category_id IN (?,?)", science, literature);
+            jdbc.update("DELETE FROM book_categories WHERE book_id IN (?,?)", scienceBook, literatureBook);
+            jdbc.update("DELETE FROM books WHERE id IN (?,?)", scienceBook, literatureBook);
+            jdbc.update("DELETE FROM categories WHERE id IN (?,?)", science, literature);
+        }
     }
 
     private void insertCover(UUID edition, UUID staff, String source) {

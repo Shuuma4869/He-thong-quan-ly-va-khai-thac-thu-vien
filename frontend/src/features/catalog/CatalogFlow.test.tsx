@@ -36,6 +36,14 @@ it('Reader tra sách, phân trang, đồng bộ query và reset trang', async ()
   await waitFor(() => expect(screen.getByLabelText('Tìm sách')).toHaveValue(''));
   expect(screen.queryByText(/Số bản sẵn có/)).not.toBeInTheDocument();
 });
+it('Reader lọc bằng tên bí danh, giữ URL và xóa bộ lọc', async () => {
+  app(); await screen.findByRole('link',{name:book.title});
+  fireEvent.change(screen.getByLabelText('Tên thể loại hoặc bí danh'),{target:{value:'  Truyện trinh thám  '}});
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) =>
+    new URL(String(url)).searchParams.get('categoryTerm') === 'Truyện trinh thám')).toBe(true));
+  fireEvent.click(screen.getByRole('button',{name:'Xóa bộ lọc'}));
+  await waitFor(() => expect(screen.getByLabelText('Tên thể loại hoặc bí danh')).toHaveValue(''));
+});
 it('debounce giữ focus và phản hồi cũ không ghi đè kết quả mới', async () => {
   let old!:(response:Response)=>void;
   fetchMock.mockImplementation((url:string) => {
