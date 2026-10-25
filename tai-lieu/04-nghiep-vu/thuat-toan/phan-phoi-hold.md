@@ -1,6 +1,6 @@
 # Phân phối hold
 
-Đã có backend `HoldAllocationService`, `HoldService`, `HoldExpiryJob` và migration V18. Giao diện, ETA theo ngày và consumer thông báo chưa hoàn thành. Xem [transaction, policy và giới hạn](../../02-kien-truc/circulation.md).
+Đã có backend `HoldAllocationService`, `HoldService`, `HoldExpiryJob` và migration V18; Reader có giao diện tạo/hủy/theo dõi. ETA do `HoldEtaService`/`HoldEtaModel` mô phỏng riêng và không quyết định phân bổ. Consumer thông báo chưa hoàn thành. Xem [transaction, policy và giới hạn](../../02-kien-truc/circulation.md).
 
 ## Input
 Copy vừa khả dụng, queue hold cùng Book, branch/edition preference, policy và thời điểm.

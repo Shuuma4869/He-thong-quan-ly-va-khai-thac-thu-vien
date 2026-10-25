@@ -389,6 +389,16 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
   await expect(page.getByRole('status')).toContainText('Đang chờ');
   await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
+  await page.getByRole('button', { name: 'Xem thời gian dự kiến' }).click();
+  await expect(page.getByLabel('Ước tính giữ chỗ')).toContainText('chưa phải thông báo đến nhận');
+  const waiting = await request.get(`${core}/me/holds?size=100`, { headers: readerHeaders }); expect(waiting.status()).toBe(200);
+  const waitingHold = (await waiting.json()).items.find((item: { hold: { status: string } }) => item.hold.status === 'WAITING').hold;
+  const estimate = await request.get(`${core}/holds/${waitingHold.id}/estimate`, { headers: readerHeaders }); expect(estimate.status()).toBe(200);
+  const eta = await estimate.json(); expect(eta.reason).toBe('CONDITIONAL'); expect(Date.parse(eta.estimatedAt)).toBe(Date.parse(renewedBody.dueAt));
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/hold-eta-${viewport.width}.png`, fullPage: true });
+  }
   await page.getByRole('button', { name: 'Hủy giữ chỗ', exact: true }).click();
   await page.getByRole('button', { name: 'Xác nhận hủy giữ chỗ' }).click();
   await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã hủy');

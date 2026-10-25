@@ -31,7 +31,8 @@ Core clean verify tại `ff054c4` đạt 121 test; đây là mốc backend, khô
 | Phase 4 / AC | Backend PostgreSQL / HTTP | Test bổ sung | Phần chưa nghiệm thu |
 |---|---|---|---|
 | 17-01/02, 18-01/02 | LoanCommandIntegrationTest; HoldIntegrationTest: policy/khóa/retry/rollback/Return phân bổ Hold | LoanSchemaTest V16–V18; StaffCirculationFlow, E2E quầy mượn/trả thật; InventoryCatalogIntegrationTest mã vạch | Máy Windows thứ hai và tải production |
-| 19-01/02, 20-01/02/03 | HoldIntegrationTest: version/owner/deadline/FIFO/renew-return/cancel-return, pickup-branches chỉ đọc | HoldExpiryJobTest batch/retry; CirculationFlow/StaffCirculationFlow, E2E Reader và quầy gia hạn | ETA và Kafka; kết quả E2E phải đối chiếu đúng SHA |
+| 19-01/02, 20-01/02/03 | HoldIntegrationTest: version/owner/deadline/FIFO/renew-return/cancel-return, pickup-branches chỉ đọc | HoldExpiryJobTest batch/retry; CirculationFlow/StaffCirculationFlow, E2E Reader và quầy gia hạn | Kafka; kết quả E2E phải đối chiếu đúng SHA |
+| 20-04 ETA | HoldEtaIntegrationTest: snapshot, dueAt, quá hạn, scope, owner/current-role và không ghi nghiệp vụ | HoldEtaModelTest; HoldEstimate; E2E Reader đối chiếu ETA với dueAt Core | Mô phỏng có điều kiện; chưa hiệu chỉnh bằng dữ liệu vận hành hoặc lịch ngày nghỉ |
 | 21-01/02 | LoanHistoryIntegrationTest: principal/current-role, ngày/status/page/tie-break, chi nhánh/Edition lịch sử | Invalid UUID, sort/status injection, không ghi Loan/Copy; Reader/quầy UI + component/E2E | Lọc thời gian cho lịch sử trên giao diện |
 | 22-01/02 | LoanHistoryIntegrationTest: tổng và múi giờ, quyền CSV, giới hạn 10000 nhóm, GET không ghi receipt/outbox | LoanCsvExporterTest: Unicode/quote/newline/formula/empty; report-api, StaffCirculationFlow, client binary/đổi phiên; E2E tải CSV | Excel thực tế và tải production |
 
