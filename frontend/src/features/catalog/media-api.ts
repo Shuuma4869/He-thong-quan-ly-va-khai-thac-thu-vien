@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { coreApi, insightApi } from '../../shared/api/client';
+import { publicCoverSchema } from './catalog-api';
 
 export type MediaKind = 'editions' | 'authors';
 const trustedHosts = ['openlibrary.org','covers.openlibrary.org','books.google.com','commons.wikimedia.org','upload.wikimedia.org','creativecommons.org','archive.org','developers.google.com'];
@@ -19,6 +20,10 @@ export type BookMetadata=z.infer<typeof bookMetadata>;
 export const bookLookupSchema=z.object({attempts:z.array(z.object({provider:z.string(),status:z.string()})),candidates:z.array(bookMetadata)});
 export async function getMedia(kind:MediaKind,id:string,signal?:AbortSignal) {
   return z.object({media:mediaSchema.nullable()}).parse(await coreApi.get<unknown>(`/catalog-media/${kind}/${id}`,true,signal)).media;
+}
+export async function getPublicEditionCover(id:string,signal?:AbortSignal) {
+  return z.object({media:publicCoverSchema.nullable()}).parse(
+    await coreApi.get<unknown>(`/public/catalog/editions/${encodeURIComponent(id)}/media`,true,signal)).media;
 }
 export async function approveMedia(kind:MediaKind,id:string,body:unknown) { return mediaSchema.parse(await coreApi.post<unknown>(`/catalog-media/${kind}/${id}`,body)); }
 export function removeMedia(kind:MediaKind,id:string,version:number) { return coreApi.delete<void>(`/catalog-media/${kind}/${id}?version=${version}`); }

@@ -35,6 +35,10 @@ public class BookRepository {
     }
 
     public BookPage list(int page, int size, String query, UUID authorId, UUID categoryId) {
+        return list(page, size, query, authorId, categoryId, "title");
+    }
+
+    public BookPage list(int page, int size, String query, UUID authorId, UUID categoryId, String sort) {
         var clauses = new ArrayList<String>();
         var args = new ArrayList<Object>();
         if (!query.isEmpty()) {
@@ -51,7 +55,7 @@ public class BookRepository {
         }
         String where = clauses.isEmpty() ? "" : "WHERE " + String.join(" AND ", clauses);
         long total = jdbc.queryForObject("SELECT count(*) FROM books " + where, Long.class, args.toArray());
-        var books = findBooks(where, args.toArray(), size, (long) page * size);
+        var books = findBooks(where, args.toArray(), size, (long) page * size, sort);
         return new BookPage(books, total);
     }
 
@@ -81,12 +85,18 @@ public class BookRepository {
     }
 
     private List<Book> findBooks(String where, Object[] parameters, Integer limit, Long offset) {
+        return findBooks(where, parameters, limit, offset, "title");
+    }
+
+    private List<Book> findBooks(String where, Object[] parameters, Integer limit, Long offset, String sort) {
+        String order = sort.equals("updated") ? "updated_at DESC,id" : "normalized_title,id";
+        String outerOrder = sort.equals("updated") ? "b.updated_at DESC,b.id" : "b.normalized_title,b.id";
         String sql = "SELECT b.id,b.title,b.description,ba.author_id,a.name AS author_name,"
                 + "bc.category_id,c.name AS category_name FROM (SELECT * FROM books " + where
-                + " ORDER BY normalized_title,id" + (limit == null ? "" : " LIMIT ? OFFSET ?") + ") b "
+                + " ORDER BY " + order + (limit == null ? "" : " LIMIT ? OFFSET ?") + ") b "
                 + "LEFT JOIN book_authors ba ON ba.book_id=b.id LEFT JOIN authors a ON a.id=ba.author_id "
                 + "LEFT JOIN book_categories bc ON bc.book_id=b.id LEFT JOIN categories c ON c.id=bc.category_id "
-                + "ORDER BY b.normalized_title,b.id,a.name,a.id,c.name,c.id";
+                + "ORDER BY " + outerOrder + ",a.name,a.id,c.name,c.id";
         Object[] args = parameters;
         if (limit != null) {
             args = java.util.Arrays.copyOf(parameters, parameters.length + 2);

@@ -13,7 +13,7 @@ export function AuthorDetailPage() {
 function AuthorDetail({ id }: { id: string }) {
   const { user } = useAuth(); const [page,setPage] = useState(0);
   const author = useQuery({ queryKey: ['catalog',user?.id,'author',id], queryFn: ({ signal }) => getAuthor(id,signal), retry: false });
-  const books = useQuery({ queryKey: ['catalog',user?.id,'author-books',id,page], queryFn: ({ signal }) => getBooks({ authorId:id,categoryId:'',query:'',page,size:20 },signal), enabled: author.isSuccess, retry: false });
+  const books = useQuery({ queryKey: ['catalog',user?.id,'author-books',id,page], queryFn: ({ signal }) => getBooks({ authorId:id,categoryId:'',query:'',page,size:20,sort:'title' },signal), enabled: author.isSuccess, retry: false });
   return <section className="shell py-8"><Link className="text-link" to="/sach">← Danh mục sách</Link>
     {author.isPending ? <p role="status" className="py-8">Đang tải tác giả…</p> : author.isError ? <CatalogError error={author.error} retry={() => void author.refetch()} /> : <>
       <div className="author-heading my-6"><CatalogMedia kind="authors" id={id} title={author.data.name} />

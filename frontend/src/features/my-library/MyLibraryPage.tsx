@@ -19,7 +19,7 @@ function Library({ owner }: { owner: string }) {
   return <section className="shell py-8"><p className="eyebrow">Không gian cá nhân</p><h1 className="page-title">Thư viện của tôi</h1>
     <p className="my-3 text-muted">Sách đã lưu và những đánh giá của bạn. <Link className="text-link" to="/sach">Khám phá danh mục</Link></p>
     <p className="my-4"><Link className="button-secondary" to="/muon-va-giu-cho">Mượn và giữ chỗ</Link></p>
-    <section aria-label="Sách yêu thích" className="my-8"><h2 className="section-title">Sách yêu thích</h2>
+    <section id="sach-yeu-thich" aria-label="Sách yêu thích" className="my-8"><h2 className="section-title">Sách yêu thích</h2>
       {favorites.isPending ? <p role="status">Đang tải sách yêu thích…</p> : favorites.isError
         ? <LibraryError error={favorites.error} retry={() => void favorites.refetch()}/>
         : <>{!favorites.data.items.length && <p className="my-4">Chưa có sách yêu thích ở trang này.</p>}
@@ -28,7 +28,7 @@ function Library({ owner }: { owner: string }) {
             <FavoriteButton bookId={book.bookId}/>
           </li>)}</ul><Pagination page={favorites.data.page} onChange={setFavoritePage}/></>}
     </section>
-    <section aria-label="Đánh giá đã viết" className="my-8"><h2 className="section-title">Đánh giá đã viết</h2>
+    <section id="danh-gia" aria-label="Đánh giá đã viết" className="my-8"><h2 className="section-title">Đánh giá đã viết</h2>
       {reviews.isPending ? <p role="status">Đang tải đánh giá đã viết…</p> : reviews.isError
         ? <LibraryError error={reviews.error} retry={() => void reviews.refetch()}/>
         : <>{!reviews.data.items.length && <p className="my-4">Bạn chưa có đánh giá ở trang này.</p>}

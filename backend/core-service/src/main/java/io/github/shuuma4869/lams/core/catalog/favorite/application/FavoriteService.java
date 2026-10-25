@@ -17,6 +17,7 @@ public class FavoriteService {
     public record FavoritePage(List<Favorite> items, PageMetadata page) {}
     public record AddResult(Favorite favorite, boolean created) {}
     public record FavoriteState(UUID bookId, boolean saved) {}
+    public record FavoriteStates(List<FavoriteState> items) {}
 
     private final FavoriteRepository favorites;
     private final AuthService identity;
@@ -69,6 +70,16 @@ public class FavoriteService {
         CatalogAccess.requireReader(identity, actorId);
         if (!favorites.bookExists(bookId)) throw notFound("Không tìm thấy sách.");
         return new FavoriteState(bookId, favorites.find(actorId, bookId).isPresent());
+    }
+
+    @Transactional(readOnly = true)
+    public FavoriteStates states(UUID actorId, List<UUID> bookIds) {
+        CatalogAccess.requireReader(identity, actorId);
+        if (bookIds.isEmpty() || bookIds.size() > 50 || bookIds.stream().distinct().count() != bookIds.size()) {
+            throw invalid("Gửi từ 1 đến 50 mã sách khác nhau.");
+        }
+        var saved = favorites.savedBookIds(actorId, bookIds);
+        return new FavoriteStates(bookIds.stream().map(id -> new FavoriteState(id, saved.contains(id))).toList());
     }
 
     @Transactional

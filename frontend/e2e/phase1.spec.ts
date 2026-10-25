@@ -123,7 +123,8 @@ test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', a
   await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
   await page.getByLabel('Nhập lại mật khẩu').fill(password);
   await page.getByRole('button', { name: 'Đăng ký', exact: true }).click();
-  await page.getByRole('link', { name: 'Hồ sơ của tôi' }).click();
+  await page.getByRole('button', { name: 'Mở menu' }).click();
+  await page.getByRole('navigation', { name: 'Điều hướng di động' }).getByRole('link', { name: 'Hồ sơ của tôi' }).click();
   await expect(page.getByText(address, { exact: true })).toBeVisible();
   await expect(page.getByText(/Chưa có thông tin hồ sơ bổ sung/)).toBeVisible();
   await page.reload();
@@ -149,6 +150,7 @@ for (const role of ['LIBRARIAN', 'ADMIN']) {
     await page.getByLabel('Email hoặc mã thành viên').fill(accounts[role].email);
     await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+    if (role === 'ADMIN') await page.getByRole('button', { name: 'Mở menu nhân viên' }).click();
     await page.getByRole('link', { name: 'Thành viên', exact: true }).filter({ visible: true }).click();
     await expect(page.getByRole('table')).toBeVisible();
     await page.getByLabel('Tìm theo mã hoặc họ tên').fill(suffix);
@@ -168,7 +170,8 @@ for (const role of ['LIBRARIAN', 'ADMIN']) {
     await expect(page.getByText('Trang 1 / 3', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/members-${role.toLowerCase()}.png`, fullPage: true });
-    await page.getByRole('link', { name: 'Hồ sơ của tôi', exact: true }).filter({ visible: true }).click();
+    if (role === 'ADMIN') await page.getByRole('button', { name: 'Mở menu nhân viên' }).click();
+    await page.getByRole('link', { name: 'Hồ sơ', exact: true }).filter({ visible: true }).click();
     await expect(page.getByText(accounts[role].email, { exact: true })).toBeVisible();
   });
 }
@@ -216,7 +219,17 @@ async function loginCatalog(page: Page, role: string) {
   await page.getByLabel('Email hoặc mã thành viên').fill(accounts[role].email);
   await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+  await expect(page).not.toHaveURL(/\/dang-nhap(?:\?|$)/);
+  const publicMenu = page.getByRole('button', { name: 'Mở menu' });
+  if (role === 'READER' && (page.viewportSize()?.width ?? 1440) <= 850) {
+    await expect(publicMenu).toBeVisible();
+    await publicMenu.click();
+    await expect(page.getByRole('navigation', { name: 'Điều hướng di động' })
+      .getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+    await page.keyboard.press('Escape');
+  } else {
+    await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+  }
 }
 
 test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ liệu thật', async ({ page, request }) => {
@@ -248,6 +261,14 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/reviews-${viewport.width}.png`, fullPage: true });
   }
+  await navigate(page, `/sach?query=${encodeURIComponent(book.title)}`);
+  const reviewCard = page.locator('.book-card').filter({ hasText: book.title });
+  await expect(reviewCard.getByLabel('Điểm trung bình 5.00 trên 5 từ 1 đánh giá')).toBeVisible();
+  await expect(reviewCard.getByRole('button', { name: `Bỏ yêu thích ${book.title}` })).toHaveAttribute('aria-pressed', 'true');
+  await reviewCard.getByRole('button', { name: `Bỏ yêu thích ${book.title}` }).click();
+  await expect(reviewCard.getByRole('button', { name: `Lưu yêu thích ${book.title}` })).toHaveAttribute('aria-pressed', 'false');
+  await reviewCard.getByRole('button', { name: `Lưu yêu thích ${book.title}` }).click();
+  await expect(reviewCard.getByRole('button', { name: `Bỏ yêu thích ${book.title}` })).toHaveAttribute('aria-pressed', 'true');
   await navigate(page, '/thu-vien-cua-toi');
   await expect(page.getByRole('link', { name: book.title, exact: true })).toBeVisible();
   await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
@@ -502,4 +523,51 @@ test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thậ
   await expect(page.getByRole('alert')).toContainText('Bản sách đã được cập nhật');await expect(page.getByRole('button',{name:'Lưu thông tin'})).toBeDisabled();
   await page.getByRole('button',{name:'Hủy chỉnh sửa'}).click();await expect(page.getByRole('row').filter({hasText:`UPDATED-${suffix}`})).toBeVisible();
   await page.screenshot({path:'test-results/catalog-staff-copy.png',fullPage:true});
+});
+
+test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn mốc responsive', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const headers = await staffApi(request);
+  const category = await createCatalog(request, headers, '/categories', { name: `A0 Khám phá ${suffix}` });
+  const book = await createCatalog(request, headers, '/books', {
+    title: `Cuốn sách khám phá ${suffix}`, authorIds: [], categoryIds: [category.id],
+  });
+  expect((await request.get(`${core}/public/catalog/books?query=${suffix}`)).status()).toBe(200);
+  expect((await request.post(`${core}/books`, { data: { title: 'Không được ghi' } })).status()).toBe(401);
+  await navigate(page, '/');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: /Cuốn sách tiếp theo/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sách mới cập nhật' })).toBeVisible();
+  await expect(page.getByRole('link', { name: category.name, exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Sách mới cập nhật' })
+    .getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
+  const categoryShelf = page.getByRole('region', { name: 'Sách theo thể loại' });
+  await categoryShelf.getByRole('button', { name: category.name, exact: true }).click();
+  await expect(categoryShelf.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
+  for (const width of [390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/landing-${width}.png`, fullPage: true });
+  }
+  await page.getByPlaceholder('Bạn muốn đọc gì?').fill(suffix);
+  await page.getByRole('button', { name: 'Tìm sách' }).click();
+  await expect(page).toHaveURL(new RegExp(`/sach\\?query=${suffix}`));
+  await expect(page.getByRole('heading', { name: 'Khám phá sách' })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
+  for (const width of [390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/catalog-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 390, height: 900 });
+  const trigger = page.getByRole('button', { name: 'Mở menu thư viện' });
+  await trigger.click();
+  await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
 });

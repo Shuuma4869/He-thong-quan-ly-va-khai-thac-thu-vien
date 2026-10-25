@@ -13,6 +13,13 @@ export type ReviewInput = { body: string; rating: number };
 export async function favoriteState(book: string, signal?: AbortSignal) {
   return z.object({ bookId: uuid, saved: z.boolean() }).parse(await coreApi.get(`/me/favorites/${pathId(book)}`, true, signal));
 }
+export async function favoriteStates(books: string[], signal?: AbortSignal) {
+  if (books.length < 1 || books.length > 50) throw new Error('Cần từ 1 đến 50 mã sách.');
+  const params = new URLSearchParams();
+  for (const book of books) params.append('bookId', pathId(book));
+  return z.object({ items: z.array(z.object({ bookId: uuid, saved: z.boolean() })) })
+    .parse(await coreApi.get(`/me/favorites/states?${params}`, true, signal)).items;
+}
 export async function listFavorites(page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(favoriteSchema), page: pageSchema }).parse(await coreApi.get(`/me/favorites?page=${page}&size=10`, true, signal));
 }
