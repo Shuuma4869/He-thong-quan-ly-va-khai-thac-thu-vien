@@ -19,6 +19,6 @@ flowchart LR
   A -- Từ chối --> X[Lưu reason để hiệu chỉnh]
 ```
 
-Score không dùng dữ liệu nhạy cảm cá nhân nếu không cần. Mọi recommendation giữ component score, data window và model/rule version. Ngân sách, số copy đang có, sách đã đặt và mùa vụ là guardrail; con người quyết định cuối.
+Score không dùng dữ liệu nhạy cảm cá nhân nếu không cần. Mỗi recommendation lưu component score, cửa sổ, thời điểm snapshot và phiên bản công thức; quyết định nội bộ lưu người duyệt, thời điểm và lý do. Số Copy hiện có được kiểm trong `acquisition-v1`; ngân sách, sách đang đặt và mùa vụ chưa có nguồn đáng tin cậy nên chưa phải guardrail đang chạy. Con người quyết định cuối.
 
-Hiện mới có hàm tính điểm `acquisition-v1` và test tại Insight. Workflow recommendation, dữ liệu nguồn Phase 7, bước duyệt và dashboard chưa được nối; sơ đồ trên là đích nghiệp vụ, không phải luồng đã vận hành.
+Hiện Insight có hàm tính điểm `acquisition-v1`, migration lưu recommendation và workflow chuyển `DRAFT` sang `APPROVED`/`REJECTED` với kiểm tra version, lý do và audit. PostgreSQL integration test kiểm các bước này trên dữ liệu thử. Chưa có read projection Core, API/UI nhân viên hay dữ liệu đề xuất được tạo trong runtime; sơ đồ trên vẫn là đích nghiệp vụ. `APPROVED` chỉ là đồng ý với đề xuất, không tạo đơn đặt mua hoặc thanh toán. Mã người tạo/người duyệt được giữ để đối chiếu quyết định; chính sách thời hạn lưu và quy trình xóa/ẩn khi nhân viên rời hệ thống cần được chốt trước vận hành thật. Không tự xóa bản ghi production theo giả định.

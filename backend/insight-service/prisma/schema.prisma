@@ -53,3 +53,47 @@ model CirculationNotice {
   @@index([readerId, occurredAt, aggregateId])
   @@map("circulation_notices")
 }
+
+// Kết quả phân tích đã chốt; các số liệu chỉ là bằng chứng dẫn xuất từ Core.
+model AcquisitionRecommendation {
+  id                    String   @id @default(uuid()) @db.Uuid
+  bookId                String   @map("book_id") @db.Uuid
+  branchId              String   @map("branch_id") @db.Uuid
+  windowFrom            DateTime @map("window_from") @db.Timestamptz(6)
+  windowTo              DateTime @map("window_to") @db.Timestamptz(6)
+  snapshotAt            DateTime @map("snapshot_at") @db.Timestamptz(6)
+  sourceContractVersion String   @map("source_contract_version") @db.VarChar(40)
+  sourceRevision        String   @map("source_revision") @db.VarChar(255)
+  scoreVersion          String   @map("score_version") @db.VarChar(40)
+  score                 Decimal  @db.Decimal(5, 1)
+  confidence            Decimal  @db.Decimal(3, 2)
+  evidence              Json     @db.JsonB
+  state                 String   @default("DRAFT") @db.VarChar(8)
+  version               Int      @default(0)
+  createdBy             String   @map("created_by") @db.Uuid
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  reviewedBy            String?  @map("reviewed_by") @db.Uuid
+  reviewedAt            DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewReason          String?  @map("review_reason") @db.VarChar(1000)
+  decisions             AcquisitionDecision[]
+
+  @@unique([bookId, branchId, windowFrom, windowTo, snapshotAt, sourceContractVersion, sourceRevision, scoreVersion], map: "uq_acquisition_source_snapshot")
+  @@index([state, createdAt, id], map: "ix_acquisition_recommendations_state_created")
+  @@index([bookId, branchId, createdAt, id], map: "ix_acquisition_recommendations_scope_created")
+  @@map("acquisition_recommendations")
+}
+
+model AcquisitionDecision {
+  id               String   @id @default(uuid()) @db.Uuid
+  recommendationId String   @map("recommendation_id") @db.Uuid
+  recommendation   AcquisitionRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Restrict)
+  action           String   @db.VarChar(8)
+  actorId          String   @map("actor_id") @db.Uuid
+  reason           String   @db.VarChar(1000)
+  version          Int
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([recommendationId, version], map: "uq_acquisition_decision_version")
+  @@index([recommendationId, createdAt, id], map: "ix_acquisition_decisions_created")
+  @@map("acquisition_decisions")
+}

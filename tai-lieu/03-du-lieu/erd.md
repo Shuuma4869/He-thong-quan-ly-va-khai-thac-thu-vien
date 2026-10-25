@@ -1,6 +1,6 @@
 # ERD mục tiêu
 
-## Insight history đã có schema
+## Insight đã có schema
 
 ```mermaid
 erDiagram
@@ -11,9 +11,32 @@ erDiagram
     jsonb attempts "provider/status, không payload"
     timestamptz created_at
   }
+  ACQUISITION_RECOMMENDATIONS ||--o{ ACQUISITION_DECISIONS : records
+  ACQUISITION_RECOMMENDATIONS {
+    uuid id PK
+    uuid book_id "Core Book; không FK xuyên database"
+    uuid branch_id "Core Branch; không FK xuyên database"
+    timestamptz window_from
+    timestamptz window_to
+    timestamptz snapshot_at
+    varchar source_revision
+    decimal score
+    decimal confidence
+    jsonb evidence
+    varchar state
+    int version
+  }
+  ACQUISITION_DECISIONS {
+    uuid id PK
+    uuid recommendation_id FK
+    varchar action
+    uuid actor_id "Core principal; không FK xuyên database"
+    varchar reason
+    int version
+  }
 ```
 
-Database Insight sở hữu lịch sử tra cứu; không nối Book bằng FK và không sao chép Catalog. Schema đã viết không tự chứng minh migration runtime đã được nghiệm thu.
+Database Insight sở hữu lịch sử tra cứu và đề xuất nội bộ; không nối Book bằng FK xuyên database và không sao chép Catalog. Migration Acquisition đã được kiểm trên PostgreSQL test riêng; luồng ứng dụng vẫn chờ read projection Core và API được bảo vệ.
 
 ## Core đã có migration
 
@@ -31,6 +54,7 @@ erDiagram
   AUTHORS ||--o{ BOOK_AUTHORS : writes
   BOOKS ||--o{ BOOK_AUTHORS : credited
   CATEGORIES ||--o{ BOOK_CATEGORIES : groups
+  CATEGORIES ||--o{ CATEGORY_ALIASES : named_by
   BOOKS ||--o{ BOOK_CATEGORIES : classified
   BOOKS ||--o{ EDITIONS : has
   PUBLISHERS |o--o{ EDITIONS : optional_publisher

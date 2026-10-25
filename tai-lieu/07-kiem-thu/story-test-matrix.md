@@ -36,6 +36,12 @@ Core clean verify tại `ff054c4` đạt 121 test; đây là mốc backend, khô
 | 21-01/02 | LoanHistoryIntegrationTest: principal/current-role, ngày/status/page/tie-break, chi nhánh/Edition lịch sử | Invalid UUID, sort/status injection, không ghi Loan/Copy; Reader/quầy UI + component/E2E | Lọc thời gian cho lịch sử trên giao diện |
 | 22-01/02 | LoanHistoryIntegrationTest: tổng và múi giờ, quyền CSV, giới hạn 10000 nhóm, GET không ghi receipt/outbox | LoanCsvExporterTest: Unicode/quote/newline/formula/empty; report-api, StaffCirculationFlow, client binary/đổi phiên; E2E tải CSV | Excel thực tế và tải production |
 
+| Phase 5–7 / AC | PostgreSQL / service | Frontend / contract | Còn thiếu để đóng phase |
+|---|---|---|---|
+| Kiểm kê | Inventory session/scan/anomaly/resolution integration; E2E mở, quét, chốt và xác nhận chuyển Copy | Inventory UI và contract hiện hành | PR #25 query/snapshot của Toàn còn findings về giới hạn phạm vi và consistency, chưa tích hợp |
+| Search và Category Alias | PublicCatalogIntegrationTest lọc tên/bí danh, unknown, nhập nhằng, tham số xung đột; Search integration có FTS/ranking | CatalogFlow, catalog-api, Core OpenAPI và E2E UI với tên Category chuẩn cho `categoryTerm` | Chưa có API quản trị Alias và benchmark relevance/tải trên tập dữ liệu thư viện thật |
+| Acquisition | `recommendations.integration.ts` kiểm migration, evidence, reload, quyết định cạnh tranh và audit; score/source unit tests | Chưa mở API/UI đề xuất khi thiếu nguồn Core | Read projection/report/CSV của Toàn, auth giữa service, E2E nguồn thật và policy retention trước vận hành |
+
 Snapshot đã xác minh ngày 23/10/2026: CI `39907400703` tại `ee929cd` đạt đủ năm job; local chạy `scripts/test-phase1-e2e.ps1 -Desktop` đạt 8/8 bài. Các yêu cầu “commit cuối” trong bảng là bước phải kiểm lại khi bàn giao một SHA mới, không còn là blocker Docker ở snapshot này. [Nguồn ảnh và kiểm EXE](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) ghi môi trường, hash binary và giới hạn.
 
 - Core: `./mvnw -B clean verify` trên Linux CI hoặc `mvnw.cmd -B clean verify` ở Windows có Docker. Unit AuthServiceTest/MemberServiceTest không khởi động Spring/PostgreSQL, không được dùng để thay full verify.

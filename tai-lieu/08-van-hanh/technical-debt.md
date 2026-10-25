@@ -12,4 +12,6 @@ Kết quả audit phụ thuộc advisory tại thời điểm chạy, không ch�
 
 ## Test coverage
 
-Auth/Member, Catalog, lưu thông, giữ chỗ và kiểm kê đã có integration PostgreSQL cùng các bài E2E riêng. Phase 7 mới có hàm tính điểm và unit test; chưa có luồng đề xuất chạy với dữ liệu báo cáo thật. Coverage của một module không chứng minh module khác đã đạt, và build installer không thay E2E WebView2 trên bản EXE tương ứng.
+Auth/Member, Catalog, lưu thông, giữ chỗ và kiểm kê đã có integration PostgreSQL cùng các bài E2E riêng. Phase 7 có hàm tính điểm và bảng lưu/duyệt đề xuất đã kiểm migration, tranh chấp và audit trên PostgreSQL test; chưa có luồng đề xuất chạy với dữ liệu báo cáo thật vì read projection Core chưa bàn giao. Chưa có API/UI nhân viên cho workflow này. Coverage của một module không chứng minh module khác đã đạt, và build installer không thay E2E WebView2 trên bản EXE tương ứng.
+
+Category Alias V23 có service/repository và Search đọc được bí danh, nhưng hiện chưa có endpoint quản trị để thủ thư tạo/sửa/xóa Alias. Cần Toàn chốt luồng nhập và quyền quản trị trong module Taxonomy trước khi coi Alias sẵn sàng vận hành; không ghi thẳng database production bằng tay để bù thiếu API.
