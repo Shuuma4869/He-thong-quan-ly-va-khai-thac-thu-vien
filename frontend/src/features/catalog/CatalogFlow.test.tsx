@@ -33,7 +33,7 @@ it('Reader tra sách, phân trang, đồng bộ query và reset trang', async ()
   fireEvent.click(screen.getByRole('button',{name:'Trang sau'}));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('page=1'))).toBe(true));
   fireEvent.click(screen.getByRole('button',{name:'Xóa bộ lọc'}));
-  await waitFor(() => expect(screen.getByLabelText('Tìm theo tên sách')).toHaveValue(''));
+  await waitFor(() => expect(screen.getByLabelText('Tìm sách')).toHaveValue(''));
   expect(screen.queryByText(/Số bản sẵn có/)).not.toBeInTheDocument();
 });
 it('debounce giữ focus và phản hồi cũ không ghi đè kết quả mới', async () => {
@@ -44,12 +44,12 @@ it('debounce giữ focus và phản hồi cũ không ghi đè kết quả mới'
     return Promise.resolve(Response.json(query==='mới'?page([{...book,title:'Kết quả mới'}]):response(url)));
   });
   app(); await screen.findByRole('link',{name:book.title});
-  const input=screen.getByLabelText('Tìm theo tên sách'); input.focus();
+  const input=screen.getByLabelText('Tìm sách'); input.focus();
   fireEvent.change(input,{target:{value:'cũ'}}); await waitFor(() => expect(old).toBeDefined());
   fireEvent.change(input,{target:{value:'mới'}}); await screen.findByRole('link',{name:'Kết quả mới'});
   await act(async () => old(Response.json(page([{...book,title:'Kết quả cũ'}]))));
   expect(screen.queryByRole('link',{name:'Kết quả cũ'})).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Tìm theo tên sách')).toHaveFocus();
+  expect(screen.getByLabelText('Tìm sách')).toHaveFocus();
 });
 it('loading, lỗi và retry được phân biệt với empty', async () => {
   let finish!:(response:Response)=>void;

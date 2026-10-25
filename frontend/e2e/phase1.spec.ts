@@ -573,6 +573,41 @@ test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận ch
   if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
 });
 
+test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang ổn định', async ({ page, request }) => {
+  const headers = await staffApi(request);
+  const author = await createCatalog(request, headers, '/authors', { name: `Nguyễn Bình ${suffix}` });
+  const exact = await createCatalog(request, headers, '/books', {
+    title: `Đường về ${suffix}`, description: 'Một câu chuyện', authorIds: [], categoryIds: [],
+  });
+  const prefix = await createCatalog(request, headers, '/books', {
+    title: `Đường về ${suffix} nhà`, authorIds: [], categoryIds: [],
+  });
+  const byAuthor = await createCatalog(request, headers, '/books', {
+    title: `Tập truyện ${suffix}`, authorIds: [author.id], categoryIds: [],
+  });
+  const isbnStem = `978${String(parseInt(suffix, 16)).padStart(9, '0').slice(-9)}`;
+  const checkDigit = (10 - Array.from(isbnStem).reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10) % 10;
+  const isbn = `${isbnStem}${checkDigit}`;
+  await createCatalog(request, headers, `/books/${prefix.id}/editions`, { isbn13: isbn });
+  await navigate(page, `/sach?query=duong%20ve%20${suffix}&sort=relevance&size=1`);
+  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
+  await expect(page.getByText(/Trang 1 \/ \d+ · \d+ kết quả/)).toBeVisible();
+  await page.getByRole('button', { name: 'Trang sau' }).click();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toBeVisible();
+  const authorSearch = await request.get(`${core}/public/catalog/books`, {
+    params: { query: `nguyen binh ${suffix}`, sort: 'relevance' },
+  });
+  expect(authorSearch.status()).toBe(200);
+  expect((await authorSearch.json()).items[0].id).toBe(byAuthor.id);
+  const isbnSearch = await request.get(`${core}/public/catalog/books`, {
+    params: { query: isbn, sort: 'relevance' },
+  });
+  expect(isbnSearch.status()).toBe(200);
+  expect((await isbnSearch.json()).items[0].id).toBe(prefix.id);
+});
+
 test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn mốc responsive', async ({ page, request }) => {
   test.setTimeout(120_000);
   const headers = await staffApi(request);

@@ -21,13 +21,16 @@ paths:
       operationId: listPublicBooks
       tags: [PublicCatalog]
       summary: Tìm tác phẩm công khai; bìa lấy từ ấn bản mới nhất có ảnh được duyệt
-      description: Ảnh Google Books chưa bật. Có thể sắp xếp theo tên hoặc mới cập nhật cùng bộ lọc. Giới hạn 300 request/phút/IP.
+      description: >-
+        Ảnh Google Books chưa bật. sort=relevance yêu cầu query; tìm theo tên, mô tả,
+        tác giả hoặc ISBN, hỗ trợ không dấu và gần đúng theo tên. Thứ tự điểm và ID ổn định
+        trong một request, các trang request khác nhau không phải snapshot. Giới hạn 300 request/phút/IP.
       security: []
       parameters:
         - { in: query, name: query, schema: { type: string, maxLength: 500 } }
         - { in: query, name: authorId, schema: { type: string, format: uuid } }
         - { in: query, name: categoryId, schema: { type: string, format: uuid } }
-        - { in: query, name: sort, schema: { type: string, enum: [title, updated], default: title } }
+        - { in: query, name: sort, schema: { type: string, enum: [title, updated, relevance], default: title } }
         - { in: query, name: page, schema: { type: integer, minimum: 0, default: 0 } }
         - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
       responses:

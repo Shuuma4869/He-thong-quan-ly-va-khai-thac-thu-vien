@@ -15,7 +15,7 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | Author (`authors`, V3) | Tác giả | UUID `id`; `name` bắt buộc, tối đa 200 ký tự; index theo tên; không áp đặt tên duy nhất; không xóa khi còn Book tham chiếu | Core/Catalog |
 | Category (`categories`, V4) | Thể loại | UUID `id`; `name` hiển thị; `normalized_name` duy nhất sau chuẩn hóa Unicode NFKC, gộp khoảng trắng và không phân biệt hoa thường | Core/Catalog |
 | Publisher (`publishers`, V5) | Nhà xuất bản | UUID `id`; `name` bắt buộc, tối đa 200 ký tự; index theo tên; không áp đặt tên duy nhất | Core/Catalog |
-| Book (`books`, V6) | Tác phẩm logic | UUID `id`; title và normalized title; description tùy chọn; quan hệ nhiều-nhiều với Author/Category; không chứa barcode hoặc số lượng availability | Core/Catalog |
+| Book (`books`, V6/V22) | Tác phẩm logic | UUID `id`; title, normalized title, description; V22 thêm `search_title`, `search_description`, `search_vector` để tra cứu, cập nhật qua trigger; quan hệ nhiều-nhiều với Author/Category; không chứa barcode hoặc số lượng availability | Core/Catalog |
 | Favorite (`favorites`, V14) | Liên kết sách yêu thích của user | FK `user_id`/`book_id`; unique ghép `(user_id, book_id)`; `created_at` UTC; xóa User hoặc Book sẽ cascade liên kết | Core/Reader contributions |
 | Review (`reviews`, V15) | Review và rating công khai của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `created_at`/`updated_at`; chưa có workflow moderation | Core/Reader contributions |
 | Edition (`editions`, V7) | Ấn bản của Book | UUID `id`; Book FK bắt buộc; Publisher tùy chọn; ISBN-13 tùy chọn, chưa unique; năm và ngôn ngữ tùy chọn | Core/Catalog |
@@ -34,8 +34,8 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | InventoryScan (`inventory_scans`, V20) | Lượt quét append-only | client_scan_id duy nhất trong phiên, barcode/kệ/người quét/thời điểm server; retry qua biên nhận giao dịch | Core/Inventory |
 | InventoryAnomaly (`inventory_anomalies`, V20) | Bất thường đã chốt | sáu kind, evidence JSONB cố định, Copy có thể null, thời điểm phát hiện | Core/Inventory |
 | InventoryResolution (`inventory_resolutions`, V21) | Quyết định rà soát của nhân viên | duy nhất theo anomaly; REVIEWED hoặc MOVE_TO_SCANNED_SHELF, reason, version Copy, actor và thời điểm | Core/Inventory |
-| SearchEvent | Một truy vấn đã ẩn danh/giảm PII | query normalized, filters, result count, session hash, time | Insight/Analytics |
-| DemandSignal | Tín hiệu nhu cầu quy chuẩn | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
+| SearchEvent (thiết kế, chưa có bảng) | Tín hiệu tìm kiếm dự kiến | Chưa ghi query, kết quả rỗng hoặc session hash; không được dùng làm dữ liệu báo cáo hiện tại | Insight/Analytics |
+| DemandSignal (thiết kế, chưa có bảng) | Tín hiệu nhu cầu quy chuẩn dự kiến | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
 
 V13 cấp version media bằng `catalog_media_revision_seq` cho mỗi lần tạo/thay ảnh, bắt đầu trên version lớn nhất khi nâng cấp. Không reset khi gỡ ảnh; request cũ không được áp dụng lên tham chiếu tạo lại. Sequence có thể có khoảng trống; không dùng làm số lượng ảnh hoặc số lần chỉnh sửa.
 
@@ -46,7 +46,7 @@ V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book
 V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, không backfill giao dịch hay đổi trạng thái Copy cũ. Chi tiết transaction, trạng thái dẫn xuất, FK, policy PROVISIONAL và retention xem [kiến trúc lưu thông](../02-kien-truc/circulation.md). V18 dùng composite FK Book/Edition để ngăn chọn ấn bản thuộc đầu sách khác; quan hệ Copy/Loan đúng với Hold vẫn do command kiểm trong transaction.
 
 - Identity: `roles`, `user_roles`, `refresh_tokens`.
-- Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7.
+- Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7; V22 thêm chỉ mục tìm kiếm Book, không tạo bảng SearchEvent.
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; phiên/snapshot/scan/anomaly ở V20 và resolution ở V21. `copy_location_history` chuyên biệt chưa có; quyết định chuyển kệ từ kiểm kê được truy qua resolution và version Copy.
 - Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
 - Discovery: `search_documents`, `acquisition_recommendations`.

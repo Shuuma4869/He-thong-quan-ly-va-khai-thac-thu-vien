@@ -6,7 +6,7 @@ Staff Catalog có vùng “Lịch sử tra cứu ISBN” (không route mới), o
 |---|---|---|
 | Public | Landing `/`, đăng nhập, đăng ký, 404 | Landing dùng ảnh thư viện và danh mục Core thật; các trang còn lại đã có |
 | Reader/Staff/Admin | Profile chỉ đọc | Đã triển khai Phase 1C; API /me/profile |
-| Reader/Staff/Admin | Catalog list/filter, Book Detail và Author Detail | Phase 2; đọc API Core thật |
+| Reader/Staff/Admin | Catalog list/filter, Book Detail và Author Detail | Phase 2 đọc API Core thật; Phase 6 thêm tìm kiếm xếp hạng/không dấu |
 | Reader/Staff/Admin | My Library: Favorites và Reviews của mình; Review/Rating trong Book Detail | Phase 3; `/thu-vien-cua-toi`, Core API thật |
 | Reader | Loans, Holds, History mượn trả | `/muon-va-giu-cho` đã có; thông báo mới lưu nội bộ tại Insight, chưa có hộp thư UI |
 | Staff | Dashboard | Đã có; yêu cầu quyền nhân viên |

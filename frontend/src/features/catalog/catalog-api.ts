@@ -30,11 +30,17 @@ export type Named = z.infer<typeof named>;
 const integer = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
 export const catalogQuerySchema = z.object({ query: z.string().max(500).default(''),
   authorId: z.union([z.string().uuid(), z.literal('')]).default(''), categoryId: z.union([z.string().uuid(), z.literal('')]).default(''),
-  page: integer(0, 0, 2147483647), size: integer(20, 1, 50), sort: z.enum(['title', 'updated']).default('title') });
+  page: integer(0, 0, 2147483647), size: integer(20, 1, 50), sort: z.enum(['title', 'updated', 'relevance']).default('title') })
+  .refine(value => value.sort !== 'relevance' || value.query.trim().length > 0);
 export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
-export function parseCatalogQuery(params: URLSearchParams) { return catalogQuerySchema.safeParse(Object.fromEntries(params)); }
+export function parseCatalogQuery(params: URLSearchParams) {
+  const values = Object.fromEntries(params);
+  if (!('sort' in values) && typeof values.query === 'string' && values.query.trim()) values.sort = 'relevance';
+  return catalogQuerySchema.safeParse(values);
+}
 export function catalogParams(value: CatalogQuery) {
-  return new URLSearchParams(Object.entries(value).filter(([key, v]) => v !== '' && (key !== 'sort' || v !== 'title'))
+  return new URLSearchParams(Object.entries(value).filter(([key, v]) => v !== ''
+    && (key !== 'sort' || v !== 'title' || value.query.trim() !== ''))
     .map(([k, v]) => [k, String(v)]));
 }
 export function resourcePath(resource: Resource, bookId?: string) {

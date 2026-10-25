@@ -106,6 +106,49 @@ class PublicCatalogIntegrationTest {
                 .andExpect(jsonPath("$.items[0].id").value(older.toString()));
     }
 
+    @Test void relevanceSearchHandlesVietnameseIsbnAuthorAndStablePages() throws Exception {
+        UUID exact = UUID.randomUUID(), prefix = UUID.randomUUID(), authorBook = UUID.randomUUID();
+        UUID author = UUID.randomUUID(), edition = UUID.randomUUID(), category = UUID.randomUUID();
+        jdbc.update("INSERT INTO authors(id,name) VALUES (?,'Nguyễn Bình')", author);
+        jdbc.update("INSERT INTO categories(id,name,normalized_name) VALUES (?,'Truyện dài','truyện dài')", category);
+        jdbc.update("INSERT INTO books(id,title,normalized_title,description) VALUES "
+                + "(?,'Đường về','đường về','Một câu chuyện'),"
+                + "(?,'Đường về nhà','đường về nhà','Một hành trình'),"
+                + "(?,'Tập truyện khác','tập truyện khác','Đọc mỗi ngày')", exact, prefix, authorBook);
+        jdbc.update("INSERT INTO book_authors(book_id,author_id) VALUES (?,?)", authorBook, author);
+        jdbc.update("INSERT INTO book_categories(book_id,category_id) VALUES (?,?)", exact, category);
+        jdbc.update("INSERT INTO editions(id,book_id,isbn13) VALUES (?,?,?)", edition, prefix, "9780140328721");
+        String path = "/api/v1/public/catalog/books";
+        mvc.perform(get(path).param("query", "duong ve").param("sort", "relevance").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(exact.toString()));
+        mvc.perform(get(path).param("query", "duong ve").param("sort", "relevance")
+                        .param("size", "1").param("page", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(prefix.toString()));
+        mvc.perform(get(path).param("query", "9780140328721").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(prefix.toString()));
+        mvc.perform(get(path).param("query", "nguyen binh").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(authorBook.toString()));
+        mvc.perform(get(path).param("query", "nguyen binh").param("sort", "title"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1));
+        mvc.perform(get(path).param("query", "duong ve nhaa").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(prefix.toString()));
+        mvc.perform(get(path).param("query", "mot cau chuyen").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(exact.toString()));
+        mvc.perform(get(path).param("query", "duong ve").param("sort", "relevance")
+                        .param("categoryId", category.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1));
+        mvc.perform(get(path).param("sort", "relevance"))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("query", "' OR 1=1 --").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        mvc.perform(get(path).param("query", "%").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        jdbc.update("UPDATE books SET title='Đường mới',normalized_title='đường mới' WHERE id=?", exact);
+        mvc.perform(get(path).param("query", "duong moi").param("sort", "relevance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(exact.toString()));
+    }
+
     private void insertCover(UUID edition, UUID staff, String source) {
         jdbc.update("""
             INSERT INTO catalog_media_references(id,edition_id,source,source_id,source_url,image_url,
