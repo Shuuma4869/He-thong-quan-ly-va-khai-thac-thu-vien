@@ -4,6 +4,8 @@ import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.identity.application.AuthService;
 import io.github.shuuma4869.lams.core.identity.domain.RoleCode;
 import io.github.shuuma4869.lams.core.inventory.copy.domain.BookCopy;
+import io.github.shuuma4869.lams.core.inventory.copy.domain.InventoryScopeCopy;
+import io.github.shuuma4869.lams.core.inventory.copy.domain.InventoryScopeFilter;
 import io.github.shuuma4869.lams.core.inventory.copy.infrastructure.BookCopyRepository;
 import java.util.List;
 import java.util.Locale;
@@ -17,14 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class BookCopyService {
     public record PageMetadata(int number, int size, long totalElements, long totalPages) {}
 
-    public record CopyPage(List<BookCopy> items, PageMetadata page) {}
+    public record CopyPage(List<InventoryScopeCopy> items, PageMetadata page) {}
 
     private final BookCopyRepository copies;
+    private final InventoryScopeQueryService inventoryScope;
     private final AuthService identity;
     private final JdbcTemplate jdbc;
 
-    public BookCopyService(BookCopyRepository copies, AuthService identity, JdbcTemplate jdbc) {
+    public BookCopyService(BookCopyRepository copies, InventoryScopeQueryService inventoryScope,
+                           AuthService identity, JdbcTemplate jdbc) {
         this.copies = copies;
+        this.inventoryScope = inventoryScope;
         this.identity = identity;
         this.jdbc = jdbc;
     }
@@ -56,16 +61,15 @@ public class BookCopyService {
 
     public CopyPage list(UUID actorId, UUID editionId, UUID shelfId, String statusValue,
                          String pageValue, String sizeValue) {
-        requireStaff(actorId);
-        if (editionId != null) requireEdition(editionId);
-        if (shelfId != null) requireShelf(shelfId);
-        String status = normalizeStatusFilter(statusValue);
-        int page = parseInteger(pageValue, 0, Integer.MAX_VALUE, "page");
-        int size = parseInteger(sizeValue, 20, 100, "size");
-        if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");
-        var result = copies.list(editionId, shelfId, status, page, size);
-        long pages = result.totalElements() == 0 ? 0 : (result.totalElements() + size - 1) / size;
-        return new CopyPage(result.items(), new PageMetadata(page, size, result.totalElements(), pages));
+        return list(actorId, null, editionId, shelfId, null, statusValue, pageValue, sizeValue);
+    }
+
+    public CopyPage list(UUID actorId, UUID branchId, UUID editionId, UUID shelfId, String barcode,
+                         String statusValue, String pageValue, String sizeValue) {
+        var result = inventoryScope.page(actorId,
+                new InventoryScopeFilter(branchId, editionId, shelfId, barcode, statusValue), pageValue, sizeValue);
+        return new CopyPage(result.items(), new PageMetadata(result.page().number(), result.page().size(),
+                result.page().totalElements(), result.page().totalPages()));
     }
 
     @Transactional
@@ -103,12 +107,6 @@ public class BookCopyService {
         }
     }
 
-    private void requireShelf(UUID id) {
-        if (jdbc.queryForObject("SELECT count(*) FROM shelves WHERE id=?", Integer.class, id) == 0) {
-            throw new AuthFailure(404, "Không tìm thấy kệ.");
-        }
-    }
-
     private void lockShelf(UUID id) {
         if (jdbc.query("SELECT id FROM shelves WHERE id=? FOR UPDATE",
                 (rs, row) -> rs.getObject(1, UUID.class), id).isEmpty()) {
@@ -128,27 +126,6 @@ public class BookCopyService {
         String value = barcode.trim();
         if (value.length() > 100) throw invalid("Mã vạch không được vượt quá 100 ký tự.");
         return value;
-    }
-
-    private static String normalizeStatusFilter(String value) {
-        if (value == null || value.isBlank()) return null;
-        String status = value.trim().toUpperCase(Locale.ROOT);
-        if (!List.of("IN_PROCESS", "AVAILABLE", "ON_LOAN", "ON_HOLD", "LOST", "DAMAGED", "WITHDRAWN")
-                .contains(status)) {
-            throw invalid("Trạng thái bản sách không hợp lệ.");
-        }
-        return status;
-    }
-
-    private static int parseInteger(String value, int defaultValue, int max, String field) {
-        if (value == null || value.isBlank()) return defaultValue;
-        try {
-            int parsed = Integer.parseInt(value);
-            if (parsed < 0 || parsed > max) throw invalid(field + " nằm ngoài giới hạn cho phép.");
-            return parsed;
-        } catch (NumberFormatException error) {
-            throw invalid(field + " phải là số nguyên.");
-        }
     }
 
     private static AuthFailure invalid(String message) {

@@ -51,12 +51,14 @@ public class BookCopyController {
 
     @GetMapping
     public BookCopyService.CopyPage list(JwtAuthenticationToken token,
+                                         @RequestParam(required = false) UUID branchId,
                                          @RequestParam(required = false) UUID editionId,
                                          @RequestParam(required = false) UUID shelfId,
+                                         @RequestParam(required = false) String barcode,
                                          @RequestParam(required = false) String status,
                                          @RequestParam(required = false) String page,
                                          @RequestParam(required = false) String size) {
-        return copies.list(actorId(token), editionId, shelfId, status, page, size);
+        return copies.list(actorId(token), branchId, editionId, shelfId, barcode, status, page, size);
     }
 
     @GetMapping("/{copyId}")
