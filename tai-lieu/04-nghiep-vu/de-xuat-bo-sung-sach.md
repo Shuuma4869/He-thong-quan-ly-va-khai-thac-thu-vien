@@ -20,3 +20,5 @@ flowchart LR
 ```
 
 Score không dùng dữ liệu nhạy cảm cá nhân nếu không cần. Mọi recommendation giữ component score, data window và model/rule version. Ngân sách, số copy đang có, sách đã đặt và mùa vụ là guardrail; con người quyết định cuối.
+
+Hiện mới có hàm tính điểm `acquisition-v1` và test tại Insight. Workflow recommendation, dữ liệu nguồn Phase 7, bước duyệt và dashboard chưa được nối; sơ đồ trên là đích nghiệp vụ, không phải luồng đã vận hành.
