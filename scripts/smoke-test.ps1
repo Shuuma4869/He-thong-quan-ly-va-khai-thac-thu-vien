@@ -5,7 +5,6 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Get-LamsRoot
 Import-LamsEnv (Join-Path $projectRoot '.env')
 $pgUser = Get-LamsSetting 'POSTGRES_USER' 'lams'
-$minioPort = [int](Get-LamsSetting 'MINIO_API_PORT' '19000')
 
 Push-Location $projectRoot
 try {
@@ -41,6 +40,7 @@ try {
     try { Invoke-LamsNative 'node' @('scripts/kafka-smoke.mjs') 'Kafka external host produce/consume thất bại' } finally { Pop-Location }
 
     if ($IncludeMinio) {
+        $minioPort = [int](Get-LamsSetting 'MINIO_API_PORT' '19000')
         $response = Invoke-WebRequest -UseBasicParsing -Uri "http://localhost:$minioPort/minio/health/live" -TimeoutSec 10
         if ($response.StatusCode -ne 200) { throw 'MinIO health không trả HTTP 200.' }
         Write-Host '[OK] MinIO health.' -ForegroundColor Green
