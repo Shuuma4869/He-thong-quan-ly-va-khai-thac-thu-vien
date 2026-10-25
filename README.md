@@ -6,7 +6,9 @@ LAMS là nền tảng quản lý và khai thác thư viện: giúp người đ�
 
 Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Phạm vi và đầu ra công việc được quản lý trong [hướng dẫn thành viên](tai-lieu/00-bat-dau/huong-dan-thanh-vien.md); kết quả từng lần chạy xem ở CI của PR.
 
-Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Phase 2 có Catalog/Inventory API, giao diện tra cứu và quản trị tám loại dữ liệu, metadata theo ISBN và tham chiếu ảnh duyệt thủ công. Xem [hợp đồng Catalog](tai-lieu/05-api-va-event/catalog-contract.md) và [kiến trúc Catalog/media](tai-lieu/02-kien-truc/catalog-media.md). Mượn/trả và tìm kiếm nâng cao chưa triển khai; đây chưa phải sản phẩm hoàn chỉnh.
+Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Phase 2 có Catalog/Inventory API, giao diện tra cứu và quản trị tám loại dữ liệu, metadata theo ISBN và tham chiếu ảnh duyệt thủ công. Xem [hợp đồng Catalog](tai-lieu/05-api-va-event/catalog-contract.md) và [kiến trúc Catalog/media](tai-lieu/02-kien-truc/catalog-media.md).
+
+Trên `main`, Phase 4 đã có mượn/trả, gia hạn, giữ chỗ, outbox và thông báo; Phase 5 đã có phiên kiểm kê, quét và xử lý bất thường; Phase 6 đã có tìm kiếm FTS/trigram và xếp hạng trên PostgreSQL. Truy vấn snapshot kiểm kê của Toàn vẫn ở [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25), Taxonomy/alias và read projection Acquisition của Toàn chưa tích hợp. Công thức điểm Acquisition của Tuan ở [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27) còn là draft; chưa có quy trình đề xuất mua hoàn chỉnh. Chưa nghiệm thu end-to-end từ HTTP Core qua Kafka đến Insight. Vì vậy Phase 5–7 và bản phát hành toàn hệ thống chưa được đánh dấu hoàn tất.
 
 ## Kiến trúc ngắn
 
@@ -20,7 +22,7 @@ Phase 3 đã merge qua [PR #13](https://github.com/Shuuma4869/He-thong-quan-ly-v
 - `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.
 - `backend/insight-service`: NestJS + Prisma, dành cho discovery, analytics và tích hợp bất đồng bộ.
 - `PostgreSQL`: hai database `lams_core`, `lams_insight`; là source of truth.
-- `Redis`, `Kafka`, `MinIO`: hạ tầng cho cache/coordination, event transport và object storage theo roadmap; không coi dịch vụ có trong Compose là nghiệp vụ đã tích hợp.
+- `Redis`, `Kafka`: hạ tầng cho cache/coordination và event transport. MinIO là dịch vụ tùy chọn, mặc định tắt; ảnh Catalog hiện lưu tham chiếu URL đã duyệt, chưa dùng MinIO để lưu ảnh.
 
 ## Yêu cầu môi trường
 
