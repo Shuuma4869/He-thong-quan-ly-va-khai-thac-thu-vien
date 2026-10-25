@@ -46,8 +46,11 @@ public class PublicCatalogService {
         bounds(page, size, 50);
         String term = CatalogText.key(query);
         if (term.length() > 500) throw invalid("Từ khóa không được vượt quá 500 ký tự.");
-        if (!sort.equals("title") && !sort.equals("updated")) throw invalid("Kiểu sắp xếp không hợp lệ.");
-        var listed = books.list(page, size, term, authorId, categoryId, sort);
+        if (!sort.equals("title") && !sort.equals("updated") && !sort.equals("relevance"))
+            throw invalid("Kiểu sắp xếp không hợp lệ.");
+        if (sort.equals("relevance") && term.isBlank()) throw invalid("Cần từ khóa để sắp xếp theo mức độ phù hợp.");
+        var listed = term.isBlank() ? books.list(page, size, term, authorId, categoryId, sort)
+                : books.search(page, size, term, authorId, categoryId, sort);
         var ids = listed.items().stream().map(Book::id).toList();
         var covers = covers(ids);
         var ratings = ratings(ids);
