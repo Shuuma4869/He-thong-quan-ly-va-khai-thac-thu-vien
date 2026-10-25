@@ -83,7 +83,7 @@ Insight từ Phase 2.5 yêu cầu PostgreSQL sẵn sàng khi khởi động. N�
 .\scripts\stop-infra.ps1
 ```
 
-Script chỉ chạy `docker compose down`, không xóa named volume. Xem [xử lý lỗi môi trường](xu-ly-loi-moi-truong.md) trước khi can thiệp dữ liệu.
+Script chạy `docker compose --profile media down` để dừng cả MinIO nếu dịch vụ tùy chọn đã được bật; không xóa named volume. Xem [xử lý lỗi môi trường](xu-ly-loi-moi-truong.md) trước khi can thiệp dữ liệu.
 
 ## Desktop và web
 
