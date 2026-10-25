@@ -39,6 +39,7 @@ describe('acquisition score', () => {
 
   it('từ chối dữ liệu thời gian, số bản và số đếm không nhất quán', () => {
     expect(() => scoreDemand({ ...facts, copiesAvailable: 3 })).toThrow('vượt tổng');
+    expect(() => scoreDemand({ ...facts, copiesOwned: null as unknown as number })).toThrow('Thiếu số liệu');
     expect(() => scoreDemand({ ...facts, waitingHolds: -1 })).toThrow('số đếm');
     expect(() => scoreDemand({ ...facts, loansStarted: 1.5 })).toThrow('số đếm');
     expect(() => scoreDemand({ ...facts, bookId: 'book' })).toThrow('không hợp lệ');

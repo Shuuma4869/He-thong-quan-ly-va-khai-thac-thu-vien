@@ -73,6 +73,8 @@ export function scoreDemand(facts: DemandFacts): DemandScore {
   const asOf = instant(facts.window.asOf, 'asOf');
   if (to <= from || to - from > 366 * 86_400_000 || asOf < to)
     throw new Error('Khoảng thời gian hoặc thời điểm chốt dữ liệu không hợp lệ.');
+  if (facts.copiesOwned === null || facts.copiesAvailable === null)
+    throw new Error('Thiếu số liệu bản sách tại thời điểm chốt.');
   count(facts.copiesOwned, 'copiesOwned');
   count(facts.copiesAvailable, 'copiesAvailable');
   count(facts.waitingHolds, 'waitingHolds');
