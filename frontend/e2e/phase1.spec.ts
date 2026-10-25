@@ -664,3 +664,25 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn m
   await page.reload();
   await expect(page.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
 });
+
+test('Phase 7: reader bị chặn, nhân viên thấy trạng thái chưa có nguồn dữ liệu', async ({ page, request }) => {
+  const insight = process.env.LAMS_E2E_INSIGHT_URL!;
+  const reader = await request.post(`${core}/auth/login`, { data: {
+    identifier: accounts.READER.email, password, remember: false,
+  } });
+  expect(reader.status()).toBe(200);
+  const token = String((await reader.json()).accessToken);
+  expect((await request.get(`${insight}/acquisition/recommendations`,
+    { headers: { Authorization: `Bearer ${token}` } })).status()).toBe(403);
+
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/nhan-vien/de-xuat-bo-sung');
+  await expect(page.getByRole('heading', { name: 'Đề xuất bổ sung sách' })).toBeVisible();
+  await expect(page.getByText(/Chưa có đề xuất phù hợp/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Tạo đề xuất/ })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(/Chưa có đề xuất phù hợp/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/acquisition-empty-390.png', fullPage: true });
+});

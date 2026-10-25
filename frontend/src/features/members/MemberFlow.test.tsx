@@ -41,6 +41,7 @@ it('loading, lỗi rồi retry hồ sơ thành công', async () => {
     ? Promise.resolve(Response.json(session)) : new Promise<Response>(resolve => { finish = resolve; }));
   app();
   expect(await screen.findByText('Đang tải hồ sơ…')).toBeInTheDocument();
+  await waitFor(() => expect(finish).toBeDefined());
   await act(async () => finish(Response.json({ detail: 'internal trace' }, { status: 500 })));
   expect(await screen.findByRole('alert')).not.toHaveTextContent('internal trace');
   fetchMock.mockResolvedValue(Response.json(profile));

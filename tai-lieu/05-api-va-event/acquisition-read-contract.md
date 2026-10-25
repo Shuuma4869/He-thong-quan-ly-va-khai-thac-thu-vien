@@ -1,6 +1,6 @@
 # Dữ liệu đầu vào cho điểm nhu cầu
 
-Đây là hợp đồng đầu vào phía Insight để nối với read projection Phase 7 của Toàn. Chưa có endpoint Core tương ứng; tên route và DTO bên ngoài cần được review cùng PR của Toàn. Insight không đọc database Core trực tiếp. `AcquisitionFactsPort` và `demandFactsFromSource` chỉ kiểm dữ liệu nhận được, chưa tự tải hoặc tạo số đếm. `RecommendationWorkflow` lưu điểm, bằng chứng và quyết định vào database Insight khi được gọi từ mã tin cậy; hiện chưa có route HTTP tạo đề xuất hay nguồn Core để gọi nó trong runtime.
+Đây là hợp đồng đầu vào phía Insight để nối với read projection Phase 7 của Toàn. Chưa có endpoint Core tương ứng; tên route và DTO bên ngoài cần được review cùng PR của Toàn. Insight không đọc database Core trực tiếp. `AcquisitionFactsPort` và `demandFactsFromSource` chỉ kiểm dữ liệu nhận được, chưa tự tải hoặc tạo số đếm. `RecommendationWorkflow` lưu điểm, bằng chứng và quyết định vào database Insight khi được gọi từ mã tin cậy. API nhân viên hiện chỉ đọc danh sách/chi tiết và quyết định; chưa mở route HTTP tạo đề xuất vì chưa có nguồn Core để gọi trong runtime.
 
 Mỗi lần lấy dữ liệu phải gắn `bookId`, `branchId`, cửa sổ UTC `[from,to)`, `asOf` và phiên bản nguồn. Các số đếm trong một response phải được chốt ở cùng một snapshot PostgreSQL. `asOf` là thời điểm chốt trạng thái hiện tại; không được diễn giải `copiesOwned`, `copiesAvailable` hoặc `waitingHolds` là trạng thái lịch sử tại `from` hay `to`. Cửa sổ và `asOf` phải đáp ứng giới hạn trong [công thức điểm](../04-nghiep-vu/thuat-toan/acquisition-score.md).
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BarChart3, BookCopy, BookOpen, ClipboardList, Heart, House, LibraryBig,
+import { BarChart3, BookCopy, BookOpen, ClipboardList, Heart, House, LibraryBig, Lightbulb,
   LogIn, Star, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
@@ -17,6 +17,7 @@ const staffGroups: Group[] = [
     { label: 'Quầy lưu thông', to: '/nhan-vien/luu-thong', icon: ClipboardList },
     { label: 'Kiểm kê kệ sách', to: '/nhan-vien/kiem-ke', icon: BookCopy },
     { label: 'Báo cáo mượn', to: '/nhan-vien/bao-cao-luu-thong', icon: BarChart3 },
+    { label: 'Đề xuất bổ sung', to: '/nhan-vien/de-xuat-bo-sung', icon: Lightbulb },
   ] },
   { title: 'Danh mục & tài khoản', items: [
     { label: 'Danh mục', to: '/nhan-vien/danh-muc', icon: BookCopy },

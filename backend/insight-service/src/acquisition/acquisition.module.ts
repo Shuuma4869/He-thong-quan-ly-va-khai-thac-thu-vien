@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../shared/prisma.module';
 import { RecommendationWorkflow } from './recommendation-workflow';
+import { AcquisitionController } from './acquisition.controller';
+import { AcquisitionGuard } from './acquisition.guard';
 
-/** Chưa mở HTTP tạo đề xuất khi Core chưa bàn giao read projection. */
-@Module({ imports: [PrismaModule], providers: [RecommendationWorkflow], exports: [RecommendationWorkflow] })
+/** Chỉ mở xem và quyết định; tạo đề xuất chờ nguồn Core được bảo vệ. */
+@Module({ imports: [PrismaModule], controllers: [AcquisitionController],
+  providers: [RecommendationWorkflow, AcquisitionGuard], exports: [RecommendationWorkflow] })
 export class AcquisitionModule {}
