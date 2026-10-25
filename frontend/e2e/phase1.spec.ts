@@ -313,7 +313,7 @@ test('Phase 2 Reader: lọc server, nhiều ấn bản, Author, reload và chặ
   await createCatalog(request,headers,`/books/${book.id}/editions`,{publicationYear:2024,language:'vi'});
   await createCatalog(request,headers,'/books',{title:`Catalog ${suffix} second`,authorIds:[author.id],categoryIds:[category.id]});
   await page.setViewportSize({width:390,height:844}); await loginCatalog(page,'READER');
-  await navigate(page,`/sach?query=${suffix}&authorId=${author.id}&categoryId=${category.id}&size=1&page=0`);
+  await navigate(page,`/sach?query=${suffix}&authorId=${author.id}&categoryId=${category.id}&sort=title&size=1&page=0`);
   await expect(page.getByRole('link',{name:`Catalog ${suffix}`,exact:true})).toBeVisible();
   await expect(page.getByText('Trang 1 / 2 · 2 kết quả')).toBeVisible();
   await page.getByRole('button',{name:'Trang sau'}).click();await expect(page).toHaveURL(/page=1/);
