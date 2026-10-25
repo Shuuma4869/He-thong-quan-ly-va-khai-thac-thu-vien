@@ -36,6 +36,9 @@ server:
   port: ${CORE_PORT:8080}
 
 lams:
+  outbox:
+    enabled: ${OUTBOX_ENABLED:false}
+    job-enabled: ${OUTBOX_JOB_ENABLED:true}
   circulation:
     max-active-holds: ${CIRCULATION_MAX_ACTIVE_HOLDS:10}
     hold-job-enabled: ${CIRCULATION_HOLD_JOB_ENABLED:true}
