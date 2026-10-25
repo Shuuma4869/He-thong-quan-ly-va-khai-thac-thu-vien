@@ -39,7 +39,7 @@ class CatalogIntegrationTest {
     @Test
     void freshDatabaseAppliesAllCatalogAndInventoryMigrations() {
         assertThat(jdbc.queryForObject("SELECT version FROM flyway_schema_history WHERE success "
-                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(21);
+                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(22);
         for (String table : new String[]{"authors", "categories", "publishers", "books", "book_authors",
                 "book_categories", "editions", "branches", "shelves", "book_copies", "catalog_media_references",
                 "favorites", "reviews", "loans", "circulation_requests", "copy_state_changes",
@@ -49,7 +49,7 @@ class CatalogIntegrationTest {
         }
         var bookColumns = jdbc.queryForList("SELECT column_name FROM information_schema.columns "
                 + "WHERE table_schema='public' AND table_name='books'", String.class);
-        assertThat(bookColumns).contains("title", "normalized_title", "description")
+        assertThat(bookColumns).contains("title", "normalized_title", "description", "search_title", "search_vector")
                 .doesNotContain("available", "total", "barcode");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_indexes WHERE schemaname='public' "
                 + "AND indexname IN ('uq_shelves_branch_code','book_copies_barcode_key','book_authors_pkey',"

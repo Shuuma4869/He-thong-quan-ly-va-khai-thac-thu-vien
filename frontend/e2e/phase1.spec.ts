@@ -585,7 +585,10 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
   const byAuthor = await createCatalog(request, headers, '/books', {
     title: `Tập truyện ${suffix}`, authorIds: [author.id], categoryIds: [],
   });
-  await createCatalog(request, headers, `/books/${prefix.id}/editions`, { isbn13: '9780140328721' });
+  const isbnStem = `978${String(parseInt(suffix, 16)).padStart(9, '0').slice(-9)}`;
+  const checkDigit = (10 - [...isbnStem].reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10) % 10;
+  const isbn = `${isbnStem}${checkDigit}`;
+  await createCatalog(request, headers, `/books/${prefix.id}/editions`, { isbn13: isbn });
   await navigate(page, `/sach?query=duong%20ve%20${suffix}&sort=relevance&size=1`);
   await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
   await expect(page.getByText(/Trang 1 \/ \d+ · \d+ kết quả/)).toBeVisible();
@@ -599,7 +602,7 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
   expect(authorSearch.status()).toBe(200);
   expect((await authorSearch.json()).items[0].id).toBe(byAuthor.id);
   const isbnSearch = await request.get(`${core}/public/catalog/books`, {
-    params: { query: '9780140328721', sort: 'relevance' },
+    params: { query: isbn, sort: 'relevance' },
   });
   expect(isbnSearch.status()).toBe(200);
   expect((await isbnSearch.json()).items[0].id).toBe(prefix.id);
