@@ -36,6 +36,17 @@ it('Reader tra sách, phân trang, đồng bộ query và reset trang', async ()
   await waitFor(() => expect(screen.getByLabelText('Tìm sách')).toHaveValue(''));
   expect(screen.queryByText(/Số bản sẵn có/)).not.toBeInTheDocument();
 });
+it('ô tìm nhanh giữ bộ lọc hiện có và đưa từ khóa vào truy vấn server', async () => {
+  app('/sach?categoryTerm=Kinh%20dien');
+  await screen.findByRole('link',{name:book.title});
+  fireEvent.change(screen.getByRole('searchbox',{name:'Từ khóa tra cứu'}),{target:{value:'  Jane Austen  '}});
+  fireEvent.click(screen.getByRole('button',{name:'Tìm trong thư viện'}));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => {
+    const target=new URL(String(url));
+    return target.pathname.endsWith('/public/catalog/books') && target.searchParams.get('query')==='Jane Austen'
+      && target.searchParams.get('categoryTerm')==='Kinh dien' && target.searchParams.get('sort')==='relevance';
+  })).toBe(true));
+});
 it('Reader lọc bằng tên bí danh, giữ URL và xóa bộ lọc', async () => {
   app(); await screen.findByRole('link',{name:book.title});
   fireEvent.change(screen.getByLabelText('Tên thể loại hoặc bí danh'),{target:{value:'  Truyện trinh thám  '}});

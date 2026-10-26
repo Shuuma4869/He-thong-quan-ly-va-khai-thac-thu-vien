@@ -18,6 +18,9 @@ it('hiện bìa được duyệt và ghi công, rồi trở lại bìa chữ khi
   expect(image).toHaveAttribute('src', cover.imageUrl);
   expect(image).toHaveAttribute('loading', 'lazy');
   expect(screen.getByText(cover.attribution)).toBeInTheDocument();
+  expect(screen.getByText('Đang tải ảnh bìa')).toBeInTheDocument();
+  fireEvent.load(image);
+  expect(screen.queryByText('Đang tải ảnh bìa')).not.toBeInTheDocument();
   fireEvent.error(image);
   expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toHaveTextContent('Sách thật');
   expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toHaveTextContent('Chưa có ảnh bìa được duyệt');

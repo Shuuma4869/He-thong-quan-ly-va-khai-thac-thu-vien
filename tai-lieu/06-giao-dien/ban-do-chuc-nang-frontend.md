@@ -11,7 +11,7 @@ Bảng này nối nghiệp vụ với API và đường vào trên giao diện. 
 | Thể loại và bí danh | Core `/public/catalog/categories`, `categoryTerm` | `/the-loai`, `/the-loai/:categoryId`, `/sach`, quản trị trong `/nhan-vien/danh-muc` | `CatalogFlow`, `DirectoryPage` | Có duyệt/tìm, trang chi tiết và lọc bí danh trong danh mục sách. |
 | Book, Edition, Copy | Core `/books`, `/books/{id}/editions`, `/copies` | `/sach/:bookId`, `/nhan-vien/danh-muc` | `CatalogFlow` | Có quản trị và chọn Book → Edition khi sửa Copy; ISBN demo đang để trống có chủ đích. |
 | Metadata ISBN và lịch sử | Insight `/metadata/books/*`, history API | `/nhan-vien/danh-muc` → Lịch sử tra cứu ISBN | `MetadataHistory` | Có UI; chỉ thử được với Edition có ISBN thật. |
-| Duyệt ảnh | Core `/catalog-media/*`; Insight ứng viên | `/nhan-vien/danh-muc` → Ảnh và nguồn | `CatalogMedia`, `BookCover` | Có duyệt thủ công; 32 ảnh demo còn ở trạng thái ứng viên. |
+| Duyệt ảnh | Core `/catalog-media/*`; Insight ứng viên | `/nhan-vien/danh-muc` → Ảnh và nguồn | `CatalogMedia`, `BookCover` | Có duyệt thủ công; 8 bìa đã đối chiếu cho demo local, 24 ứng viên còn chờ. Máy khác cần chạy script duyệt demo hoặc thao tác qua UI. |
 | Yêu thích, review, điểm | Core `/me/favorites`, `/reviews` | Book card/detail, `/thu-vien-cua-toi` | `LibraryFlow`, `CatalogFlow` | Có UI; cần dữ liệu từ Reader demo để thử đầy đủ. |
 | Loan, Hold, gia hạn | Core circulation API | `/muon-va-giu-cho`, `/giu-cho/:bookId/:editionId` | `CirculationFlow`, Web E2E | Có UI; Web E2E đã chạy trên database cô lập, chưa thử với ba tài khoản demo local. |
 | Quầy mượn/trả | Core circulation API | `/nhan-vien/luu-thong` | `StaffCirculationFlow`, Web E2E | Có UI; Web E2E dùng Core, Insight và PostgreSQL thật trong môi trường thử nghiệm. |
@@ -23,4 +23,12 @@ Bảng này nối nghiệp vụ với API và đường vào trên giao diện. 
 
 Điều hướng Sidebar chỉ trỏ tới các route trên. Tài khoản Reader không có quyền mở trang nhân viên; API kiểm quyền độc lập với guard ở giao diện. OpenAPI trong `contracts/openapi/` là nguồn chi tiết cho request/response và mã lỗi.
 
-Các dòng có Web E2E dùng tài khoản và dữ liệu được tạo trong PostgreSQL cô lập cho lượt kiểm thử, không chứng minh ba tài khoản demo local đã được cấp. Ưu tiên tiếp theo trước buổi trình diễn: cấp và kiểm quyền ba tài khoản demo, duyệt một số ảnh bìa có bằng chứng sử dụng phù hợp, rồi thử các hành trình Reader/Staff trên chính database demo. Biểu mẫu cập nhật hồ sơ, feed hoạt động dashboard, dữ liệu ISBN của ấn bản in và nguồn tín hiệu Acquisition còn thiếu là phần việc riêng; giao diện không hiển thị nút giả để che các khoảng trống này.
+## Cách trình bày
+
+Web và Tauri dùng chung React, route và stylesheet. `library-theme.css` định hình phần ứng dụng sau trang chủ: nền giấy sáng, sidebar xanh đậm, điểm nhấn màu đồng, thẻ sách và khối chi tiết có độ tương phản rõ. Nội dung mở rộng theo cửa sổ tới 1640 px; màn 1366, 1440, 1536 và 1920 px không còn bị bó trong khung 1180 px. Trên màn hẹp, sidebar chuyển thành ngăn kéo, bộ lọc thành panel và card sách xếp hai cột.
+
+Chữ nội dung dùng Be Vietnam Pro, tiêu đề dùng Literata. Cả hai được đóng gói cùng frontend và có bộ ký tự tiếng Việt; chạy desktop không cần tải font từ CDN. Trang chủ giữ nguyên cấu trúc giới thiệu, tìm kiếm và các khối nội dung đã thống nhất. Catalog có vùng giới thiệu, tìm nhanh và bộ lọc URL; trang sách tách giới thiệu, thông tin nguồn, ấn bản, đánh giá và tác phẩm liên quan. Số ấn bản lấy từ API; giao diện không suy đoán số bản sẵn sàng để mượn. Trang tác giả và thể loại dùng chung lưới sách, trạng thái tải/lỗi/trống và phân trang của server.
+
+Ảnh bìa chỉ xuất hiện sau khi tham chiếu của Edition được nhân viên duyệt. Khi chưa có ảnh hoặc ảnh ngoài tải lỗi, `BookCover` trình bày tên tác phẩm và tác giả như một bìa chữ, có nhãn phân biệt với ảnh thật. Nguồn và ghi công đi cùng ảnh đã duyệt; xem [quy trình media](../03-du-lieu/media-strategy.md) và [dữ liệu demo](../09-demo/du-lieu-demo.md). Hiệu ứng hover/focus ngắn; thiết lập giảm chuyển động của hệ điều hành tắt animation không cần thiết.
+
+Các dòng có Web E2E dùng tài khoản và dữ liệu được tạo trong PostgreSQL cô lập cho lượt kiểm thử, không chứng minh ba tài khoản demo local đã được cấp. Trước buổi trình diễn, kiểm lại tài khoản demo, tám tham chiếu bìa và các hành trình Reader/Staff trên chính database demo. Biểu mẫu cập nhật hồ sơ, feed hoạt động dashboard, dữ liệu ISBN của ấn bản in và nguồn tín hiệu Acquisition còn thiếu là phần việc riêng; giao diện không hiển thị nút giả để che các khoảng trống này.
