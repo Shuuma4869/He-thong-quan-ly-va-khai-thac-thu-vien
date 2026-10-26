@@ -41,9 +41,41 @@ class CatalogMigrationTest {
         db.update("INSERT INTO books(id,title,normalized_title) VALUES (?,' Alpha  Beta ',' alpha  beta ')",book);
         db.update("INSERT INTO book_categories VALUES (?,?)",book,category);
         migration("catalog_upgrade","latest").migrate();
+        assertThat(db.queryForObject("SELECT to_regclass('catalog_upgrade.category_aliases') IS NOT NULL", Boolean.class))
+                .isTrue();
         assertThat(db.queryForObject("SELECT normalized_name FROM categories WHERE id=?",String.class,category)).isEqualTo("khoa học");
         assertThat(db.queryForObject("SELECT normalized_title FROM books WHERE id=?",String.class,book)).isEqualTo("alpha beta");
         assertThat(db.queryForObject("SELECT category_id FROM book_categories WHERE book_id=?",UUID.class,book)).isEqualTo(category);
+
+        // A second startup against the same already-current schema validates Flyway and is a no-op.
+        migration("catalog_upgrade", "latest").migrate();
+        assertThat(db.queryForObject("SELECT version FROM flyway_schema_history WHERE success "
+                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(23);
+        assertThat(db.queryForObject("SELECT count(*) FROM categories WHERE id=?", Integer.class, category)).isOne();
+    }
+
+    @Test void failedAliasMigrationLeavesExistingCatalogRowsAndVersion22Untouched() {
+        migration("alias_failure", "22").migrate();
+        var db=jdbc("alias_failure"); UUID category=UUID.randomUUID(),book=UUID.randomUUID();
+        db.update("INSERT INTO categories(id,name,normalized_name) VALUES (?, 'Khoa học', 'khoa học')", category);
+        db.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Một cuốn sách','một cuốn sách')",book);
+        db.update("INSERT INTO book_categories(book_id,category_id) VALUES (?,?)",book,category);
+
+        // Force V23's first statement to fail; this fixture and existing catalog data must survive.
+        db.execute("CREATE TABLE alias_failure.category_aliases(id UUID PRIMARY KEY)");
+        db.update("INSERT INTO alias_failure.category_aliases(id) VALUES (?)", UUID.randomUUID());
+        assertThatThrownBy(() -> migration("alias_failure", "latest").migrate())
+                .isInstanceOf(FlywayException.class);
+
+        assertThat(db.queryForObject("SELECT name FROM categories WHERE id=?",String.class,category))
+                .isEqualTo("Khoa học");
+        assertThat(db.queryForObject("SELECT category_id FROM book_categories WHERE book_id=?",UUID.class,book))
+                .isEqualTo(category);
+        assertThat(db.queryForObject("SELECT count(*) FROM alias_failure.category_aliases",Integer.class)).isOne();
+        assertThat(db.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success AND version='23'",
+                Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT max(version::integer) FROM flyway_schema_history WHERE success",
+                Integer.class)).isEqualTo(22);
     }
 
     @Test void historicalCollisionFailsAtomicallyWithoutDeletingOrMergingRows() {
