@@ -46,6 +46,23 @@ class MediaInspectorTest {
         }
     }
 
+    @Test void standardEbooksCoverRequiresItsOwnHostAndManualEvidence() {
+        var cover = new MediaRequest("standard-ebooks", "jane-austen/pride-and-prejudice",
+                "https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice",
+                "https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice/downloads/cover.jpg",
+                "CC0", "https://standardebooks.org/about/standard-ebooks-and-the-public-domain",
+                "Standard Ebooks", "Đã đối chiếu tác phẩm và trang nguồn", true, null);
+        var jpeg = new byte[]{(byte)255,(byte)216,(byte)255};
+        assertThat(new MediaInspector(response(200,"image/jpeg",jpeg)).inspect(cover).mime()).isEqualTo("image/jpeg");
+        var wrongHost = new MediaRequest("standard-ebooks", cover.sourceId(), cover.sourceUrl(),
+                "https://standardebooks.org.evil.test/cover.jpg", cover.license(), cover.licenseUrl(),
+                cover.attribution(), cover.evidence(), true, null);
+        var client = mock(HttpClient.class);
+        assertThatThrownBy(() -> new MediaInspector(client).inspect(wrongHost))
+                .isInstanceOfSatisfying(AuthFailure.class, error -> assertThat(error.status()).isEqualTo(422));
+        verifyNoInteractions(client);
+    }
+
     @ParameterizedTest @ValueSource(strings={"image/jpeg","image/png","image/webp","image/svg+xml","text/html"})
     void rejectsSpoofedOrUnsupportedMime(String mime) {
         assertThatThrownBy(()->new MediaInspector(response(200,mime,"<svg/>".getBytes())).inspect(request()))

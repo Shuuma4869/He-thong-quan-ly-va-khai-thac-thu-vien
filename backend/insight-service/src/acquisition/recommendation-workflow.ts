@@ -11,7 +11,7 @@ function actor(value: string): void {
   if (!isUUID(value)) throw new BadRequestException('Định danh nhân viên không hợp lệ.');
 }
 
-/** Lưu bằng chứng dẫn xuất; chưa mở HTTP tạo đề xuất trước khi có nguồn Core được bảo vệ. */
+/** Lưu bằng chứng từ snapshot Core và quyết định của nhân viên. */
 @Injectable()
 export class RecommendationWorkflow {
   constructor(private readonly db: PrismaService) {}
@@ -111,5 +111,32 @@ export class RecommendationWorkflow {
     ], { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     return { items, page: { number: page, size, totalElements,
       totalPages: totalElements === 0 ? 0 : Math.ceil(totalElements / size) } };
+  }
+
+  async exportCsv(state?: 'DRAFT' | Decision): Promise<string> {
+    if (state && !['DRAFT', 'APPROVED', 'REJECTED'].includes(state))
+      throw new BadRequestException('Trạng thái không hợp lệ.');
+    const where = state ? { state } : {};
+    const [total, rows] = await this.db.$transaction([
+      this.db.acquisitionRecommendation.count({ where }),
+      this.db.acquisitionRecommendation.findMany({ where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1001,
+        select: { id: true, bookId: true, branchId: true, windowFrom: true, windowTo: true,
+          snapshotAt: true, score: true, confidence: true, state: true, createdAt: true,
+          reviewReason: true } }),
+    ], { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+    if (total > 1000 || rows.length > 1000)
+      throw new BadRequestException('Báo cáo vượt 1000 dòng; hãy lọc theo trạng thái.');
+    const csv = (value: unknown): string => {
+      let text = value == null ? '' : String(value);
+      if (/^[\s\x00-\x1f]*[=+\-@]/u.test(text)) text = `'${text}`;
+      return `"${text.replaceAll('"', '""')}"`;
+    };
+    const header = ['id', 'bookId', 'branchId', 'windowFrom', 'windowTo', 'snapshotAt',
+      'score', 'confidence', 'state', 'createdAt', 'reviewReason'];
+    return '\uFEFF' + [header.join(','), ...rows.map(row => header.map(key => {
+      const value = row[key as keyof typeof row];
+      return csv(value instanceof Date ? value.toISOString() : value);
+    }).join(','))].join('\r\n') + '\r\n';
   }
 }

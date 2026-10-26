@@ -43,7 +43,12 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
 } else { Write-Problem 'Không tìm thấy Docker.' }
 
 $envPath = Join-Path (Get-LamsRoot) '.env'
-if (Test-Path -LiteralPath $envPath) { Write-Ok 'Đã có file .env local.' }
+if (Test-Path -LiteralPath $envPath) {
+    Write-Ok 'Đã có file .env local.'
+    Import-LamsEnv $envPath -OverrideExisting
+    try { Test-LamsLocalConfiguration; Write-Ok 'Biến bắt buộc, JWT và URL database hợp lệ.' }
+    catch { Write-Problem $_.Exception.Message }
+}
 else { Write-WarningMessage 'Chưa có .env; bootstrap sẽ copy từ .env.example và không ghi đè file có sẵn.' }
 
 $ports = @(

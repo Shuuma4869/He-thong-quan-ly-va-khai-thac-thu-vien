@@ -1,6 +1,7 @@
 package io.github.shuuma4869.lams.core.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
+import io.github.shuuma4869.lams.core.identity.application.AuthService;
 import io.github.shuuma4869.lams.core.inventory.copy.application.InventoryScopeQueryService;
 import io.github.shuuma4869.lams.core.inventory.copy.domain.InventoryScopeFilter;
 import io.github.shuuma4869.lams.core.inventory.copy.infrastructure.InventoryScopeRepository;
@@ -62,6 +65,7 @@ class InventoryCatalogIntegrationTest {
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired InventoryScopeQueryService inventoryScope;
+    @Autowired AuthService authService;
     @Autowired PlatformTransactionManager transactionManager;
     @MockitoSpyBean InventoryScopeRepository inventoryScopeRepository;
 
@@ -389,5 +393,63 @@ class InventoryCatalogIntegrationTest {
             allowSnapshotToContinue.countDown();
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    void pagedCountAndItemsKeepOneDatabaseSnapshotDuringConcurrentInsert() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "PAGE", "Trang nhất quán");
+        UUID shelf = shelf(token, branch, "P-1", "Kệ phân trang");
+        UUID edition = edition(token);
+        postJson(token, "/api/v1/copies", Map.of("editionId", edition,
+                "barcode", "PAGE-A", "shelfId", shelf), 201);
+
+        var countRead = new CountDownLatch(1);
+        var allowItems = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            Object count = invocation.callRealMethod();
+            countRead.countDown();
+            if (!allowItems.await(20, TimeUnit.SECONDS))
+                throw new IllegalStateException("Timed out waiting to continue page test.");
+            return count;
+        }).when(inventoryScopeRepository).count(any(InventoryScopeFilter.class));
+
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            var filter = new InventoryScopeFilter(branch, null, shelf, null, null);
+            var future = executor.submit(() -> inventoryScope.page(actor, filter, "0", "20"));
+            assertThat(countRead.await(20, TimeUnit.SECONDS)).isTrue();
+            postJson(token, "/api/v1/copies", Map.of("editionId", edition,
+                    "barcode", "PAGE-B", "shelfId", shelf), 201);
+            allowItems.countDown();
+            var result = future.get(20, TimeUnit.SECONDS);
+            assertThat(result.page().totalElements()).isEqualTo(1);
+            assertThat(result.items()).extracting("barcode").containsExactly("PAGE-A");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM book_copies WHERE shelf_id=?",
+                    Long.class, shelf)).isEqualTo(2);
+        } finally {
+            allowItems.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void snapshotRejectsScopeLargerThanSessionLimitBeforeReturningIt() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "BOUND", "Giới hạn snapshot");
+        UUID shelf = shelf(token, branch, "B-1", "Kệ lớn");
+        UUID edition = edition(token);
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status,version) "
+                + "SELECT gen_random_uuid(), ?, 'BOUND-' || lpad(n::text, 5, '0'), ?, 'AVAILABLE', 0 "
+                + "FROM generate_series(1, 5001) AS n", edition, shelf);
+
+        // Use a larger batch for this boundary test; the concurrency test above keeps batch size 1.
+        var bounded = new InventoryScopeQueryService(inventoryScopeRepository, authService, 1000);
+        assertThatThrownBy(() -> bounded.snapshot(actor,
+                new InventoryScopeFilter(branch, null, shelf, null, null)))
+                .isInstanceOf(AuthFailure.class)
+                .hasMessageContaining("vượt 5000");
     }
 }

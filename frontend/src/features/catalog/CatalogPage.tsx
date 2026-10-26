@@ -6,6 +6,7 @@ import { BookList } from './BookList';
 import { BookFilters } from './BookFilters';
 import { CatalogError, Pagination } from './CatalogStates';
 import { catalogParams, getBooks, parseCatalogQuery, type CatalogQuery } from './catalog-api';
+import { BookGridSkeleton } from './BookGridSkeleton';
 
 export function CatalogPage() {
   const [params, setParams] = useSearchParams(); const parsed = parseCatalogQuery(params);
@@ -20,7 +21,7 @@ function CatalogResults({ value, onNavigate }: { value: CatalogQuery; onNavigate
   const update = useCallback((patch: Partial<CatalogQuery>) => onNavigate(catalogParams({ query, authorId, categoryId, categoryTerm, page, size, sort, ...patch })), [query,authorId,categoryId,categoryTerm,page,size,sort,onNavigate]);
   const result = useQuery({ queryKey: ['catalog',user?.id,'books',value], queryFn: ({ signal }) => getBooks(value,signal), retry: false });
   return <><BookFilters value={value} onChange={update} />
-    {result.isPending ? <p role="status" className="py-8">Đang tải sách…</p> : result.isError ? <CatalogError error={result.error} retry={() => void result.refetch()} />
+    {result.isPending ? <BookGridSkeleton count={8} /> : result.isError ? <CatalogError error={result.error} retry={() => void result.refetch()} />
       : <><BookList books={result.data.items} /><Pagination page={result.data.page} onChange={page => update({ page })} /></>}
   </>;
 }

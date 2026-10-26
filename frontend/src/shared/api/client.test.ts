@@ -29,12 +29,7 @@ it('CSV dùng Authorization và refresh một lần, không đưa token vào URL
       : Response.json({ detail: 'Hết hạn' }, { status: 401 })));
   vi.stubGlobal('fetch', fetchMock); configureCoreAuth({ token: () => token, refresh, clear: vi.fn() });
   const blob = await coreApi.download('/reports/circulation.csv?from=test');
-  const csv = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
-  });
+  const csv = await blob.text();
   expect(csv).toBe('ngày,chi nhánh\r\n'); expect(refresh).toHaveBeenCalledTimes(1);
   expect(fetchMock.mock.calls.every(([url]) => !url.includes(token) && !url.includes('expired'))).toBe(true);
 });

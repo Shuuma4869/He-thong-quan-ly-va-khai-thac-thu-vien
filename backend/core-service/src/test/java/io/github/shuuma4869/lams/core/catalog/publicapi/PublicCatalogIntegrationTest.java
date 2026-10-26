@@ -67,6 +67,14 @@ class PublicCatalogIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(book.toString()));
         mvc.perform(get("/api/v1/public/catalog/categories")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].name").value("Lịch sử"));
+        mvc.perform(get("/api/v1/public/catalog/categories").param("query", "lich su"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(category.toString()));
+        mvc.perform(get("/api/v1/public/catalog/authors").param("query", "TAC GIA THAT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(author.toString()));
+        mvc.perform(get("/api/v1/public/catalog/authors").param("query", "x".repeat(151)))
+                .andExpect(status().isUnprocessableEntity());
         mvc.perform(get("/api/v1/public/catalog/books/{id}/editions", book)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(2));
         mvc.perform(get("/api/v1/public/catalog/editions/{id}/media", newer)).andExpect(status().isOk())

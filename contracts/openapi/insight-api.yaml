@@ -31,13 +31,33 @@ paths:
                     properties:
                       enabled: { type: boolean }
                       connected: { type: boolean }
+  /acquisition/analysis:
+    get:
+      operationId: analyzeAcquisitionDemand
+      summary: Xem trước điểm nhu cầu từ snapshot Core
+      description: Chỉ nhân viên ACTIVE. Insight chuyển bearer token sang Core; không nhận số đếm từ client.
+      parameters:
+        - { name: bookId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: branchId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+      responses:
+        '200': { description: Snapshot nguồn và điểm dự kiến, content: { application/json: { schema: { type: object, required: [snapshot, score], properties: { snapshot: { $ref: '#/components/schemas/AcquisitionSourceSnapshot' }, score: { type: object, additionalProperties: true } } } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
   /acquisition/recommendations:
     get:
       operationId: listAcquisitionRecommendations
       summary: Danh sách đề xuất bổ sung sách đã lưu
       description: >-
         Core xác minh role LIBRARIAN/ADMIN ở mỗi yêu cầu. Chỉ đọc dữ liệu Insight;
-        chưa có endpoint tạo đề xuất từ Core read projection. Giới hạn 60 request/phút/tài khoản/process.
+        Nguồn tạo đề xuất là snapshot Core, có điểm và bằng chứng lưu trong Insight.
+        Giới hạn 60 request/phút/tài khoản/process.
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 1000000, default: 0 } }
         - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
@@ -49,6 +69,38 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createAcquisitionRecommendation
+      summary: Tạo đề xuất DRAFT từ số liệu Core hiện tại
+      description: Chỉ nhận phạm vi; Core tính số đếm. Một Book/chi nhánh/cửa sổ chỉ có một DRAFT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcquisitionScope' }
+      responses:
+        '201': { description: Đề xuất đã lưu, content: { application/json: { schema: { $ref: '#/components/schemas/AcquisitionRecommendation' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+  /acquisition/recommendations.csv:
+    get:
+      operationId: exportAcquisitionRecommendations
+      summary: Xuất tối đa 1000 đề xuất đã lưu ra CSV UTF-8
+      description: Có BOM; lời duyệt được vô hiệu hóa công thức bảng tính. Lọc trạng thái nếu vượt giới hạn dòng.
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [DRAFT, APPROVED, REJECTED] } }
+      responses:
+        '200': { description: Báo cáo CSV, content: { 'text/csv': { schema: { type: string } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /acquisition/recommendations/{id}:
     get:
       operationId: getAcquisitionRecommendation
@@ -282,6 +334,44 @@ components:
                   - { type: array, items: { type: string } }
               error: { type: string }
   schemas:
+    AcquisitionScope:
+      type: object
+      additionalProperties: false
+      required: [bookId, branchId, from, to]
+      properties:
+        bookId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        from: { type: string, format: date-time, description: Bắt đầu cửa sổ UTC, bao gồm }
+        to: { type: string, format: date-time, description: Kết thúc cửa sổ UTC, không bao gồm }
+    AcquisitionSourceSnapshot:
+      type: object
+      required: [contractVersion, sourceRevision, bookId, branchId, window, copiesOwned,
+        copiesAvailable, waitingHolds, loansStarted, favoritesAdded]
+      properties:
+        contractVersion: { type: string, const: acquisition-source-v1 }
+        sourceRevision: { type: string }
+        bookId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        window:
+          type: object
+          required: [from, to, asOf]
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+            asOf: { type: string, format: date-time }
+        copiesOwned: { type: integer, minimum: 0 }
+        copiesAvailable: { type: integer, minimum: 0 }
+        waitingHolds: { $ref: '#/components/schemas/AcquisitionCountSignal' }
+        loansStarted: { $ref: '#/components/schemas/AcquisitionCountSignal' }
+        favoritesAdded: { $ref: '#/components/schemas/AcquisitionCountSignal' }
+    AcquisitionCountSignal:
+      type: object
+      required: [count, basis, source, unavailableReason]
+      properties:
+        count: { type: [integer, 'null'], minimum: 0 }
+        basis: { type: [string, 'null'], enum: [CURRENT_STATE, WINDOWED_ROWS, EVENT_ADDS, null] }
+        source: { type: [string, 'null'] }
+        unavailableReason: { type: [string, 'null'] }
     AcquisitionPage:
       type: object
       required: [items, page]

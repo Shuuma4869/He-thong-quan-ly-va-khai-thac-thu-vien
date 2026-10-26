@@ -88,14 +88,20 @@ public class PublicCatalogService {
         return new Result<>(result.items(), metadata(page, size, result.totalElements()));
     }
 
-    @Transactional(readOnly = true)
-    public Result<Named> names(String kind, int page, int size) {
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Result<Named> names(String kind, int page, int size, String query) {
         bounds(page, size, 50);
         String table = table(kind);
-        long total = jdbc.queryForObject("SELECT count(*) FROM " + table, Long.class);
+        String term = CatalogText.display(query);
+        if (term.length() > 150) throw invalid("Từ khóa tên quá dài.");
+        String where = term.isEmpty() ? "" : " WHERE strpos(lower(public.unaccent(name)), lower(public.unaccent(?::text))) > 0";
+        Object[] args = term.isEmpty() ? new Object[0] : new Object[]{term};
+        long total = jdbc.queryForObject("SELECT count(*) FROM " + table + where, Long.class, args);
         String order = kind.equals("authors") ? "name,id" : "normalized_name,id";
-        var items = jdbc.query("SELECT id,name FROM " + table + " ORDER BY " + order + " LIMIT ? OFFSET ?",
-                (rs, row) -> new Named(rs.getObject("id", UUID.class), rs.getString("name")), size, (long) page * size);
+        var values = new java.util.ArrayList<Object>(java.util.List.of(args));
+        values.add(size); values.add((long) page * size);
+        var items = jdbc.query("SELECT id,name FROM " + table + where + " ORDER BY " + order + " LIMIT ? OFFSET ?",
+                (rs, row) -> new Named(rs.getObject("id", UUID.class), rs.getString("name")), values.toArray());
         return new Result<>(items, metadata(page, size, total));
     }
 

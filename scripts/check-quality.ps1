@@ -2,8 +2,15 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 $projectRoot = Get-LamsRoot
 $envPath = Join-Path $projectRoot '.env'
-if (Test-Path -LiteralPath $envPath) { Import-LamsEnv $envPath }
-else { Import-LamsEnv (Join-Path $projectRoot '.env.example') }
+if (Test-Path -LiteralPath $envPath) {
+    Import-LamsEnv $envPath -OverrideExisting
+    Test-LamsLocalConfiguration
+} else { Import-LamsEnv (Join-Path $projectRoot '.env.example') -OverrideExisting }
+
+Push-Location $projectRoot
+try {
+    Invoke-LamsNative 'node' @('--test', '.\scripts\demo-catalog.test.mjs') 'Kiểm thử dữ liệu demo thất bại'
+} finally { Pop-Location }
 
 Push-Location "$projectRoot/backend/core-service"
 try {

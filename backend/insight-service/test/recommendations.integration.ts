@@ -98,3 +98,15 @@ test('từ chối revision nguồn sai và không tạo bản ghi', async () => 
     .rejects.toThrow('Số bản sẵn có vượt tổng số bản.');
   expect(await db.acquisitionRecommendation.count()).toBe(before);
 });
+
+test('CSV lấy dữ liệu thật và vô hiệu hóa công thức trong lời duyệt', async () => {
+  const { scope, snapshot } = source();
+  const draft = await workflow.createDraft(maker, scope, snapshot);
+  await workflow.decide(draft.id, reviewer, 'REJECTED', '=HYPERLINK("https://example.test","10 điểm")', 0);
+  const csv = await workflow.exportCsv('REJECTED');
+  expect(csv.startsWith('\uFEFFid,bookId,branchId')).toBe(true);
+  expect(csv).toContain(draft.id);
+  expect(csv).toContain("'=HYPERLINK(");
+  expect(csv).toContain('""https://example.test""');
+  expect((await workflow.exportCsv('DRAFT')).includes(draft.id)).toBe(false);
+});

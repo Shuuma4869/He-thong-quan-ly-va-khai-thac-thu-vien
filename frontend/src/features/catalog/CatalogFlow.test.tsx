@@ -117,6 +117,43 @@ it('staff tạo Author, refetch và delete có xác nhận/FK conflict', async (
   const dialog=screen.getByRole('alertdialog'); fireEvent.click(within(dialog).getByRole('button',{name:'Xác nhận xóa'}));
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('Tác giả đang được sách tham chiếu.');
 });
+it('staff thêm và xóa bí danh, Reader không gọi API quản trị', async () => {
+  role='LIBRARIAN';
+  const category={id,name:'Khoa học'};
+  let alias:{id:string;categoryId:string;name:string;normalizedAlias:string}|null=null;
+  fetchMock.mockImplementation((url:string,init:RequestInit) => {
+    const path=new URL(url).pathname;
+    if(path.endsWith('/category-aliases') && init.method==='POST') {
+      const body=JSON.parse(init.body as string); alias={id:authorId,categoryId:body.categoryId,name:body.name,normalizedAlias:'science'};
+      return Promise.resolve(Response.json(alias,{status:201}));
+    }
+    if(path.endsWith(`/category-aliases/${authorId}`) && init.method==='DELETE') {
+      alias=null; return Promise.resolve(new Response(null,{status:204}));
+    }
+    if(path.endsWith('/category-aliases')) return Promise.resolve(Response.json(page(alias?[alias]:[])));
+    if(path.endsWith(`/categories/${id}`)) return Promise.resolve(Response.json(category));
+    if(path.endsWith('/categories')) return Promise.resolve(Response.json(page([category])));
+    return Promise.resolve(Response.json(response(url)));
+  });
+  const view=app('/nhan-vien/danh-muc');
+  await screen.findByRole('table');
+  fireEvent.change(screen.getByLabelText('Loại dữ liệu'),{target:{value:'categories'}});
+  const manager=await screen.findByRole('region',{name:'Bí danh thể loại'});
+  fireEvent.click(within(manager).getByRole('button',{name:'Thêm bí danh'}));
+  fireEvent.click(within(manager).getByRole('button',{name:'Chọn thể loại chuẩn'}));
+  fireEvent.click(await within(manager).findByRole('radio',{name:'Khoa học'}));
+  fireEvent.change(within(manager).getByLabelText('Tên bí danh'),{target:{value:'Science'}});
+  fireEvent.click(within(manager).getByRole('button',{name:'Lưu bí danh'}));
+  expect(await within(manager).findByText('Đã lưu bí danh thể loại.')).toBeInTheDocument();
+  expect(await within(manager).findByText('Science')).toBeInTheDocument();
+  fireEvent.click(within(manager).getByRole('button',{name:'Xóa bí danh'}));
+  fireEvent.click(within(manager).getByRole('button',{name:'Xác nhận xóa bí danh'}));
+  expect(await within(manager).findByText('Chưa có bí danh nào.')).toBeInTheDocument();
+  view.unmount();
+  role='READER'; fetchMock.mockClear(); app('/nhan-vien/danh-muc');
+  expect(await screen.findByText('403 · Không có quyền truy cập')).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url])=>String(url).includes('/category-aliases'))).toBe(false);
+});
 it('Copy conflict không tự retry bằng version mới', async () => {
   role='ADMIN'; const copy={id,editionId:id,bookTitle:book.title,isbn13:null,shelfId:id,branchId:id,shelfCode:'A',barcode:'BC',status:'IN_PROCESS',version:7};
   fetchMock.mockImplementation((url:string,init:RequestInit) => Promise.resolve(init.method==='PATCH'?Response.json({detail:'Bản sách đã được cập nhật.'},{status:409}):Response.json(url.includes('/copies?')?page([copy]):url.endsWith(`/shelves/${id}`)?{id,branchId:id,branchCode:'A',code:'A',label:'Kệ A',sortOrder:0}:response(url))));

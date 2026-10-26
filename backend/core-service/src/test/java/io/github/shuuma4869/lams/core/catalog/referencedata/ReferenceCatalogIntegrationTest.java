@@ -317,6 +317,49 @@ class ReferenceCatalogIntegrationTest {
     }
 
     @Test
+    void aliasHttpManagementRequiresStaffAndPreservesCanonicalCategory() throws Exception {
+        String staff = token(true);
+        String reader = token(false);
+        UUID categoryId = UUID.fromString(create("/api/v1/categories", staff, "Khoa học")
+                .path("id").asText());
+        String path = "/api/v1/category-aliases";
+        String body = json.writeValueAsString(Map.of("categoryId", categoryId, "name", "Science"));
+
+        mvc.perform(get(path).header("Authorization", "Bearer " + reader))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(path).header("Authorization", "Bearer " + reader)
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        var created = mvc.perform(post(path).header("Authorization", "Bearer " + staff)
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.categoryId").value(categoryId.toString()))
+                .andExpect(jsonPath("$.normalizedAlias").value("science")).andReturn();
+        UUID aliasId = UUID.fromString(json.readTree(created.getResponse().getContentAsString()).path("id").asText());
+        mvc.perform(post(path).header("Authorization", "Bearer " + staff)
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict());
+        mvc.perform(get(path).header("Authorization", "Bearer " + staff)
+                .param("categoryId", categoryId.toString()).param("page", "0").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(aliasId.toString()));
+        mvc.perform(get(path + "/" + aliasId).header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Science"));
+        mvc.perform(patch(path + "/" + aliasId).header("Authorization", "Bearer " + staff)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("categoryId", categoryId, "name", "Sciences"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.normalizedAlias").value("sciences"));
+        assertThat(aliases.resolve("Sciences").id()).isEqualTo(categoryId);
+        mvc.perform(delete(path + "/" + aliasId).header("Authorization", "Bearer " + staff))
+                .andExpect(status().isNoContent());
+        mvc.perform(get(path).header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        assertThatThrownBy(() -> aliases.resolve("Sciences"))
+                .isInstanceOfSatisfying(AuthFailure.class, failure -> assertThat(failure.status()).isEqualTo(404));
+    }
+
+    @Test
     void aliasValidationHandlesNullBlankAndDatabaseLengthBoundaries() throws Exception {
         String staffToken = token(true);
         UUID staff = actorId(staffToken);

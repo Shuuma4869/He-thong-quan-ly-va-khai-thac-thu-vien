@@ -27,6 +27,27 @@ const page = z.object({ items: z.array(recommendationSchema), page: z.object({ n
 
 export type Recommendation = z.infer<typeof recommendationSchema>;
 export type RecommendationState = Recommendation['state'];
+export const acquisitionScopeSchema = z.object({ bookId: uuid, branchId: uuid,
+  from: dateTime, to: dateTime }).refine(value => Date.parse(value.to) > Date.parse(value.from)
+    && Date.parse(value.to) <= Date.now() && Date.parse(value.to) - Date.parse(value.from) <= 366 * 86_400_000);
+export type AcquisitionScope = z.infer<typeof acquisitionScopeSchema>;
+const sourceSnapshot = z.object({ contractVersion: z.literal('acquisition-source-v1'), sourceRevision: z.string(),
+  bookId: uuid, branchId: uuid, window: z.object({ from: dateTime, to: dateTime, asOf: dateTime }),
+  copiesOwned: z.number().int().nonnegative(), copiesAvailable: z.number().int().nonnegative(),
+  waitingHolds: signal, loansStarted: signal, favoritesAdded: signal });
+const score = z.object({ version: z.string(), score: number.max(100), confidence: number.max(1),
+  band: z.enum(['LOW', 'MEDIUM', 'HIGH']), components: z.object({ waitingHolds: component,
+    loansStarted: component, favoritesAdded: component }), omittedSignals: z.array(z.string()) });
+const analysis = z.object({ snapshot: sourceSnapshot, score });
+
+export async function analyzeAcquisition(raw: AcquisitionScope) {
+  const scope = acquisitionScopeSchema.parse(raw);
+  return analysis.parse(await insightApi.get<unknown>(`/acquisition/analysis?${new URLSearchParams(scope)}`));
+}
+export async function createRecommendation(raw: AcquisitionScope) {
+  const scope = acquisitionScopeSchema.parse(raw);
+  return recommendationSchema.parse(await insightApi.post<unknown>('/acquisition/recommendations', scope));
+}
 
 export async function listRecommendations(state: RecommendationState | '', number: number, signal?: AbortSignal) {
   const params = new URLSearchParams({ page: String(z.number().int().min(0).max(1000000).parse(number)), size: '20' });

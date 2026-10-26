@@ -14,7 +14,7 @@
 - [ ] PostgreSQL `SELECT 1` PASS
 - [ ] Redis PING/SET/GET/DEL PASS
 - [ ] Kafka INTERNAL/EXTERNAL produce-consume PASS
-- [ ] MinIO health PASS
+- [ ] Nếu bật profile `media`: MinIO health PASS. Mặc định không bật MinIO vì Catalog chưa lưu ảnh vào đó.
 - [ ] Flyway PASS
 - [ ] Prisma validate/generate/deploy PASS
 - [ ] Core Docker image PASS

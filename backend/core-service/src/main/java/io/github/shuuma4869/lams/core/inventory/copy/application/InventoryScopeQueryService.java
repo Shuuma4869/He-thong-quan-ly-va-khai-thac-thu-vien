@@ -17,9 +17,10 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Read-only inventory scope queries. snapshot() materializes the complete scope inside one DB snapshot. */
+/** Read-only inventory scope queries. snapshot() is bounded to one audit-session scope. */
 @Service
 public class InventoryScopeQueryService {
+    private static final int MAX_SNAPSHOT_COPIES = 5_000;
     public record PageMetadata(int number, int size, long totalElements, long totalPages) {}
     public record PageResult(List<InventoryScopeCopy> items, PageMetadata page) {}
 
@@ -48,8 +49,8 @@ public class InventoryScopeQueryService {
     }
 
     /**
-     * Fully materializes the matching scope in keyset batches within one PostgreSQL REPEATABLE READ
-     * transaction. The returned immutable list is safe to hand to a future audit-session command;
+     * Materializes at most 5,000 copies in keyset batches within one PostgreSQL REPEATABLE READ
+     * transaction. One extra row detects an oversized scope before returning anything;
      * the transaction is closed before this method returns and must never span HTTP requests.
      */
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, propagation = Propagation.REQUIRES_NEW)
@@ -60,9 +61,12 @@ public class InventoryScopeQueryService {
         String afterBarcode = null;
         UUID afterId = null;
         while (true) {
-            var batch = scopes.nextBatch(filter, afterBarcode, afterId, batchSize);
+            int limit = Math.min(batchSize, MAX_SNAPSHOT_COPIES + 1 - result.size());
+            var batch = scopes.nextBatch(filter, afterBarcode, afterId, limit);
             result.addAll(batch);
-            if (batch.size() < batchSize) break;
+            if (result.size() > MAX_SNAPSHOT_COPIES)
+                throw invalid("Phạm vi vượt 5000 bản sách; hãy chọn một kệ nhỏ hơn.");
+            if (batch.size() < limit) break;
             var last = batch.get(batch.size() - 1);
             afterBarcode = last.barcode();
             afterId = last.copyId();

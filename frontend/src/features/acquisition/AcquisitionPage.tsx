@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { getBook, getCatalogItem } from '../catalog/catalog-api';
+import { ReferencePicker } from '../catalog/ReferencePicker';
 import { formatTime } from '../circulation/circulation-labels';
 import { ApiError } from '../../shared/api/client';
-import { decideRecommendation, getRecommendation, listRecommendations,
-  type Recommendation, type RecommendationState } from './acquisition-api';
+import { analyzeAcquisition, createRecommendation, decideRecommendation, getRecommendation, listRecommendations,
+  type AcquisitionScope, type Recommendation, type RecommendationState } from './acquisition-api';
 
 const labels = { DRAFT: 'Chờ duyệt', APPROVED: 'Đã duyệt nội bộ', REJECTED: 'Đã từ chối' } as const;
 const signalNames = { waitingHolds: 'Yêu cầu giữ chỗ đang chờ', loansStarted: 'Lượt bắt đầu mượn trong kỳ',
@@ -54,7 +55,11 @@ function Content({ owner }: { owner: string }) {
 
   return <section>
     <h1 className="page-title">Đề xuất bổ sung sách</h1>
-    <p className="text-muted my-3">Nhân viên xem bằng chứng và quyết định đề xuất nội bộ. Chức năng tạo đề xuất từ số liệu Core đang chờ tích hợp nguồn dữ liệu; việc duyệt không đặt mua sách.</p>
+    <p className="text-muted my-3">Nhân viên chọn sách, chi nhánh và khoảng thời gian để đọc số liệu Core, xem điểm nhu cầu rồi lưu đề xuất. Duyệt đề xuất không đặt mua sách.</p>
+    <AcquisitionAnalysis onCreated={async id => {
+      setState('DRAFT'); setPage(0); setSelected(id);
+      await client.invalidateQueries({ queryKey: ['acquisition', owner, 'list'] });
+    }}/>
     <label className="field my-5 max-w-sm">Trạng thái
       <select value={state} onChange={event => { setState(event.target.value as RecommendationState | ''); setPage(0); setSelected(''); }}>
         <option value="">Tất cả</option><option value="DRAFT">Chờ duyệt</option>
@@ -63,7 +68,7 @@ function Content({ owner }: { owner: string }) {
     </label>
     {list.isPending ? <p role="status">Đang tải đề xuất…</p> : list.isError ? <ErrorView error={list.error} retry={() => void list.refetch()}/>
       : <section aria-label="Danh sách đề xuất">
-        {!list.data.items.length ? <p className="editorial-card">Chưa có đề xuất phù hợp. Hệ thống chưa tự tạo đề xuất khi nguồn Core chưa được kết nối.</p>
+        {!list.data.items.length ? <p className="editorial-card">Chưa có đề xuất phù hợp. Chọn sách, chi nhánh và khoảng thời gian để phân tích nhu cầu.</p>
           : <div className="grid gap-4 md:grid-cols-2">{list.data.items.map(item =>
             <article key={item.id} className="editorial-card">
               <p className="eyebrow">{labels[item.state]}</p>
@@ -80,6 +85,61 @@ function Content({ owner }: { owner: string }) {
       {detail.isPending ? <p role="status">Đang tải bằng chứng…</p> : detail.isError ? <ErrorView error={detail.error} retry={() => void detail.refetch()}/>
         : <RecommendationDetail value={detail.data} reason={reason} onReason={setReason} busy={busy} error={error} onDecision={decide}/>}
     </section>}
+  </section>;
+}
+
+function AcquisitionAnalysis({ onCreated }: { onCreated: (id: string) => Promise<void> }) {
+  const [bookId, setBookId] = useState('');
+  const [branchId, setBranchId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof analyzeAcquisition>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const scope = (): AcquisitionScope => ({ bookId, branchId,
+    from: new Date(from).toISOString(), to: new Date(to).toISOString() });
+  const analyze = async () => {
+    setBusy(true); setError(''); setPreview(null);
+    try { setPreview(await analyzeAcquisition(scope())); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Không lấy được số liệu từ Core.'); }
+    finally { setBusy(false); }
+  };
+  const create = async () => {
+    if (!preview || busy) return;
+    setBusy(true); setError('');
+    try {
+      const record = await createRecommendation(scope());
+      await onCreated(record.id);
+      setPreview(null);
+    } catch (cause) {
+      setError(cause instanceof ApiError && cause.status === 409
+        ? 'Đã có đề xuất đang chờ duyệt cho sách, chi nhánh và khoảng thời gian này.'
+        : cause instanceof Error ? cause.message : 'Không lưu được đề xuất.');
+    } finally { setBusy(false); }
+  };
+  const reset = () => { setPreview(null); setError(''); };
+  return <section aria-label="Phân tích nhu cầu sách" className="editorial-card my-6">
+    <h2 className="section-title">Phân tích nhu cầu</h2>
+    <div className="grid gap-4 md:grid-cols-2 my-4">
+      <ReferencePicker label="Sách cần phân tích" resource="books" value={bookId ? [bookId] : []}
+        onChange={ids => { setBookId(ids[0] ?? ''); reset(); }}/>
+      <ReferencePicker label="Chi nhánh phân tích" resource="branches" value={branchId ? [branchId] : []}
+        onChange={ids => { setBranchId(ids[0] ?? ''); reset(); }}/>
+      <label className="field">Từ thời điểm<input type="datetime-local" value={from}
+        onChange={event => { setFrom(event.target.value); reset(); }}/></label>
+      <label className="field">Đến trước thời điểm<input type="datetime-local" value={to}
+        onChange={event => { setTo(event.target.value); reset(); }}/></label>
+    </div>
+    <p className="text-sm text-muted">Khoảng thời gian tối đa 366 ngày, kết thúc không sau hiện tại. Số bản sách và giữ chỗ là trạng thái lúc đọc; lượt mượn tính trong khoảng thời gian đã chọn.</p>
+    <button type="button" className="button-secondary my-4" disabled={busy || !bookId || !branchId || !from || !to}
+      onClick={() => void analyze()}>{busy ? 'Đang xử lý…' : 'Xem số liệu và điểm nhu cầu'}</button>
+    {error && <p role="alert">{error}</p>}
+    {preview && <div className="my-5" aria-label="Kết quả phân tích">
+      <p className="text-xl font-semibold">Điểm {preview.score.score.toFixed(1)}/100 · Độ tin cậy {Math.round(preview.score.confidence * 100)}%</p>
+      <p className="my-2">{preview.snapshot.copiesAvailable}/{preview.snapshot.copiesOwned} bản sẵn có; {preview.snapshot.waitingHolds.count ?? 'chưa có'} giữ chỗ đang chờ; {preview.snapshot.loansStarted.count ?? 'chưa có'} lượt mượn trong kỳ.</p>
+      <p className="text-sm text-muted">Lượt thêm yêu thích: {preview.snapshot.favoritesAdded.count ?? preview.snapshot.favoritesAdded.unavailableReason}. Số liệu sẽ được chốt lại khi lưu đề xuất.</p>
+      <button type="button" className="button-primary my-4" disabled={busy} onClick={() => void create()}>Lưu đề xuất chờ duyệt</button>
+    </div>}
   </section>;
 }
 

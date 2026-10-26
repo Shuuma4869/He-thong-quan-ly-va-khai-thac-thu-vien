@@ -9,7 +9,7 @@ type Item = { label: string; to: string; icon: LucideIcon };
 type Group = { title: string; items: Item[] };
 const readerPublic: Group[] = [{ title: 'Khám phá', items: [
   { label: 'Trang chủ', to: '/', icon: House }, { label: 'Khám phá sách', to: '/sach', icon: BookOpen },
-  { label: 'Thể loại', to: '/#the-loai', icon: LibraryBig },
+  { label: 'Tác giả', to: '/tac-gia', icon: UserRound }, { label: 'Thể loại', to: '/the-loai', icon: LibraryBig },
 ] }];
 const staffGroups: Group[] = [
   { title: 'Vận hành', items: [

@@ -4,19 +4,22 @@ import { Test } from '@nestjs/testing';
 import { AcquisitionController } from '../src/acquisition/acquisition.controller';
 import { AcquisitionGuard } from '../src/acquisition/acquisition.guard';
 import { RecommendationWorkflow } from '../src/acquisition/recommendation-workflow';
+import { CoreAcquisitionFactsAdapter } from '../src/acquisition/core-acquisition-facts.adapter';
 
 const staffId = randomUUID();
 const quotaId = randomUUID();
 const recommendationId = randomUUID();
 const originalFetch = globalThis.fetch;
 const previousCoreUrl = process.env.CORE_API_URL;
-const workflow = { list: jest.fn(), get: jest.fn(), decide: jest.fn() };
+const workflow = { list: jest.fn(), get: jest.fn(), decide: jest.fn(), createDraft: jest.fn(), exportCsv: jest.fn() };
+const facts = { load: jest.fn() };
 let app: INestApplication;
 let base: string;
 
 beforeAll(async () => {
   const module = await Test.createTestingModule({ controllers: [AcquisitionController],
-    providers: [AcquisitionGuard, { provide: RecommendationWorkflow, useValue: workflow }] }).compile();
+    providers: [AcquisitionGuard, { provide: RecommendationWorkflow, useValue: workflow },
+      { provide: CoreAcquisitionFactsAdapter, useValue: facts }] }).compile();
   app = module.createNestApplication();
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
@@ -87,6 +90,43 @@ test('nhân viên xem danh sách, chi tiết và gửi quyết định bằng ac
   expect(workflow.decide).toHaveBeenCalledWith(recommendationId, staffId, 'REJECTED',
     'Nguồn số liệu chưa đủ tin cậy.', 0);
   expect(JSON.stringify(await decision.json())).not.toContain('Bearer');
+});
+
+test('phân tích và tạo DRAFT chỉ nhận phạm vi, tải số liệu từ Core', async () => {
+  const scope = { bookId: randomUUID(), branchId: randomUUID(),
+    from: '2026-09-01T00:00:00Z', to: '2026-10-01T00:00:00Z' };
+  const snapshot = { contractVersion: 'acquisition-source-v1', sourceRevision: 'core-acquisition-read-v1',
+    bookId: scope.bookId, branchId: scope.branchId,
+    window: { from: scope.from, to: scope.to, asOf: '2026-10-01T00:00:00Z' },
+    copiesOwned: 2, copiesAvailable: 1,
+    waitingHolds: { count: 1, basis: 'CURRENT_STATE', source: 'holds', unavailableReason: null },
+    loansStarted: { count: 2, basis: 'WINDOWED_ROWS', source: 'loans', unavailableReason: null },
+    favoritesAdded: { count: null, basis: null, source: null, unavailableReason: 'Chưa có lịch sử.' } };
+  facts.load.mockResolvedValue(snapshot);
+  workflow.createDraft.mockResolvedValue({ id: recommendationId, state: 'DRAFT' });
+  const query = new URLSearchParams(scope);
+  const preview = await originalFetch(`${base}/api/v1/acquisition/analysis?${query}`,
+    { headers: { Authorization: 'Bearer staff' } });
+  expect(preview.status).toBe(200);
+  expect((await preview.json()).score.confidence).toBe(0.85);
+  const created = await request('', 'POST', scope);
+  expect(created.status).toBe(201);
+  expect(workflow.createDraft).toHaveBeenCalledWith(staffId, scope, snapshot);
+  expect(facts.load).toHaveBeenCalledWith(scope, 'Bearer staff');
+  expect((await request('', 'POST', { ...scope, waitingHolds: 999 })).status).toBe(400);
+  expect(workflow.createDraft).toHaveBeenCalledTimes(1);
+});
+
+test('CSV yêu cầu quyền nhân viên, lọc trạng thái và không cache', async () => {
+  workflow.exportCsv.mockResolvedValue('\uFEFFid,state\r\n"one","DRAFT"\r\n');
+  const response = await originalFetch(`${base}/api/v1/acquisition/recommendations.csv?state=DRAFT`,
+    { headers: { Authorization: 'Bearer staff' } });
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toContain('text/csv');
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(workflow.exportCsv).toHaveBeenCalledWith('DRAFT');
+  expect((await originalFetch(`${base}/api/v1/acquisition/recommendations.csv`,
+    { headers: { Authorization: 'Bearer reader' } })).status).toBe(403);
 });
 
 test('giới hạn 60 yêu cầu mỗi phút và trả Retry-After', async () => {

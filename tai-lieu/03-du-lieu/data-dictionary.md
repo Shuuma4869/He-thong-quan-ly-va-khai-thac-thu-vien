@@ -52,7 +52,7 @@ V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, khô
 - Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7; V22 thêm chỉ mục tìm kiếm Book, không tạo bảng SearchEvent.
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; phiên/snapshot/scan/anomaly ở V20 và resolution ở V21. `copy_location_history` chuyên biệt chưa có; quyết định chuyển kệ từ kiểm kê được truy qua resolution và version Copy.
 - Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
-- Discovery: `search_documents` chưa có migration; tra cứu từ vựng dùng cột và chỉ mục trên `books`. Insight có migration lưu `acquisition_recommendations` và `acquisition_decisions`; chưa có endpoint nguồn Core hoặc API tạo đề xuất trong runtime.
+- Discovery: `search_documents` chưa có migration; tra cứu từ vựng dùng cột và chỉ mục trên `books`. Trên nhánh Tuan, Core có endpoint read facts cho Copy/Hold/Loan; Insight có migration lưu `acquisition_recommendations` và `acquisition_decisions`, adapter đọc Core và API nội bộ tạo/duyệt đề xuất. Chưa có E2E xuyên hai dịch vụ trên dữ liệu thật.
 - System dự kiến: `notifications`, `system_policies`, `audit_logs`, `media_assets` là tên trong mô hình mục tiêu, chưa phải bảng đang có. `outbox_events` được tạo từ V1 và bổ sung cơ chế giao nhận ở V19; thông báo người dùng hiện lưu trong bảng `circulation_notices` của Insight.
 
 ## Media asset

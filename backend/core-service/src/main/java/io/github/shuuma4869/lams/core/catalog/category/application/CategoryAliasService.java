@@ -16,9 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Internal Category alias management and canonical term resolver; no public HTTP API is exposed. */
+/** Category alias management and canonical term resolver. */
 @Service
 public class CategoryAliasService {
+    public record PageMetadata(int number, int size, long totalElements, long totalPages) {}
+    public record AliasPage(List<CategoryAlias> items, PageMetadata page) {}
     private final CategoryAliasRepository aliases;
     private final CategoryRepository categories;
     private final CategoryTermLock termLock;
@@ -65,6 +67,30 @@ public class CategoryAliasService {
     }
 
     @Transactional(readOnly = true)
+    public CategoryAlias get(UUID actorId, UUID aliasId) {
+        requireStaff(actorId);
+        return aliases.findById(aliasId).orElseThrow(() -> new AuthFailure(404, "Không tìm thấy bí danh thể loại."));
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public AliasPage list(UUID actorId, UUID categoryId, String pageValue, String sizeValue) {
+        requireStaff(actorId);
+        if (categoryId != null) requireCategory(categoryId);
+        int page = parsePage(pageValue, 0, 1_000_000, "page");
+        int size = parsePage(sizeValue, 20, 100, "size");
+        if (size == 0) throw invalid("size phải nằm trong khoảng 1–100.");
+        var result = aliases.page(categoryId, page, size);
+        long totalPages = result.totalElements() == 0 ? 0 : (result.totalElements() + size - 1) / size;
+        return new AliasPage(result.items(), new PageMetadata(page, size, result.totalElements(), totalPages));
+    }
+
+    @Transactional
+    public void delete(UUID actorId, UUID aliasId) {
+        requireStaff(actorId);
+        if (!aliases.delete(aliasId)) throw new AuthFailure(404, "Không tìm thấy bí danh thể loại.");
+    }
+
+    @Transactional(readOnly = true)
     public Category resolve(String value) {
         var name = normalizeAlias(value);
         List<Category> matches = aliases.findTermMatches(name.normalized());
@@ -108,6 +134,17 @@ public class CategoryAliasService {
 
     private static AuthFailure invalid(String message) {
         return new AuthFailure(422, message);
+    }
+
+    private static int parsePage(String value, int defaultValue, int max, String field) {
+        if (value == null || value.isBlank()) return defaultValue;
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 0 || parsed > max) throw invalid(field + " nằm ngoài giới hạn cho phép.");
+            return parsed;
+        } catch (NumberFormatException error) {
+            throw invalid(field + " phải là số nguyên.");
+        }
     }
 
     private record AliasName(String display, String normalized) {}

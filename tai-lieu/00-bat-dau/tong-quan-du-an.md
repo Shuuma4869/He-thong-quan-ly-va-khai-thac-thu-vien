@@ -2,7 +2,7 @@
 
 ## Bài toán và mục tiêu
 
-LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần chính sách, kiểm kê và dữ liệu nhu cầu. Ứng dụng đã có giao diện Windows bằng Tauri, Catalog, lưu thông/giữ chỗ và phiên kiểm kê. Các chức năng tìm kiếm nâng cao và đề xuất bổ sung sách được triển khai theo từng PR, không suy trạng thái hoàn thành từ tài liệu thiết kế.
+LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần kiểm kê và dữ liệu nhu cầu. Ứng dụng đã có giao diện Windows bằng Tauri, Catalog, lưu thông/giữ chỗ và phiên kiểm kê. Tìm kiếm từ vựng đã có trên Web/EXE; đề xuất bổ sung sách trên nhánh Tuan mới được kiểm ở từng lớp, chưa có E2E xuyên dịch vụ.
 
 ## Actors
 
@@ -12,7 +12,7 @@ LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư vi
 
 ## Scope
 
-Repository dùng Tauri/WebView2 + React, Spring Core, NestJS Insight và PostgreSQL. Auth/Member/Profile chỉ đọc, Catalog/Edition/Copy, Favorites/Reviews/Rating, mượn/trả/gia hạn, giữ chỗ, lịch sử và báo cáo lưu thông, duyệt ảnh, lịch sử ISBN và kiểm kê kệ đã có luồng nghiệp vụ và test. Catalog có tìm kiếm từ vựng được xếp hạng; taxonomy/alias là phần việc tích hợp riêng. Redis, Kafka và MinIO có cấu hình hoặc vai trò kiến trúc riêng, không được coi là điều kiện để các luồng trên hoạt động. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
+Repository dùng Tauri/WebView2 + React, Spring Core, NestJS Insight và PostgreSQL. Auth, Member/Profile chỉ đọc, Catalog/Edition/Copy, Favorites/Reviews/Rating, mượn/trả/gia hạn, giữ chỗ, lịch sử và báo cáo lưu thông, duyệt ảnh, lịch sử ISBN và kiểm kê kệ đã có luồng nghiệp vụ và test. Catalog có tìm kiếm từ vựng được xếp hạng và lọc theo bí danh thể loại. Redis, Kafka và MinIO có cấu hình hoặc vai trò kiến trúc riêng, không được coi là điều kiện để các luồng trên hoạt động. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
 
 ## Ngoài phạm vi hiện tại
 
@@ -20,7 +20,7 @@ Chưa có tìm kiếm ngữ nghĩa/vector, đề xuất bổ sung sách được
 
 ## Flagship features định hướng
 
-Smart Hold & Availability và Live Shelf Audit đã có các luồng giao dịch/kiểm kê chính. Smart Discovery hiện có metadata lookup và tìm kiếm từ vựng, chưa có semantic search. Demand-to-Acquisition Intelligence vẫn ở giai đoạn thiết kế.
+Smart Hold & Availability và Live Shelf Audit đã có các luồng giao dịch/kiểm kê chính. Smart Discovery hiện có metadata lookup và tìm kiếm từ vựng, chưa có semantic search. Demand-to-Acquisition Intelligence đã có phép tính và luồng đề xuất nội bộ trên nhánh Tuan; chưa có E2E xuyên dịch vụ hoặc quy trình mua sách.
 
 ## Glossary
 

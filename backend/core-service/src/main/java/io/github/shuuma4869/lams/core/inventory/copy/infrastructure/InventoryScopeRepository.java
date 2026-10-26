@@ -39,16 +39,26 @@ public class InventoryScopeRepository {
     }
 
     public Page page(InventoryScopeFilter filter, int page, int size) {
+        long total = count(filter);
+        return new Page(items(filter, page, size), total);
+    }
+
+    public long count(InventoryScopeFilter filter) {
         var args = new ArrayList<Object>();
         String where = where(filter, args);
         Long total = jdbc.queryForObject("SELECT count(*) FROM book_copies c JOIN shelves s ON s.id=c.shelf_id"
                 + where, Long.class, args.toArray());
+        return total == null ? 0 : total;
+    }
+
+    public List<InventoryScopeCopy> items(InventoryScopeFilter filter, int page, int size) {
+        var args = new ArrayList<Object>();
+        String where = where(filter, args);
         var pageArgs = new ArrayList<>(args);
         pageArgs.add(size);
         pageArgs.add((long) page * size);
-        var items = jdbc.query(SELECT + where + " ORDER BY c.barcode,c.id LIMIT ? OFFSET ?",
+        return jdbc.query(SELECT + where + " ORDER BY c.barcode,c.id LIMIT ? OFFSET ?",
                 (rs, row) -> map(rs), pageArgs.toArray());
-        return new Page(items, total == null ? 0 : total);
     }
 
     /** Keyset batch; the caller owns one REPEATABLE READ transaction across all batches. */

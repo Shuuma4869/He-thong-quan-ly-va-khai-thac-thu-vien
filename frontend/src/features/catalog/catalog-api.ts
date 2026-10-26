@@ -5,7 +5,7 @@ export const pageSchema = z.object({ number: z.number().int().nonnegative(), siz
   totalElements: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() });
 const named = z.object({ id: z.string().uuid(), name: z.string() });
 export const publicCoverSchema = z.object({ editionId: z.string().uuid(), imageUrl: z.string().url(),
-  source: z.enum(['open-library', 'wikimedia']), sourceUrl: z.string().url(), license: z.string(), licenseUrl: z.string().url(),
+  source: z.enum(['open-library', 'wikimedia', 'standard-ebooks']), sourceUrl: z.string().url(), license: z.string(), licenseUrl: z.string().url(),
   attribution: z.string(), approvedAt: z.string().datetime() });
 export type PublicCover = z.infer<typeof publicCoverSchema>;
 export const bookSchema = z.object({ id: z.string().uuid(), title: z.string(), description: z.string().nullable(),
@@ -68,11 +68,14 @@ export async function getAuthor(id: string, signal?: AbortSignal) { return named
 export async function getEditions(bookId: string, page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(editionSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(bookId)}/editions?page=${page}&size=20`, true, signal));
 }
-export async function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string) {
-  const path = resource === 'authors' || resource === 'categories'
+export async function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query = '') {
+  const searchable = resource === 'authors' || resource === 'categories' || resource === 'books';
+  const path = searchable
     ? `/public/catalog/${resource}` : resourcePath(resource, bookId);
+  const params = new URLSearchParams({ page: String(page), size: '20' });
+  if (searchable && query.trim()) params.set('query', query.trim());
   return z.object({ items: z.array(schemas[resource]), page: pageSchema }).parse(
-    await coreApi.get<unknown>(`${path}?page=${page}&size=20`, true, signal));
+    await coreApi.get<unknown>(`${path}?${params}`, true, signal));
 }
 export async function getCatalogItem(resource: Resource, id: string, signal?: AbortSignal, bookId?: string) {
   const path = resource === 'authors' || resource === 'categories'

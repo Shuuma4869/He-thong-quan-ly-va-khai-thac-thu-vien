@@ -36,7 +36,7 @@ erDiagram
   }
 ```
 
-Database Insight sở hữu lịch sử tra cứu và đề xuất nội bộ; không nối Book bằng FK xuyên database và không sao chép Catalog. Migration Acquisition đã được kiểm trên PostgreSQL test riêng; luồng ứng dụng vẫn chờ read projection Core và API được bảo vệ.
+Database Insight sở hữu lịch sử tra cứu và đề xuất nội bộ; không nối Book bằng FK xuyên database và không sao chép Catalog. Trên nhánh Tuan, Core đã có read projection cho số Copy, Hold và Loan; Insight đọc qua adapter và bảo vệ API tạo/duyệt đề xuất. Các phần này có kiểm thử riêng, nhưng chưa có E2E tạo đề xuất xuyên Core → Insight → giao diện trên dữ liệu thật.
 
 ## Core đã có migration
 
@@ -99,7 +99,7 @@ erDiagram
 
 V17: `users 1—n circulation_requests`, khóa chính `(actor_id, request_id)`; `book_copies 1—n copy_state_changes`, unique `(copy_id, copy_version)`. Audit tham chiếu actor là users khi HUMAN, không có actor khi SYSTEM. Job hết hạn/phân bổ Hold ghi SYSTEM.
 
-FK RESTRICT giữ lịch sử; unique partial `copy_id WHERE returned_at IS NULL` chặn hai Loan đang mở. V18 giới hạn một WAITING/READY mỗi reader/Book và một READY mỗi Copy; Hold lịch sử vẫn tham chiếu Copy sau khi đóng. [Kiến trúc lưu thông](../02-kien-truc/circulation.md) ghi transaction và giới hạn schema/policy/retention. Giao diện lưu thông chưa hoàn thành chỉ từ schema/API này.
+FK RESTRICT giữ lịch sử; unique partial `copy_id WHERE returned_at IS NULL` chặn hai Loan đang mở. V18 giới hạn một WAITING/READY mỗi reader/Book và một READY mỗi Copy; Hold lịch sử vẫn tham chiếu Copy sau khi đóng. [Kiến trúc lưu thông](../02-kien-truc/circulation.md) ghi transaction và giới hạn schema/policy/retention. Giao diện lưu thông được kiểm riêng bằng E2E Web/EXE; schema/API không thay bằng chứng đó.
 
 Mô tả target model để thống nhất tên và ownership. Đây không phải khẳng định mọi bảng đã được migration trong Giai đoạn 01.
 

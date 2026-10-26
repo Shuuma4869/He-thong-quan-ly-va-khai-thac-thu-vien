@@ -4,7 +4,9 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Get-LamsRoot
 $envPath = Join-Path $projectRoot '.env'
 if (-not (Test-Path -LiteralPath $envPath)) { throw 'Thiếu .env. Hãy chạy scripts\bootstrap-local.ps1 trước.' }
-Import-LamsEnv $envPath
+Import-LamsEnv $envPath -OverrideExisting
+Test-LamsLocalConfiguration
+if (Test-LamsTcpPort -Port 8080) { throw 'Core đã chạy trên cổng 8080; không mở tiến trình thứ hai.' }
 $origins = @((Get-LamsSetting 'CORS_ALLOWED_ORIGINS' 'http://localhost:5173').Split(',') | ForEach-Object { $_.Trim() })
 $env:CORS_ALLOWED_ORIGINS = (@($origins + 'http://tauri.localhost') | Select-Object -Unique) -join ','
 

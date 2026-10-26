@@ -43,6 +43,7 @@ fn allowed_source(url: &tauri::Url) -> bool {
                     | "creativecommons.org"
                     | "archive.org"
                     | "developers.google.com"
+                    | "standardebooks.org"
             )
         )
 }
@@ -77,9 +78,15 @@ mod tests {
         assert!(allowed_source(
             &"https://openlibrary.org/books/OL1M".parse().unwrap()
         ));
+        assert!(allowed_source(
+            &"https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice"
+                .parse()
+                .unwrap()
+        ));
         for value in [
             "file:///C:/secret",
             "https://openlibrary.org.evil.test/",
+            "https://standardebooks.org.evil.test/",
             "http://openlibrary.org/",
             "https://user:pass@openlibrary.org/",
             "https://openlibrary.org:444/",

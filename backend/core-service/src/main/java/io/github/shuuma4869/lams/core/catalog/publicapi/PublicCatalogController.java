@@ -32,8 +32,9 @@ public class PublicCatalogController {
     }
     @GetMapping("/{kind:authors|categories}")
     public PublicCatalogService.Result<PublicCatalogService.Named> names(@PathVariable String kind,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        return catalog.names(kind, page, size);
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String query) {
+        return catalog.names(kind, page, size, query);
     }
     @GetMapping("/{kind:authors|categories}/{id}")
     public PublicCatalogService.Named name(@PathVariable String kind, @PathVariable UUID id) {

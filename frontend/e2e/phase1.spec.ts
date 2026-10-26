@@ -207,7 +207,7 @@ test('Phase 2 metadata: quyền thật, tra cứu không ghi đè Catalog và �
   const media=await request.get(`${core}/catalog-media/editions/${edition.id}`,{headers});expect(await media.json()).toEqual({media:null});
   const unsafe=await request.post(`${core}/catalog-media/editions/${edition.id}`,{headers,data:{source:'open-library',sourceId:'test',sourceUrl:'https://openlibrary.org/books/OL1M',imageUrl:'https://localhost/private',license:'Test only',licenseUrl:'https://openlibrary.org/books/OL1M',attribution:'Test fixture',evidence:'Test fixture',confirmed:true}});
   expect(unsafe.status()).toBe(422);
-  await navigate(page,`/sach/${book.id}`);await expect(page.getByLabel('Chưa có bìa đã xác minh')).toBeVisible();
+  await navigate(page,`/sach/${book.id}`);await expect(page.getByLabel('Chưa có bìa đã xác minh').first()).toBeVisible();
   await page.reload();await expect(page.getByRole('heading',{name:book.title})).toBeVisible();
 });
 async function createCatalog(request: import('@playwright/test').APIRequestContext, headers: Record<string,string>, path: string, data: unknown) {
@@ -243,7 +243,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await page.getByLabel('Nội dung đánh giá').fill('Nội dung review đầu tiên');
   await page.getByRole('radio', { name: '1 sao', exact: true }).check();
   await page.getByRole('button', { name: 'Lưu đánh giá', exact: true }).click();
-  await expect(page.getByLabel('Điểm trung bình')).toHaveText('1.00/5 · 1 đánh giá');
+  await expect(page.getByLabel('Điểm trung bình', { exact: true })).toHaveText('1.00/5 · 1 đánh giá');
   await page.reload();
   await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Bỏ yêu thích' })).toBeVisible();
@@ -255,7 +255,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   const patch = page.waitForRequest(req => req.method() === 'PATCH' && req.url().includes('/reviews/'));
   await page.getByRole('button', { name: 'Lưu đánh giá', exact: true }).click();
   expect((await patch).postDataJSON()).toEqual({ rating: 5 });
-  await expect(page.getByLabel('Điểm trung bình')).toHaveText('5.00/5 · 1 đánh giá');
+  await expect(page.getByLabel('Điểm trung bình', { exact: true })).toHaveText('5.00/5 · 1 đánh giá');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -297,7 +297,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await expect(page.getByRole('button', { name: 'Xóa đánh giá của tôi' })).toBeFocused();
   await page.getByRole('button', { name: 'Xóa đánh giá của tôi' }).click();
   await page.getByRole('button', { name: 'Xác nhận xóa đánh giá', exact: true }).click();
-  await expect(page.getByLabel('Điểm trung bình')).toHaveText('Chưa có điểm đánh giá.');
+  await expect(page.getByLabel('Điểm trung bình', { exact: true })).toHaveText('Chưa có điểm đánh giá.');
   await page.getByRole('button', { name: 'Bỏ yêu thích' }).click();
   await navigate(page, '/thu-vien-cua-toi');
   await expect(page.getByText('Chưa có sách yêu thích ở trang này.')).toBeVisible();
@@ -321,7 +321,7 @@ test('Phase 2 Reader: lọc server, nhiều ấn bản, Author, reload và chặ
   await page.goBack();await expect(page.getByText('Trang 1 / 2 · 2 kết quả')).toBeVisible();
   await page.getByRole('link',{name:`Catalog ${suffix}`,exact:true}).click();
   await expect(page.getByText('ISBN 9780140328721')).toBeVisible();await expect(page.getByText('Ấn bản không có ISBN')).toBeVisible();
-  await page.getByRole('link',{name:`Author ${suffix}`,exact:true}).click();
+  await page.getByRole('link',{name:`Author ${suffix}`,exact:true}).first().click();
   await expect(page.getByRole('heading',{name:`Author ${suffix}`})).toBeVisible();
   await expect(page.getByRole('link',{name:`Catalog ${suffix}`,exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -577,6 +577,13 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
   const headers = await staffApi(request);
   const author = await createCatalog(request, headers, '/authors', { name: `Nguyễn Bình ${suffix}` });
   const category = await createCatalog(request, headers, '/categories', { name: `Khảo cứu ${suffix}` });
+  const aliasName = `Research ${suffix}`;
+  const createdAlias = await request.post(`${core}/category-aliases`, {
+    headers, data: { categoryId: category.id, name: aliasName },
+  });
+  expect(createdAlias.status()).toBe(201);
+  expect((await request.post(`${core}/category-aliases`, { headers,
+    data: { categoryId: category.id, name: aliasName.toUpperCase() } })).status()).toBe(409);
   const exact = await createCatalog(request, headers, '/books', {
     title: `Đường về ${suffix}`, description: 'Một câu chuyện', authorIds: [], categoryIds: [category.id],
   });
@@ -614,6 +621,9 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
     const params = desktopEndpoint ? new URLSearchParams(location.hash.split('?')[1] ?? '') : location.searchParams;
     return params.get('categoryTerm');
   }).toBe(category.name);
+  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toHaveCount(0);
+  await page.getByLabel('Tên thể loại hoặc bí danh').fill(aliasName);
   await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
   await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toHaveCount(0);
 });

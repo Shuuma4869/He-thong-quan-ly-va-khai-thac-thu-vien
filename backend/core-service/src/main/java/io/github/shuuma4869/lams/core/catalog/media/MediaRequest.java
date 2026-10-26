@@ -3,7 +3,7 @@ package io.github.shuuma4869.lams.core.catalog.media;
 import jakarta.validation.constraints.*;
 
 public record MediaRequest(
-        @NotBlank @Pattern(regexp="open-library|google-books|wikimedia") String source,
+        @NotBlank @Pattern(regexp="open-library|google-books|wikimedia|standard-ebooks") String source,
         @NotBlank @Size(max=500) String sourceId,
         @NotBlank @Size(max=2048) String sourceUrl,
         @NotBlank @Size(max=2048) String imageUrl,

@@ -13,6 +13,8 @@ import { ProfilePage } from '../../features/profile/ProfilePage';
 import { CatalogPage } from '../../features/catalog/CatalogPage';
 import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
+import { DirectoryPage } from '../../features/catalog/DirectoryPage';
+import { CategoryDetailPage } from '../../features/catalog/CategoryDetailPage';
 import { MyLibraryPage } from '../../features/my-library/MyLibraryPage';
 import { HoldCreatePage } from '../../features/circulation/HoldCreatePage';
 const MemberListPage = lazy(() => import('../../features/members/MemberListPage').then(value => ({ default: value.MemberListPage })));
@@ -37,7 +39,10 @@ export function AppRouter() {
       <Route element={<ReaderLayout />}>
         <Route path="sach" element={<CatalogPage />} />
         <Route path="sach/:bookId" element={<BookDetailPage />} />
+        <Route path="tac-gia" element={<DirectoryPage kind="authors" />} />
         <Route path="tac-gia/:authorId" element={<AuthorDetailPage />} />
+        <Route path="the-loai" element={<DirectoryPage kind="categories" />} />
+        <Route path="the-loai/:categoryId" element={<CategoryDetailPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="ho-so" element={<ProfilePage />} />
           <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
