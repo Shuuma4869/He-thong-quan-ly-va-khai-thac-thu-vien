@@ -12,6 +12,13 @@ it('schema tách Book và Edition, không suy ISBN hay availability cho Book', (
   expect(resourcePath.bind(null,'editions','wrong')).toThrow();
   expect(resourcePath('editions',id)).toBe(`/books/${id}/editions`);
 });
+it('nguồn catalog chỉ nhận link HTTPS và không suy ngày ebook thành năm in', () => {
+  const book = { id: '11111111-1111-4111-8111-111111111111', title: 'Truyện thật', description: null,
+    authors: [], categories: [], catalogSource: { sourceCode: 'PROJECT_GUTENBERG',
+      sourceUrl: 'https://www.gutenberg.org/ebooks/42', ebookReleasedOn: '2001-02-03' } };
+  expect(bookSchema.parse(book).catalogSource?.ebookReleasedOn).toBe('2001-02-03');
+  expect(bookSchema.safeParse({ ...book, catalogSource: { ...book.catalogSource, sourceUrl: 'javascript:alert(1)' } }).success).toBe(false);
+});
 it('tác giả phải có UUID thật, nhãn chỉ dùng tên được trả về', () => {
   expect(schemas.authors.safeParse({id:'name-as-id',name:'Tác giả'}).success).toBe(false);
   const author={id:'11111111-1111-4111-8111-111111111111',name:'Tác giả'};

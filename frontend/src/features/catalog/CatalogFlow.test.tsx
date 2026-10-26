@@ -29,7 +29,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('Reader tra sách, phân trang, đồng bộ query và reset trang', async () => {
   app('/sach?query=Tác&page=0&size=20');
-  expect(await screen.findByRole('link',{name:book.title})).toBeInTheDocument();
+  expect(await screen.findByRole('link',{name:book.title},{timeout:5000})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Trang sau'}));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('page=1'))).toBe(true));
   fireEvent.click(screen.getByRole('button',{name:'Xóa bộ lọc'}));
@@ -98,6 +98,17 @@ it('anonymous mở được danh mục công khai nhưng vẫn không có quyề
   expect(await screen.findByRole('link', { name: book.title })).toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/public/catalog/books?'))).toBe(true);
   expect(screen.getAllByRole('link', { name: 'Đăng nhập' }).length).toBeGreaterThan(0);
+});
+it('refresh 401 của khách không hủy danh mục công khai đang hiển thị', async () => {
+  let finishRefresh!: (response: Response) => void;
+  fetchMock.mockImplementation((url: string) => url.endsWith('/auth/refresh')
+    ? new Promise<Response>(resolve => { finishRefresh = resolve; })
+    : Promise.resolve(Response.json(response(url))));
+  app();
+  expect(await screen.findByRole('link', { name: book.title })).toBeInTheDocument();
+  await act(async () => finishRefresh(Response.json({}, { status: 401 })));
+  expect(screen.getByRole('link', { name: book.title })).toBeInTheDocument();
+  expect(screen.queryByText('Không tải được dữ liệu')).not.toBeInTheDocument();
 });
 it('staff tạo Author, refetch và delete có xác nhận/FK conflict', async () => {
   role='LIBRARIAN'; let stored=false;

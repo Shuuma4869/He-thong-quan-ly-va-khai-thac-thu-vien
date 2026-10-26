@@ -6,8 +6,10 @@ import { safeMediaUrl } from './media-api';
 export function BookCover({ title, cover }: { title: string; cover?: PublicCover | null }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!cover || !safeMediaUrl(cover.imageUrl) || failedUrl === cover.imageUrl) {
-    return <div className="book-placeholder book-cover" aria-label="Chưa có bìa đã xác minh">
-      <span>LAMS · THƯ VIỆN</span><BookOpen size={45} strokeWidth={1.2} aria-hidden="true"/><strong>Bìa đang cập nhật</strong>
+    const tone = [...title].reduce((value, character) => (value * 31 + character.codePointAt(0)!) % 6, 0);
+    return <div className={`book-placeholder book-cover book-placeholder-tone-${tone}`} aria-label="Chưa có bìa đã xác minh">
+      <span>LAMS · THƯ VIỆN</span><BookOpen size={42} strokeWidth={1.1} aria-hidden="true"/>
+      <strong title={title}>{title}</strong><small>Chưa có ảnh bìa được duyệt</small>
     </div>;
   }
   return <figure className="book-cover-wrap">

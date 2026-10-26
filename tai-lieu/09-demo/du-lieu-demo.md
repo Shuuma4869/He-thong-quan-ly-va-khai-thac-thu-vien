@@ -11,6 +11,8 @@ pwsh -NoProfile -File .\scripts\seed-demo-catalog.ps1
 pwsh -NoProfile -File .\scripts\provision-demo-users.ps1
 ```
 
+Nếu muốn tạo mật khẩu mạnh mà không nhập ba lần, dùng `pwsh -NoProfile -File .\scripts\provision-demo-users.ps1 -ConfirmDemoDatabase -GeneratePasswords`. Script giữ mật khẩu trong `.tools/demo-credentials.xml` bằng cơ chế mã hóa gắn với tài khoản Windows đang chạy; file này bị Git bỏ qua. Chạy lại dùng chính các mật khẩu đã lưu, không đặt lại mật khẩu tài khoản cũ. Nếu tài khoản demo đã có nhưng file mật khẩu không còn, chế độ sinh mật khẩu từ chối chạy; dùng chế độ nhập mật khẩu đã biết. Để xem mật khẩu trên **terminal của chính bạn**, chạy `Import-Clixml .\.tools\demo-credentials.xml | ForEach-Object { "$($_.UserName): $($_.GetNetworkCredential().Password)" }`; tránh chụp hoặc đưa kết quả vào Git/chat. Nếu chuyển sang tài khoản Windows hoặc máy khác, file mã hóa này không giải được.
+
 Lệnh đầu yêu cầu gõ `DEMO` rồi thêm 32 tác phẩm, 17 tác giả, 12 thể loại, ba bí danh thể loại, 32 ấn bản, 64 bản sách, hai chi nhánh và hai kệ. Chạy lại không tạo bản ghi trùng; nếu bản seed cũ đã lưu khóa thể loại dạng bỏ dấu, lần chạy mới cập nhật khóa cho khớp cách Core tra cứu. Tên tác phẩm, tác giả và đường dẫn nguồn đã được đối chiếu với Standard Ebooks ngày 26/10/2026. Thể loại, bí danh và mô tả tiếng Việt là phần biên mục phục vụ demo; barcode và chi nhánh có tiền tố `DEMO`. Mỗi tác phẩm hiện chỉ có một Edition demo. ISBN, nhà xuất bản và năm xuất bản để trống vì chưa có thông tin về một bản in cụ thể; không dùng dữ liệu này để chứng minh nhiều ấn bản in của cùng sách.
 
 Lệnh thứ hai tạo ba tài khoản qua Auth API, rồi gán đúng vai trò nhân viên trong database demo. Nhập mật khẩu đã lưu riêng tại dấu nhắc của PowerShell; script không lưu hoặc in mật khẩu. Nếu email đã tồn tại, script giữ nguyên mật khẩu và dừng nếu vai trò không khớp. Các tài khoản là:
@@ -22,6 +24,8 @@ Lệnh thứ hai tạo ba tài khoản qua Auth API, rồi gán đúng vai trò 
 | `admin.demo@lams.test` | ADMIN |
 
 Script kiểm tra đăng nhập, `/auth/me`, quyền truy cập Staff, refresh và logout qua API. Không có đường đăng ký công khai để tự chọn vai trò Librarian/Admin. Loan, Hold, Favorite và Review chỉ được tạo qua các luồng nghiệp vụ khi chuẩn bị buổi trình diễn; seed không ghi thẳng các bản ghi này. Trước khi script tài khoản chạy xong và trả kết quả kiểm quyền, chỉ có Catalog demo sẵn sàng trên máy local.
+
+Muốn thử tìm kiếm và phân trang với dữ liệu lớn, sau bộ seed 32 tác phẩm có thể nhập [10.000 định danh nguồn Project Gutenberg](catalog-nguon-gutenberg.md). Đây là Book tham khảo, chưa phải 10.000 ấn bản hay bản vật lý của thư viện. Script seed nhỏ phải chạy trước, vì nó chủ động từ chối database đã có Book ngoài bộ demo.
 
 ## Ảnh bìa
 

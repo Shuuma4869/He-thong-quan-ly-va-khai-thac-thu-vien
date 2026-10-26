@@ -8,9 +8,12 @@ export const publicCoverSchema = z.object({ editionId: z.string().uuid(), imageU
   source: z.enum(['open-library', 'wikimedia', 'standard-ebooks']), sourceUrl: z.string().url(), license: z.string(), licenseUrl: z.string().url(),
   attribution: z.string(), approvedAt: z.string().datetime() });
 export type PublicCover = z.infer<typeof publicCoverSchema>;
+export const catalogSourceSchema = z.object({ sourceCode: z.string(), sourceUrl: z.url().refine(value => value.startsWith('https://')),
+  ebookReleasedOn: z.string().nullable() });
 export const bookSchema = z.object({ id: z.string().uuid(), title: z.string(), description: z.string().nullable(),
   authors: z.array(named), categories: z.array(named), cover: publicCoverSchema.nullable().optional(),
-  averageRating: z.number().min(1).max(5).nullable().optional(), ratingCount: z.number().int().nonnegative().optional() });
+  averageRating: z.number().min(1).max(5).nullable().optional(), ratingCount: z.number().int().nonnegative().optional(),
+  catalogSource: catalogSourceSchema.nullable().optional() });
 export const editionSchema = z.object({ id: z.string().uuid(), bookId: z.string().uuid(), bookTitle: z.string().nullable(),
   isbn13: z.string().nullable(), publisherId: z.string().uuid().nullable(), publisherName: z.string().nullable(),
   publicationYear: z.number().int().nullable(), language: z.string().nullable() });

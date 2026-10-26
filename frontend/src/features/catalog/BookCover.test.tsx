@@ -19,13 +19,25 @@ it('hiện bìa được duyệt và ghi công, rồi trở lại bìa chữ khi
   expect(image).toHaveAttribute('loading', 'lazy');
   expect(screen.getByText(cover.attribution)).toBeInTheDocument();
   fireEvent.error(image);
-  expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toHaveTextContent('Bìa đang cập nhật');
+  expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toHaveTextContent('Sách thật');
+  expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toHaveTextContent('Chưa có ảnh bìa được duyệt');
 });
 
 it('không hiển thị URL ảnh ngoài danh sách nguồn cho phép', () => {
   render(<BookCover title="Sách thật" cover={{ ...cover, imageUrl: 'https://evil.example/cover.jpg' }} />);
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toBeInTheDocument();
+});
+
+it('bìa chữ có màu ổn định theo nhan đề và không nhận là ảnh bìa thật', () => {
+  const first = render(<BookCover title="A Tale of Two Cities" />);
+  const placeholder = screen.getByLabelText('Chưa có bìa đã xác minh');
+  const tone = [...placeholder.classList].find(value => value.startsWith('book-placeholder-tone-'));
+  expect(tone).toBeTruthy();
+  expect(placeholder).toHaveTextContent('A Tale of Two Cities');
+  expect(placeholder).toHaveTextContent('Chưa có ảnh bìa được duyệt');
+  first.rerender(<BookCover title="A Tale of Two Cities" />);
+  expect(screen.getByLabelText('Chưa có bìa đã xác minh')).toHaveClass(tone!);
 });
 
 it('thử lại khi nhân viên thay ảnh đã duyệt', () => {

@@ -27,7 +27,7 @@ function BookDetail({ id }: { id: string }) {
       <div className="book-detail-hero mt-6">
         <div className="book-detail-cover"><BookCover title={book.data.title} cover={book.data.cover}/></div>
         <div className="book-detail-content">
-          <p className="eyebrow">Tác phẩm trong thư viện</p><h1 className="book-detail-title">{book.data.title}</h1>
+          <p className="eyebrow">{book.data.catalogSource ? 'Dữ liệu thư mục tham khảo' : 'Tác phẩm trong thư viện'}</p><h1 className="book-detail-title">{book.data.title}</h1>
           <p className="book-detail-authors">{book.data.authors.length ? book.data.authors.map((author,i) =>
             <span key={author.id}>{i > 0 && ' · '}<Link className="text-link" to={`/tac-gia/${author.id}`}>{author.name}</Link></span>) : 'Chưa có thông tin tác giả'}</p>
           <div className="book-detail-categories">{book.data.categories.length ? book.data.categories.map(category =>
@@ -35,13 +35,14 @@ function BookDetail({ id }: { id: string }) {
           {!!book.data.ratingCount && book.data.averageRating != null && <p className="book-detail-rating" aria-label={`Điểm trung bình ${book.data.averageRating.toFixed(2)} trên 5 từ ${book.data.ratingCount} đánh giá`}>
             ★ {book.data.averageRating.toFixed(1)} / 5 · {book.data.ratingCount} đánh giá</p>}
           <p className="book-detail-description whitespace-pre-wrap">{book.data.description || 'Chưa có mô tả tác phẩm.'}</p>
+          {book.data.catalogSource && <p className="book-source-note">Thông tin tác phẩm được đối chiếu từ <a className="text-link" href={book.data.catalogSource.sourceUrl} target="_blank" rel="noopener noreferrer">Project Gutenberg ↗</a>. Ngày phát hành ebook không phải năm xuất bản sách in. Chỉ những ấn bản bên dưới mới có thể được thư viện biên mục để giữ chỗ.</p>}
           {user ? <FavoriteButton bookId={id}/> : <Link className="text-link" to="/dang-nhap">Đăng nhập để lưu sách hoặc viết đánh giá</Link>}
         </div>
       </div>
       <h2 className="section-title mt-8">Các ấn bản</h2>
       <p className="text-sm text-muted my-3">Mỗi ấn bản có ISBN và thông tin xuất bản riêng. Chọn ấn bản để giữ chỗ tại chi nhánh nhận; trạng thái sẵn sàng nhận được xác nhận sau khi gửi yêu cầu.</p>
       {editions.isPending ? <p role="status">Đang tải ấn bản…</p> : editions.isError ? <CatalogError error={editions.error} retry={() => void editions.refetch()} /> : <>
-        {!editions.data.items.length && <p className="editorial-card">Tác phẩm chưa có ấn bản ở trang này.</p>}
+        {!editions.data.items.length && <p className="editorial-card">{book.data.catalogSource ? 'Thư viện chưa biên mục ấn bản hoặc bản sách vật lý cho tác phẩm tham khảo này.' : 'Tác phẩm chưa có ấn bản ở trang này.'}</p>}
         <div className="catalog-grid">{editions.data.items.map(edition => <article key={edition.id} className="editorial-card">
           <CatalogMedia kind="editions" id={edition.id} title={book.data.title} />
           <h3 className="font-semibold mt-4">{edition.isbn13 ? `ISBN ${edition.isbn13}` : 'Ấn bản không có ISBN'}</h3>

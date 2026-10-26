@@ -17,6 +17,7 @@ export function BookList({ books }: { books: Book[] }) {
     <Link className="book-card-image-link" to={`/sach/${book.id}`} aria-label={`Xem sách ${book.title}`}><BookCover title={book.title} cover={book.cover} /></Link>
     <div className="book-card-body">
       <p className="book-card-kicker">{book.categories[0]?.name ?? 'Tác phẩm'}</p>
+      {book.catalogSource && <p className="book-card-source">Dữ liệu thư mục tham khảo</p>}
       <h2 className="book-card-title"><Link to={`/sach/${book.id}`}>{book.title}</Link></h2>
       <p className="book-card-authors">{book.authors.length ? book.authors.map((author, index) => <span key={author.id}>{index > 0 && ', '}<Link to={`/tac-gia/${author.id}`}>{author.name}</Link></span>) : 'Chưa có thông tin tác giả'}</p>
       {!!book.ratingCount && book.averageRating != null && <p className="book-card-rating" aria-label={`Điểm trung bình ${book.averageRating.toFixed(2)} trên 5 từ ${book.ratingCount} đánh giá`}>

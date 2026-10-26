@@ -31,7 +31,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (generation.current !== startedAt) return false;
       apply(session); return true;
     } catch {
-      if (generation.current === startedAt) clear();
+      if (generation.current === startedAt) {
+        if (tokenRef.current) clear();
+        else apply(null);
+      }
       return false;
     }
   }, [apply, clear]);

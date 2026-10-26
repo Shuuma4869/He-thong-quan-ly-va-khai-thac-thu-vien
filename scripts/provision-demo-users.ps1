@@ -1,4 +1,8 @@
-param([string]$CoreApiUrl = 'http://127.0.0.1:8080/api/v1')
+param(
+    [string]$CoreApiUrl = 'http://127.0.0.1:8080/api/v1',
+    [switch]$ConfirmDemoDatabase,
+    [switch]$GeneratePasswords
+)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
@@ -10,7 +14,7 @@ if ($env:COMPOSE_PROJECT_NAME -ne 'lams' -or
     $CoreApiUrl -notmatch '^http://(localhost|127\.0\.0\.1):8080/api/v1$') {
     throw 'Công cụ chỉ chạy với database LAMS local trên 127.0.0.1:15432; production bị chặn.'
 }
-if ((Read-Host 'Đây là database local/demo. Gõ DEMO để tiếp tục') -cne 'DEMO') {
+if (-not $ConfirmDemoDatabase -and (Read-Host 'Đây là database local/demo. Gõ DEMO để tiếp tục') -cne 'DEMO') {
     throw 'Đã hủy, không thay đổi tài khoản.'
 }
 
@@ -19,6 +23,40 @@ $accounts = @(
     @{ Email = 'librarian.demo@lams.test'; Name = 'Thủ thư demo'; Role = 'LIBRARIAN' },
     @{ Email = 'admin.demo@lams.test'; Name = 'Quản trị demo'; Role = 'ADMIN' }
 )
+$credentialPath = Join-Path $root '.tools\demo-credentials.xml'
+$demoCredentials = @{}
+if ($GeneratePasswords -and -not (Test-Path -LiteralPath $credentialPath)) {
+    Push-Location $root
+    try {
+        $existingCount = & docker compose exec -T postgres psql -U $env:POSTGRES_USER -d lams_core -v ON_ERROR_STOP=1 -tA -c
+            "SELECT count(*) FROM users WHERE email_normalized IN ('reader.demo@lams.test','librarian.demo@lams.test','admin.demo@lams.test');"
+        if ($LASTEXITCODE -ne 0) { throw 'Không kiểm tra được tài khoản demo hiện có.' }
+        if ([int]$existingCount -gt 0) {
+            throw 'Đã có tài khoản demo nhưng không có kho mật khẩu trên máy này; dùng chế độ nhập mật khẩu để kiểm tra, không sinh mật khẩu mới.'
+        }
+    } finally { Pop-Location }
+}
+if ($GeneratePasswords -and (Test-Path -LiteralPath $credentialPath)) {
+    foreach ($credential in @(Import-Clixml -LiteralPath $credentialPath)) {
+        if ($credential -isnot [pscredential]) { throw 'Kho mật khẩu demo không hợp lệ; dừng để kiểm tra.' }
+        $demoCredentials[$credential.UserName] = $credential
+    }
+}
+if ($GeneratePasswords) {
+    foreach ($account in $accounts) {
+        if (-not $demoCredentials.ContainsKey($account.Email)) {
+            $random = [Security.Cryptography.RandomNumberGenerator]::GetBytes(24)
+            $secret = [Convert]::ToBase64String($random).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+            $demoCredentials[$account.Email] = [pscredential]::new($account.Email,
+                (ConvertTo-SecureString $secret -AsPlainText -Force))
+            $secret = $null
+        }
+    }
+    $directory = Split-Path -Parent $credentialPath
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    @($accounts | ForEach-Object { $demoCredentials[$_.Email] }) | Export-Clixml -LiteralPath $credentialPath
+    Write-Host "Mật khẩu demo được mã hóa cho tài khoản Windows hiện tại tại $credentialPath"
+}
 
 function Invoke-DemoSql([string]$Statement) {
     $output = & docker compose exec -T postgres psql -U $env:POSTGRES_USER -d lams_core -v ON_ERROR_STOP=1 -tA -c $Statement
@@ -36,7 +74,8 @@ try {
         if ($existing.Count -eq 1 -and $existing[0].Split('|')[1] -cne $role) {
             throw "Tài khoản $email đã có vai trò khác $role; không tự đổi quyền."
         }
-        $secure = Read-Host -AsSecureString "Mật khẩu đã lưu cho $email"
+        $secure = if ($GeneratePasswords) { $demoCredentials[$email].Password }
+                  else { Read-Host -AsSecureString "Mật khẩu đã lưu cho $email" }
         $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
         try {
             $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)

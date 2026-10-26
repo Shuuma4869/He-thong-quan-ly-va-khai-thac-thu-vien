@@ -6,7 +6,7 @@ Bảng này nối nghiệp vụ với API và đường vào trên giao diện. 
 |---|---|---|---|---|
 | Đăng ký, đăng nhập, đăng xuất, phiên | Core `/auth/*` | `/dang-ky`, `/dang-nhap`, topbar | `AuthFlow` | Có UI; cần xác nhận lại với ba tài khoản demo trên web và EXE. |
 | Hồ sơ | Core `/auth/me` | `/ho-so` | `AuthFlow` | Đọc hồ sơ; chưa có biểu mẫu cập nhật thông tin cá nhân. |
-| Tác phẩm và tìm kiếm | Core `/public/catalog/books` | `/`, `/sach`, `BookFilters`, `BookList` | `CatalogFlow`, `ReaderHomePage`, Web E2E | Có tìm, lọc, sort, phân trang và URL state; ảnh phụ thuộc duyệt media. |
+| Tác phẩm và tìm kiếm | Core `/public/catalog/books` | `/`, `/sach`, `BookFilters`, `BookList` | `CatalogFlow`, `ReaderHomePage`, Web E2E | Có tìm, lọc, sort, phân trang và URL state; 10.000 định danh Gutenberg trong database demo là thư mục tham khảo, không phải số Copy. Ảnh phụ thuộc duyệt media. |
 | Tác giả | Core `/public/catalog/authors`, lọc `authorId` | `/tac-gia`, `/tac-gia/:authorId`, bộ chọn trang chủ | `CatalogFlow`, `ReferencePicker`, `DirectoryPage` | Có trang duyệt/tìm và trang chi tiết; sách lọc theo UUID tác giả. |
 | Thể loại và bí danh | Core `/public/catalog/categories`, `categoryTerm` | `/the-loai`, `/the-loai/:categoryId`, `/sach`, quản trị trong `/nhan-vien/danh-muc` | `CatalogFlow`, `DirectoryPage` | Có duyệt/tìm, trang chi tiết và lọc bí danh trong danh mục sách. |
 | Book, Edition, Copy | Core `/books`, `/books/{id}/editions`, `/copies` | `/sach/:bookId`, `/nhan-vien/danh-muc` | `CatalogFlow` | Có quản trị và chọn Book → Edition khi sửa Copy; ISBN demo đang để trống có chủ đích. |
