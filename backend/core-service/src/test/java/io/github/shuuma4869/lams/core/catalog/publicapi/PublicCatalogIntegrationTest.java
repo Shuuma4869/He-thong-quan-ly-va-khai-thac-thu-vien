@@ -35,6 +35,26 @@ class PublicCatalogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
 
+    @Test void importedBookExposesSourceWithoutPretendingToHaveAnEdition() throws Exception {
+        UUID book = UUID.randomUUID();
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Nguồn thư mục','nguồn thư mục')", book);
+        jdbc.update("""
+                INSERT INTO catalog_external_sources(source_code,source_record_id,book_id,source_url,
+                  source_snapshot_sha256,source_title,source_authors,ebook_released_on)
+                VALUES ('PROJECT_GUTENBERG',?,?,'https://www.gutenberg.org/ebooks/12',
+                  repeat('a',64),'Nguồn thư mục','Tác giả',DATE '2001-02-03')
+                """, book.toString(), book);
+        mvc.perform(get("/api/v1/public/catalog/books/{id}", book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.catalogSource.sourceCode").value("PROJECT_GUTENBERG"))
+                .andExpect(jsonPath("$.catalogSource.sourceUrl").value("https://www.gutenberg.org/ebooks/12"))
+                .andExpect(jsonPath("$.catalogSource.ebookReleasedOn").value("2001-02-03"));
+        mvc.perform(get("/api/v1/public/catalog/books").param("query", "Nguồn thư mục"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].catalogSource.sourceCode").value("PROJECT_GUTENBERG"));
+        mvc.perform(get("/api/v1/public/catalog/books/{id}/editions", book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+    }
+
     @Test void anonymousReaderAndStaffSeeOnlyBibliographicDataAndApprovedCover() throws Exception {
         UUID staff = UUID.randomUUID(), author = UUID.randomUUID(), category = UUID.randomUUID();
         UUID book = UUID.randomUUID(), older = UUID.randomUUID(), newer = UUID.randomUUID();

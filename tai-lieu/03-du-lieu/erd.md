@@ -57,6 +57,7 @@ erDiagram
   CATEGORIES ||--o{ CATEGORY_ALIASES : named_by
   BOOKS ||--o{ BOOK_CATEGORIES : classified
   BOOKS ||--o{ EDITIONS : has
+  BOOKS ||--o{ CATALOG_EXTERNAL_SOURCES : identified_by
   PUBLISHERS |o--o{ EDITIONS : optional_publisher
   EDITIONS ||--o{ BOOK_COPIES : manifests
   BRANCHES ||--o{ SHELVES : contains
@@ -64,6 +65,8 @@ erDiagram
   AUTHORS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_author
   EDITIONS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_edition
 ```
+
+V25 thêm `catalog_external_sources` để giữ định danh và link nguồn thư mục cho Book. Một Book có thể gắn nhiều định danh ngoài; khóa `(source_code, source_record_id)` là duy nhất. Ngày `ebook_released_on` chỉ là ngày phát hành ebook tại nguồn, không điền vào năm xuất bản của Edition. FK `ON DELETE RESTRICT` giữ bằng chứng nguồn khi nhân viên sửa Book; cần xử lý liên kết nguồn có chủ đích trước khi xóa Book. Bộ import demo không tạo Edition hoặc BookCopy từ feed.
 
 My Library: Core API và UI Phase 3:
 

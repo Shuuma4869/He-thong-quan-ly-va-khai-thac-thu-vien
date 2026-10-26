@@ -93,7 +93,7 @@ public class BookService {
         try {
             if (!books.delete(id)) throw new AuthFailure(404, "Không tìm thấy sách.");
         } catch (DataIntegrityViolationException referenced) {
-            throw new AuthFailure(409, "Không thể xóa sách đang có ấn bản hoặc nghiệp vụ tham chiếu.");
+            throw new AuthFailure(409, "Không thể xóa sách đang có ấn bản, nguồn biên mục hoặc nghiệp vụ tham chiếu.");
         }
     }
 

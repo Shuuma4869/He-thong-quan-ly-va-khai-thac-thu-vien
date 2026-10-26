@@ -2261,7 +2261,7 @@ components:
         approvedAt: { type: string, format: date-time }
     PublicBook:
       type: object
-      required: [id, title, description, authors, categories, cover, averageRating, ratingCount]
+      required: [id, title, description, authors, categories, cover, averageRating, ratingCount, catalogSource]
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
@@ -2271,6 +2271,16 @@ components:
         cover: { anyOf: [{ $ref: '#/components/schemas/PublicCover' }, { type: 'null' }] }
         averageRating: { type: [number, 'null'], minimum: 1, maximum: 5, description: 'null khi chưa có đánh giá' }
         ratingCount: { type: integer, minimum: 0 }
+        catalogSource:
+          description: Nguồn biên mục ngoài; ngày phát hành ebook không phải năm xuất bản sách in.
+          anyOf:
+            - type: object
+              required: [sourceCode, sourceUrl, ebookReleasedOn]
+              properties:
+                sourceCode: { type: string, example: PROJECT_GUTENBERG }
+                sourceUrl: { type: string, format: uri }
+                ebookReleasedOn: { type: [string, 'null'], format: date }
+            - type: 'null'
     BookPage:
       type: object
       required: [items, page]

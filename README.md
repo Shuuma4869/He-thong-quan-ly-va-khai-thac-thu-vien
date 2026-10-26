@@ -79,7 +79,7 @@ pwsh -NoProfile -File .\scripts\start-desktop.ps1
 
 Core health: `http://localhost:8080/api/v1/health`; Insight health: `http://localhost:3000/api/v1/health`. Để phát triển giao diện web, chạy `./scripts/lams.sh web` trong Git Bash hoặc `npm run dev` trong `frontend/` sau khi Core và Insight đã sẵn sàng. [Dữ liệu demo](tai-lieu/09-demo/du-lieu-demo.md) có lệnh seed Catalog và tạo ba tài khoản không lưu mật khẩu trong repository. [Bản đồ chức năng giao diện](tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) ghi đường vào và phạm vi của từng màn.
 
-Bộ Catalog demo có 32 tác phẩm kinh điển để thử giao diện và nghiệp vụ, không phải danh mục sách in đã kiểm kê ngoài đời. Ảnh bìa được ghi trong danh sách ứng viên để nhân viên duyệt từng ảnh; chưa có bìa nào được tự động chấp thuận. Muốn thử hành trình có đăng nhập, người vận hành chạy script tạo tài khoản và nhập mật khẩu tại terminal của chính mình.
+Bộ seed nhỏ có 32 tác phẩm và 64 bản sách mô phỏng để thử nghiệp vụ. Có thêm [catalog tham khảo 10.000 định danh Project Gutenberg](tai-lieu/09-demo/catalog-nguon-gutenberg.md) cho tìm kiếm quy mô lớn; dữ liệu này không tạo ấn bản hoặc tồn kho vật lý. Ảnh bìa trong danh sách ứng viên cần nhân viên duyệt từng ảnh; chưa có bìa nào được tự động chấp thuận. Muốn thử hành trình có đăng nhập, người vận hành chạy script tạo tài khoản và nhập mật khẩu tại terminal của chính mình.
 
 ## Kiểm thử và build
 

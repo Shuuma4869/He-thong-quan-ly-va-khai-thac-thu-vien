@@ -50,7 +50,7 @@ class CatalogMigrationTest {
         // A second startup against the same already-current schema validates Flyway and is a no-op.
         migration("catalog_upgrade", "latest").migrate();
         assertThat(db.queryForObject("SELECT version FROM flyway_schema_history WHERE success "
-                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(24);
+                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(25);
         assertThat(db.queryForObject("SELECT count(*) FROM categories WHERE id=?", Integer.class, category)).isOne();
     }
 
@@ -102,5 +102,23 @@ class CatalogMigrationTest {
         assertThat(db.queryForObject("SELECT version FROM catalog_media_references WHERE id=?",Long.class,media)).isEqualTo(41);
         assertThat(db.queryForObject("SELECT nextval('catalog_media_revision_seq')",Long.class)).isEqualTo(42);
         assertThat(db.queryForObject("SELECT column_default FROM information_schema.columns WHERE table_schema='media_upgrade' AND table_name='catalog_media_references' AND column_name='version'",String.class)).contains("catalog_media_revision_seq");
+    }
+
+    @Test void externalSourceUpgradeKeepsExistingBookAndRejectsDuplicateSourceId() {
+        migration("catalog_source_upgrade", "24").migrate();
+        var db = jdbc("catalog_source_upgrade");
+        UUID book = UUID.randomUUID();
+        db.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Sách đang có','sach dang co')", book);
+        migration("catalog_source_upgrade", "latest").migrate();
+        assertThat(db.queryForObject("SELECT title FROM books WHERE id=?", String.class, book)).isEqualTo("Sách đang có");
+        String insert = "INSERT INTO catalog_external_sources(source_code,source_record_id,book_id,source_url,"
+                + "source_snapshot_sha256,source_title,source_authors) VALUES (?,?,?,?,?,?,?)";
+        Object[] values = {"PROJECT_GUTENBERG", "11", book, "https://www.gutenberg.org/ebooks/11",
+                "a".repeat(64), "Alice's Adventures in Wonderland", "Carroll, Lewis"};
+        db.update(insert, values);
+        assertThat(db.queryForObject("SELECT book_id FROM catalog_external_sources WHERE source_record_id='11'",
+                UUID.class)).isEqualTo(book);
+        assertThatThrownBy(() -> db.update(insert, values))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 }

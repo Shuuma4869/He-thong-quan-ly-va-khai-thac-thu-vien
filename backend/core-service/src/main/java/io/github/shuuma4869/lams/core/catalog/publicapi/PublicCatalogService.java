@@ -9,6 +9,7 @@ import io.github.shuuma4869.lams.core.catalog.shared.CatalogText;
 import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +29,10 @@ public class PublicCatalogService {
     public record Named(UUID id, String name) {}
     public record Cover(UUID editionId, String imageUrl, String source, String sourceUrl,
                         String license, String licenseUrl, String attribution, Instant approvedAt) {}
+    public record CatalogSource(String sourceCode, String sourceUrl, LocalDate ebookReleasedOn) {}
     public record BookCard(UUID id, String title, String description,
                            List<Book.RelatedItem> authors, List<Book.RelatedItem> categories, Cover cover,
-                           BigDecimal averageRating, long ratingCount) {}
+                           BigDecimal averageRating, long ratingCount, CatalogSource catalogSource) {}
     private record Rating(BigDecimal average, long count) {}
     private final BookRepository books;
     private final CategoryAliasRepository categoryAliases;
@@ -70,14 +72,16 @@ public class PublicCatalogService {
         var ids = listed.items().stream().map(Book::id).toList();
         var covers = covers(ids);
         var ratings = ratings(ids);
-        return new Result<>(listed.items().stream().map(book -> card(book, covers.get(book.id()), ratings.get(book.id()))).toList(),
+        var sources = sources(ids);
+        return new Result<>(listed.items().stream().map(book -> card(book, covers.get(book.id()),
+                ratings.get(book.id()), sources.get(book.id()))).toList(),
                 metadata(page, size, listed.totalElements()));
     }
 
     @Transactional(readOnly = true)
     public BookCard book(UUID id) {
         Book book = books.findById(id).orElseThrow(() -> new AuthFailure(404, "Không tìm thấy sách."));
-        return card(book, covers(List.of(id)).get(id), ratings(List.of(id)).get(id));
+        return card(book, covers(List.of(id)).get(id), ratings(List.of(id)).get(id), sources(List.of(id)).get(id));
     }
 
     @Transactional(readOnly = true)
@@ -143,15 +147,29 @@ public class PublicCatalogService {
         return result;
     }
 
+    private Map<UUID, CatalogSource> sources(List<UUID> bookIds) {
+        if (bookIds.isEmpty()) return Map.of();
+        var result = new LinkedHashMap<UUID, CatalogSource>();
+        named.query("""
+                SELECT DISTINCT ON (book_id) book_id,source_code,source_url,ebook_released_on
+                FROM catalog_external_sources WHERE book_id IN (:bookIds)
+                ORDER BY book_id,source_code,source_record_id
+                """, new MapSqlParameterSource("bookIds", bookIds), (RowCallbackHandler) rs ->
+                result.put(rs.getObject("book_id", UUID.class), new CatalogSource(
+                        rs.getString("source_code"), rs.getString("source_url"),
+                        rs.getObject("ebook_released_on", LocalDate.class))));
+        return result;
+    }
+
     private static Cover cover(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new Cover(rs.getObject("edition_id", UUID.class), rs.getString("image_url"),
                 rs.getString("source"), rs.getString("source_url"), rs.getString("license"),
                 rs.getString("license_url"), rs.getString("attribution"), rs.getTimestamp("approved_at").toInstant());
     }
 
-    private static BookCard card(Book book, Cover cover, Rating rating) {
+    private static BookCard card(Book book, Cover cover, Rating rating, CatalogSource source) {
         return new BookCard(book.id(), book.title(), book.description(), book.authors(), book.categories(), cover,
-                rating == null ? null : rating.average(), rating == null ? 0 : rating.count());
+                rating == null ? null : rating.average(), rating == null ? 0 : rating.count(), source);
     }
     private static Page metadata(int page, int size, long total) {
         return new Page(page, size, total, total == 0 ? 0 : (total + size - 1) / size);
