@@ -598,12 +598,12 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
   const isbn = `${isbnStem}${checkDigit}`;
   await createCatalog(request, headers, `/books/${prefix.id}/editions`, { isbn13: isbn });
   await navigate(page, `/sach?query=duong%20ve%20${suffix}&sort=relevance&size=1`);
-  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}`, exact: true })).toBeVisible();
   await expect(page.getByText(/Trang 1 \/ \d+ · \d+ kết quả/)).toBeVisible();
   await page.getByRole('button', { name: 'Trang sau' }).click();
-  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}`, exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}`, exact: true })).toBeVisible();
   const authorSearch = await request.get(`${core}/public/catalog/books`, {
     params: { query: `nguyen binh ${suffix}`, sort: 'relevance' },
   });
@@ -621,11 +621,11 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
     const params = desktopEndpoint ? new URLSearchParams(location.hash.split('?')[1] ?? '') : location.searchParams;
     return params.get('categoryTerm');
   }).toBe(category.name);
-  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
-  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}`, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}`, exact: true })).toHaveCount(0);
   await page.getByLabel('Tên thể loại hoặc bí danh').fill(aliasName);
-  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}` })).toBeVisible();
-  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}` })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: `Xem sách ${exact.title}`, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}`, exact: true })).toHaveCount(0);
 });
 
 test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn mốc responsive', async ({ page, request }) => {
