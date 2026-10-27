@@ -67,15 +67,24 @@ export async function getPublicCategories(signal?: AbortSignal) {
     await coreApi.get<unknown>('/public/catalog/categories?size=50', true, signal));
 }
 export async function getBook(id: string, signal?: AbortSignal) { return bookSchema.parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(id)}`, true, signal)); }
+export async function getBookCards(ids: string[], signal?: AbortSignal) {
+  if (ids.length === 0) return [];
+  if (ids.length > 20 || new Set(ids).size !== ids.length) throw new Error('Cần từ 1 đến 20 mã sách khác nhau.');
+  const params = new URLSearchParams();
+  for (const id of ids) params.append('bookId', z.string().uuid().parse(id));
+  return z.array(bookSchema).parse(await coreApi.get<unknown>(`/public/catalog/books/batch?${params}`, true, signal));
+}
 export async function getAuthor(id: string, signal?: AbortSignal) { return named.parse(await coreApi.get<unknown>(`/public/catalog/authors/${encodeURIComponent(id)}`, true, signal)); }
 export async function getEditions(bookId: string, page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(editionSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(bookId)}/editions?page=${page}&size=20`, true, signal));
 }
-export async function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query = '') {
+export function getCatalogPage(resource: 'authors' | 'categories', page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: Named[]; page: Page }>;
+export function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: CatalogRecord[]; page: Page }>;
+export async function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query = '', size = 20) {
   const searchable = resource === 'authors' || resource === 'categories' || resource === 'books';
   const path = searchable
     ? `/public/catalog/${resource}` : resourcePath(resource, bookId);
-  const params = new URLSearchParams({ page: String(page), size: '20' });
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (searchable && query.trim()) params.set('query', query.trim());
   return z.object({ items: z.array(schemas[resource]), page: pageSchema }).parse(
     await coreApi.get<unknown>(`${path}?${params}`, true, signal));

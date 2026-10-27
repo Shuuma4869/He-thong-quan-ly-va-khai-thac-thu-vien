@@ -29,6 +29,9 @@ public class PublicCatalogService {
     public record Named(UUID id, String name) {}
     public record Cover(UUID editionId, String imageUrl, String source, String sourceUrl,
                         String license, String licenseUrl, String attribution, Instant approvedAt) {}
+    public record DirectoryImage(UUID subjectId, String imageUrl, String source, String sourceUrl,
+                                 String license, String licenseUrl, String attribution, Instant approvedAt,
+                                 String context) {}
     public record CatalogSource(String sourceCode, String sourceUrl, LocalDate ebookReleasedOn) {}
     public record BookCard(UUID id, String title, String description,
                            List<Book.RelatedItem> authors, List<Book.RelatedItem> categories, Cover cover,
@@ -84,6 +87,21 @@ public class PublicCatalogService {
         return card(book, covers(List.of(id)).get(id), ratings(List.of(id)).get(id), sources(List.of(id)).get(id));
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public List<BookCard> cards(List<UUID> requestedIds) {
+        if (requestedIds == null || requestedIds.isEmpty() || requestedIds.size() > 20
+                || requestedIds.stream().distinct().count() != requestedIds.size()) {
+            throw invalid("Cần từ 1 đến 20 mã sách khác nhau.");
+        }
+        var found = books.findByIds(requestedIds);
+        var byId = new java.util.HashMap<UUID, Book>();
+        for (var book : found) byId.put(book.id(), book);
+        var ids = found.stream().map(Book::id).toList();
+        var covers = covers(ids); var ratings = ratings(ids); var sources = sources(ids);
+        return requestedIds.stream().filter(byId::containsKey)
+                .map(id -> card(byId.get(id), covers.get(id), ratings.get(id), sources.get(id))).toList();
+    }
+
     @Transactional(readOnly = true)
     public Result<Edition> editions(UUID bookId, int page, int size) {
         bounds(page, size, 50);
@@ -113,6 +131,36 @@ public class PublicCatalogService {
         return jdbc.query("SELECT id,name FROM " + table(kind) + " WHERE id=?",
                 (rs, row) -> new Named(rs.getObject("id", UUID.class), rs.getString("name")), id)
                 .stream().findFirst().orElseThrow(() -> new AuthFailure(404, "Không tìm thấy mục trong danh mục."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DirectoryImage> directoryImages(String kind, List<UUID> requestedIds) {
+        table(kind);
+        if (requestedIds == null || requestedIds.isEmpty() || requestedIds.size() > 20
+                || requestedIds.stream().distinct().count() != requestedIds.size())
+            throw invalid("Cần từ 1 đến 20 mã danh mục khác nhau.");
+        String sql = kind.equals("authors") ? """
+                SELECT m.author_id AS subject_id,m.image_url,m.source,m.source_url,m.license,
+                    m.license_url,m.attribution,m.approved_at,'portrait' AS context
+                FROM catalog_media_references m
+                WHERE m.author_id IN (:ids) AND m.source<>'google-books'
+                """ : """
+                SELECT DISTINCT ON (bc.category_id) bc.category_id AS subject_id,m.image_url,m.source,
+                    m.source_url,m.license,m.license_url,m.attribution,m.approved_at,'book-cover' AS context
+                FROM book_categories bc JOIN editions e ON e.book_id=bc.book_id
+                JOIN catalog_media_references m ON m.edition_id=e.id
+                WHERE bc.category_id IN (:ids) AND m.source<>'google-books'
+                ORDER BY bc.category_id,e.publication_year DESC NULLS LAST,m.approved_at DESC,e.id
+                """;
+        var found = new java.util.HashMap<UUID, DirectoryImage>();
+        named.query(sql, new MapSqlParameterSource("ids", requestedIds), (RowCallbackHandler) rs -> {
+            UUID id = rs.getObject("subject_id", UUID.class);
+            found.put(id, new DirectoryImage(id, rs.getString("image_url"), rs.getString("source"),
+                    rs.getString("source_url"), rs.getString("license"), rs.getString("license_url"),
+                    rs.getString("attribution"), rs.getTimestamp("approved_at").toInstant(),
+                    rs.getString("context")));
+        });
+        return requestedIds.stream().filter(found::containsKey).map(found::get).toList();
     }
 
     public Cover editionCover(UUID editionId) {

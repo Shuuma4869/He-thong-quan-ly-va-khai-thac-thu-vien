@@ -90,7 +90,7 @@ it('Book Detail tách hai Edition và không bịa availability', async () => {
 it('Author Detail lấy sách bằng UUID, không giả biography', async () => {
   app(`/tac-gia/${authorId}`); await screen.findByRole('heading',{name:'Tác giả A'});
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes(`authorId=${authorId}`))).toBe(true));
-  expect(screen.getByLabelText('Chưa có ảnh tác giả đã xác minh')).toBeInTheDocument();
+  expect(screen.getByLabelText('Chưa có chân dung đã duyệt')).toBeInTheDocument();
 });
 it('404 có link quay lại, URL filter sai không gọi sách', async () => {
   fetchMock.mockImplementation((url:string) => Promise.resolve(url.endsWith('/auth/refresh')?Response.json(session):Response.json({detail:'Không tìm thấy sách.'},{status:404})));

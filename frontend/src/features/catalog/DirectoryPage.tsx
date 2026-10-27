@@ -4,6 +4,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { getCatalogPage, recordLabel } from './catalog-api';
 import { CatalogError, Pagination } from './CatalogStates';
 import { useAuth } from '../auth/auth-context';
+import { getDirectoryImages } from './directory-image-api';
+import { DirectoryVisual } from './DirectoryVisual';
 
 export function DirectoryPage({ kind }: { kind: 'authors' | 'categories' }) {
   const { isInitializing } = useAuth();
@@ -17,6 +19,10 @@ export function DirectoryPage({ kind }: { kind: 'authors' | 'categories' }) {
   useEffect(() => setInput(query), [query]);
   const results = useQuery({ queryKey: ['directory', kind, query, page],
     queryFn: ({ signal }) => getCatalogPage(kind, page, signal, undefined, query), enabled: valid && !isInitializing, retry: false });
+  const ids = results.data?.items.map(item => item.id) ?? [];
+  const images = useQuery({ queryKey: ['directory-images', kind, ids], enabled: ids.length > 0,
+    queryFn: ({ signal }) => getDirectoryImages(kind, ids, signal), retry: false });
+  const byId = new Map(images.data?.map(image => [image.subjectId, image]));
   const change = (nextQuery: string, nextPage: number) => {
     const value = new URLSearchParams();
     if (nextQuery) value.set('query', nextQuery);
@@ -37,8 +43,10 @@ export function DirectoryPage({ kind }: { kind: 'authors' | 'categories' }) {
       : results.isPending ? <p role="status" className="mt-6">Đang tải {title.toLowerCase()}…</p>
         : results.isError ? <CatalogError error={results.error} retry={() => void results.refetch()} />
           : <><div className="directory-grid mt-6">{results.data.items.map(item =>
-            <Link key={item.id} className="directory-card" to={author ? `/tac-gia/${item.id}` : `/the-loai/${item.id}`}>
-              <strong>{recordLabel(item)}</strong><span aria-hidden="true">↗</span>
+            <Link key={item.id} className="directory-card" aria-label={item.name}
+              to={author ? `/tac-gia/${item.id}` : `/the-loai/${item.id}`}>
+              <DirectoryVisual kind={kind} title={item.name} image={byId.get(item.id)}/>
+              <span className="directory-card-label"><strong>{recordLabel(item)}</strong><span aria-hidden="true">↗</span></span>
             </Link>)}</div>
             {!results.data.items.length && <p className="editorial-card mt-6">{query ? 'Không tìm thấy mục phù hợp. Thử tên khác.' : 'Danh mục này chưa có dữ liệu.'}</p>}
             <Pagination page={results.data.page} onChange={next => change(query, next)} /></>}

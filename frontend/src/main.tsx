@@ -10,6 +10,7 @@ import '@fontsource/be-vietnam-pro/700.css';
 import '@fontsource-variable/literata/wght.css';
 import './styles/index.css';
 import './styles/library-theme.css';
+import './styles/premium.css';
 
 const Router = '__TAURI_INTERNALS__' in window ? HashRouter : BrowserRouter;
 

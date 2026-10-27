@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { BarChart3, BookCopy, BookOpen, ClipboardList, Heart, House, LibraryBig, Lightbulb,
+import { useEffect, useRef, useState } from 'react';
+import { BarChart3, BookCopy, BookOpen, ChevronLeft, ChevronRight, ClipboardList, Heart, House, LibraryBig, Lightbulb,
   LogIn, Star, UserRound, Users, X, type LucideIcon } from 'lucide-react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
+import { sidebarItemActive } from './sidebarItemActive';
 
 type Item = { label: string; to: string; icon: LucideIcon };
 type Group = { title: string; items: Item[] };
@@ -33,6 +34,13 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
   const location = useLocation();
   const panel = useRef<HTMLElement>(null);
   const previousLocation = useRef(location.pathname + location.hash);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return window.localStorage.getItem('lams-sidebar-collapsed') === 'true'; } catch { return false; }
+  });
+  const toggle = () => setCollapsed(value => {
+    try { window.localStorage.setItem('lams-sidebar-collapsed', String(!value)); } catch { /* Private storage may be unavailable. */ }
+    return !value;
+  });
   const groups = mode === 'staff' ? staffGroups : [
     ...readerPublic,
     ...(user ? [{ title: 'Thư viện của tôi', items: [
@@ -66,22 +74,26 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); prior?.focus(); };
   }, [open, onClose, trigger]);
-  const contents = <>
-    <div className="library-sidebar-brand"><Link to="/"><BrandLogo variant="compact"/></Link>
+  const contents = (compact: boolean) => <>
+    <div className="library-sidebar-brand"><Link to="/" aria-label="LAMS — Trang chủ"><BrandLogo variant="compact"/></Link>
       <button type="button" className="library-sidebar-close" onClick={onClose} aria-label="Đóng menu"><X size={20}/></button></div>
     <nav aria-label={mode === 'staff' ? 'Điều hướng nhân viên' : 'Điều hướng thư viện'}>
       {groups.map(group => <div className="library-nav-group" key={group.title}>
         <p>{group.title}</p>{group.items.map(({ label, to, icon: Icon }) =>
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `library-nav-link ${isActive ? 'library-nav-active' : ''}`}>
-            <Icon size={18} aria-hidden="true"/><span>{label}</span></NavLink>)}
+          <Link key={to} to={to} title={compact ? label : undefined} aria-label={compact ? label : undefined}
+            aria-current={sidebarItemActive(location.pathname, location.hash, to) ? 'page' : undefined}
+            className={`library-nav-link ${sidebarItemActive(location.pathname, location.hash, to) ? 'library-nav-active' : ''}`}>
+            <Icon size={18} aria-hidden="true"/><span>{label}</span></Link>)}
       </div>)}
     </nav>
+    {compact && <button type="button" className="library-sidebar-toggle" aria-label={collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+      aria-expanded={!collapsed} onClick={toggle}>{collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}<span>{collapsed ? 'Mở rộng' : 'Thu gọn'}</span></button>}
   </>;
   return <>
-    <aside className="library-sidebar-desktop">{contents}</aside>
+    <aside className={`library-sidebar-desktop ${collapsed ? 'is-collapsed' : ''}`}>{contents(true)}</aside>
     {open && <div className="library-drawer-layer"><button className="library-drawer-backdrop" type="button"
       aria-label="Đóng menu thư viện" onClick={onClose}/>
-      <aside ref={panel} className="library-sidebar-drawer" role="dialog" aria-modal="true" aria-label="Menu thư viện">{contents}</aside>
+      <aside ref={panel} className="library-sidebar-drawer" role="dialog" aria-modal="true" aria-label="Menu thư viện">{contents(false)}</aside>
     </div>}
   </>;
 }

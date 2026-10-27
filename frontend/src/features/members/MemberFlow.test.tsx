@@ -9,6 +9,8 @@ const user = { id, memberCode: 'TV-1234', email: 'an@example.test', fullName: 'N
 const session = { accessToken: 'test-access', accessTokenExpiresAt: '2030-01-01T00:00:00Z', user };
 const row = { userId: id, memberCode: 'TV-1234', fullName: 'Nguyễn An', status: 'ACTIVE' };
 const profile = { ...row, email: user.email, profile: null };
+const account = { userId: id, memberCode: user.memberCode, fullName: user.fullName, email: user.email,
+  status: 'ACTIVE', phone: null, pendingEmail: null, pendingEmailRequestedAt: null };
 const page = (items: typeof row[] = [row], number = 0, total = 21) => ({
   items, page: { number, size: 20, totalElements: total, totalPages: Math.ceil(total / 20) },
 });
@@ -18,21 +20,21 @@ function app(path = '/ho-so') {
 }
 beforeEach(() => {
   fetchMock = vi.fn((url: string) => Promise.resolve(Response.json(
-    url.endsWith('/auth/refresh') ? session : url.includes('/members?') ? page() : profile,
+    url.endsWith('/auth/refresh') ? session : url.includes('/members?') ? page() : url.endsWith('/me/account') ? account : profile,
   )));
   vi.stubGlobal('fetch', fetchMock);
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-it.each(['READER', 'LIBRARIAN', 'ADMIN'])('hồ sơ %s chỉ đọc và xử lý profile null', async role => {
+it.each(['READER', 'LIBRARIAN', 'ADMIN'])('hồ sơ %s cho phép sửa thông tin của chính mình', async role => {
   fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
-    url.endsWith('/auth/refresh') ? { ...session, user: { ...user, roles: [role] } } : profile,
+    url.endsWith('/auth/refresh') ? { ...session, user: { ...user, roles: [role] } } : account,
   )));
   app();
   expect(await screen.findByText('an@example.test')).toBeInTheDocument();
-  expect(screen.getByText(/Chưa có thông tin hồ sơ bổ sung/)).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /Lưu|Sửa/ })).not.toBeInTheDocument();
-  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/me/profile'),
+  expect(screen.getByRole('button', { name: 'Lưu thay đổi' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Họ và tên')).toHaveValue('Nguyễn An');
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/me/account'),
     expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer test-access' }) }));
 });
 it('loading, lỗi rồi retry hồ sơ thành công', async () => {
@@ -44,9 +46,49 @@ it('loading, lỗi rồi retry hồ sơ thành công', async () => {
   await waitFor(() => expect(finish).toBeDefined());
   await act(async () => finish(Response.json({ detail: 'internal trace' }, { status: 500 })));
   expect(await screen.findByRole('alert')).not.toHaveTextContent('internal trace');
-  fetchMock.mockResolvedValue(Response.json(profile));
+  fetchMock.mockResolvedValue(Response.json(account));
   fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
   expect(await screen.findByText('an@example.test')).toBeInTheDocument();
+});
+it('lưu họ tên và số liên hệ qua API của chính tài khoản', async () => {
+  fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? session : init.method === 'PATCH' ? { ...account, fullName: 'Nguyễn Bình', phone: '+84901234567' } : account,
+  )));
+  app();
+  fireEvent.change(await screen.findByLabelText('Họ và tên'), { target: { value: 'Nguyễn Bình' } });
+  fireEvent.change(screen.getByLabelText('Số điện thoại'), { target: { value: '+84901234567' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+  expect(await screen.findByText('Đã cập nhật thông tin cá nhân.')).toBeInTheDocument();
+  const patch = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith('/me/account') && init.method === 'PATCH');
+  expect(JSON.parse(patch![1].body)).toEqual({ fullName: 'Nguyễn Bình', phone: '+84901234567' });
+});
+it('đổi email chỉ ở trạng thái chờ xác minh và có thể hủy', async () => {
+  fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(
+    String(url).endsWith('/me/account/email-request') && init.method === 'POST'
+      ? Response.json({ ...account, pendingEmail: 'new@example.test', pendingEmailRequestedAt: '2026-10-27T00:00:00Z' })
+      : init.method === 'DELETE' ? new Response(null, { status: 204 })
+        : Response.json(String(url).endsWith('/auth/refresh') ? session : account)));
+  app();
+  const section = await screen.findByRole('region', { name: 'Địa chỉ email' });
+  fireEvent.change(within(section).getByLabelText('Email mới'), { target: { value: 'new@example.test' } });
+  fireEvent.change(within(section).getByLabelText('Mật khẩu hiện tại'), { target: { value: 'CurrentPassword123' } });
+  fireEvent.click(within(section).getByRole('button', { name: 'Ghi nhận email mới' }));
+  expect(await within(section).findByText(/Đang chờ xác minh:/)).toBeInTheDocument();
+  expect(within(section).getByText('an@example.test')).toBeInTheDocument();
+  fireEvent.click(within(section).getByRole('button', { name: 'Hủy yêu cầu' }));
+  await waitFor(() => expect(within(section).queryByText(/Đang chờ xác minh:/)).not.toBeInTheDocument());
+});
+it('đổi mật khẩu thành công đăng xuất khỏi giao diện', async () => {
+  fetchMock.mockImplementation((url: string) => Promise.resolve(
+    String(url).endsWith('/me/account/password') || String(url).endsWith('/auth/logout')
+      ? new Response(null, { status: 204 }) : Response.json(String(url).endsWith('/auth/refresh') ? session : account)));
+  app();
+  const section = await screen.findByRole('region', { name: 'Đổi mật khẩu' });
+  fireEvent.change(within(section).getByLabelText('Mật khẩu hiện tại'), { target: { value: 'CurrentPassword123' } });
+  fireEvent.change(within(section).getByLabelText('Mật khẩu mới'), { target: { value: 'AnotherPassword123' } });
+  fireEvent.click(within(section).getByRole('button', { name: 'Đổi mật khẩu' }));
+  expect(await screen.findByLabelText('Email hoặc mã thành viên')).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/me/account/password') && init.method === 'POST')).toBe(true);
 });
 it('chặn Reader vào staff deep link, không gọi API danh sách', async () => {
   fetchMock.mockResolvedValue(Response.json({ ...session, user: { ...user, roles: ['READER'] } }));

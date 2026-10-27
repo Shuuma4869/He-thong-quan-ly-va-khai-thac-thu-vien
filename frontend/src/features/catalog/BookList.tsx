@@ -6,12 +6,13 @@ import { favoriteStates, removeFavorite, saveFavorite } from '../my-library/libr
 import type { Book } from './catalog-api';
 import { BookCover } from './BookCover';
 
-export function BookList({ books }: { books: Book[] }) {
+export function BookList({ books, savedIds }: { books: Book[]; savedIds?: ReadonlySet<string> }) {
   const { user } = useAuth();
   const ids = books.map(book => book.id);
   const states = useQuery({ queryKey: ['favorites', user?.id, 'card-states', ids],
-    queryFn: ({ signal }) => favoriteStates(ids, signal), enabled: !!user && ids.length > 0, retry: false });
-  const saved = new Map(states.data?.map(item => [item.bookId, item.saved]));
+    queryFn: ({ signal }) => favoriteStates(ids, signal), enabled: !!user && ids.length > 0 && !savedIds, retry: false });
+  const saved = new Map<string, boolean>(savedIds
+    ? books.map(book => [book.id, savedIds.has(book.id)]) : states.data?.map(item => [item.bookId, item.saved]));
   if (books.length === 0) return <div className="editorial-card empty-state compact"><h2>Chưa có sách phù hợp</h2><p>Thử đổi từ khóa hoặc bộ lọc.</p></div>;
   return <><div className="catalog-grid">{books.map(book => <article className="book-card" key={book.id}>
     <Link className="book-card-image-link" to={`/sach/${book.id}`} aria-label={`Xem sách ${book.title}`}><BookCover title={book.title} author={book.authors[0]?.name} cover={book.cover} /></Link>
@@ -27,7 +28,7 @@ export function BookList({ books }: { books: Book[] }) {
         {user && saved.has(book.id) && <CardFavoriteButton bookId={book.id} title={book.title} saved={saved.get(book.id)!} owner={user.id}/>}</div>
         <Link className="book-card-more" to={`/sach/${book.id}`}>Xem chi tiết <span aria-hidden="true">↗</span></Link></div>
     </div>
-  </article>)}</div>{states.isError && user && <p role="alert" className="mt-3 text-sm text-muted">Chưa tải được trạng thái sách đã lưu. Bạn vẫn có thể lưu sách ở trang chi tiết.</p>}</>;
+  </article>)}</div>{states.isError && user && !savedIds && <p role="alert" className="mt-3 text-sm text-muted">Chưa tải được trạng thái sách đã lưu. Bạn vẫn có thể lưu sách ở trang chi tiết.</p>}</>;
 }
 
 function CardFavoriteButton({ bookId, title, saved, owner }: { bookId: string; title: string; saved: boolean; owner: string }) {

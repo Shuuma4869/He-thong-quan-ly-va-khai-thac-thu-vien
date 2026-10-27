@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom';
 import { BookList } from './BookList';
 import { getBooks, getCatalogItem } from './catalog-api';
 import { CatalogError, Pagination } from './CatalogStates';
+import { DirectoryVisual } from './DirectoryVisual';
+import { getDirectoryImages } from './directory-image-api';
 
 export function CategoryDetailPage() {
   const { categoryId = '' } = useParams();
@@ -14,6 +16,8 @@ function CategoryDetail({ id }: { id: string }) {
   const [page, setPage] = useState(0);
   const category = useQuery({ queryKey: ['catalog', 'category', id],
     queryFn: ({ signal }) => getCatalogItem('categories', id, signal), retry: false });
+  const media = useQuery({ queryKey: ['directory-images', 'categories', id], queryFn: ({ signal }) => getDirectoryImages('categories', [id], signal),
+    enabled: category.isSuccess, retry: false });
   const books = useQuery({ queryKey: ['catalog', 'category-books', id, page],
     queryFn: ({ signal }) => getBooks({ query: '', authorId: '', categoryId: id, categoryTerm: '',
       page, size: 20, sort: 'title' }, signal), enabled: category.isSuccess, retry: false });
@@ -22,8 +26,9 @@ function CategoryDetail({ id }: { id: string }) {
   </nav>
     {category.isPending ? <p role="status">Đang tải thể loại…</p>
       : category.isError ? <CatalogError error={category.error} retry={() => void category.refetch()} />
-        : <><header className="category-heading"><p className="eyebrow">Tủ sách theo chủ đề</p><h1 className="page-title">{'name' in category.data ? category.data.name : ''}</h1>
-          <p className="mt-2 text-muted">Duyệt các tác phẩm được biên mục theo thể loại này.</p></header>
+        : <><header className="category-heading category-heading-media"><DirectoryVisual kind="categories" title={'name' in category.data ? category.data.name : ''} image={media.data?.[0]}/>
+          <div><p className="eyebrow">Tủ sách theo chủ đề</p><h1 className="page-title">{'name' in category.data ? category.data.name : ''}</h1>
+          <p className="mt-2 text-muted">Duyệt các tác phẩm được biên mục theo thể loại này.</p></div></header>
           {books.isSuccess && <div className="detail-section-heading"><div><p className="eyebrow">Tác phẩm đã biên mục</p><h2>Khám phá trong tủ sách</h2></div><p>{books.data.page.totalElements.toLocaleString('vi-VN')} tác phẩm</p></div>}
           {books.isPending ? <p role="status" className="mt-6">Đang tải tác phẩm…</p>
             : books.isError ? <CatalogError error={books.error} retry={() => void books.refetch()} />

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Boxes, ClipboardList } from 'lucide-react';
+import { BookOpen, Boxes, ClipboardList, ArrowUpRight, CircleCheck, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../auth/auth-context';
@@ -15,10 +15,11 @@ export function StaffDashboardPage() {
     queryFn: ({ signal }) => getCatalogPage('copies', 0, signal), enabled: !!owner, retry: false });
   const sessions = useQuery({ queryKey: ['staff-dashboard', owner, 'open-sessions'],
     queryFn: ({ signal }) => listSessions('', 'OPEN', 0, signal), enabled: !!owner, retry: false });
-  return <section>
-    <p className="eyebrow">Nhân viên thư viện</p>
-    <h1 className="page-title">Bảng điều khiển</h1>
-    <p className="mt-2 text-muted">Số liệu lấy trực tiếp từ danh mục và phiên kiểm kê hiện tại. Tải lại trang để xem thay đổi mới nhất.</p>
+  return <section className="staff-dashboard">
+    <header className="staff-dashboard-hero"><div><p className="eyebrow">Nhân viên thư viện</p>
+      <h1 className="page-title">Bảng điều khiển</h1>
+      <p>Số liệu lấy trực tiếp từ danh mục và phiên kiểm kê hiện tại. Tải lại trang để xem thay đổi mới nhất.</p></div>
+      <BookOpen size={95} strokeWidth={1} aria-hidden="true"/></header>
     <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <Metric title="Tác phẩm trong danh mục" href="/nhan-vien/danh-muc" icon={<BookOpen aria-hidden="true" />}
         value={books.data?.page.totalElements} pending={books.isPending} error={books.isError} retry={() => void books.refetch()} />
@@ -27,15 +28,28 @@ export function StaffDashboardPage() {
       <Metric title="Phiên kiểm kê đang mở" href="/nhan-vien/kiem-ke" icon={<ClipboardList aria-hidden="true" />}
         value={sessions.data?.page.totalElements} pending={sessions.isPending} error={sessions.isError} retry={() => void sessions.refetch()} />
     </div>
-    <section className="editorial-card mt-6" aria-labelledby="staff-quick-actions">
-      <h2 id="staff-quick-actions" className="section-title">Việc thường dùng</h2>
-      <div className="flex flex-wrap gap-3 mt-4">
-        <Link className="button-secondary" to="/nhan-vien/danh-muc">Quản lý danh mục</Link>
-        <Link className="button-secondary" to="/nhan-vien/luu-thong">Mượn và trả sách</Link>
-        <Link className="button-secondary" to="/nhan-vien/kiem-ke">Kiểm kê</Link>
-        <Link className="button-secondary" to="/nhan-vien/bao-cao-luu-thong">Báo cáo lưu thông</Link>
-      </div>
-    </section>
+    <div className="staff-dashboard-panels">
+      <section className="editorial-card" aria-labelledby="staff-open-sessions">
+        <div className="staff-panel-heading"><div><p className="eyebrow">Theo dõi hôm nay</p><h2 id="staff-open-sessions" className="section-title">Phiên kiểm kê đang mở</h2></div>
+          <Link className="text-link" to="/nhan-vien/kiem-ke">Xem tất cả <ArrowUpRight size={16}/></Link></div>
+        {sessions.isPending ? <p role="status" className="mt-5">Đang tải phiên kiểm kê…</p>
+          : sessions.isError ? <button type="button" className="button-secondary mt-5" onClick={() => void sessions.refetch()}>Tải lại phiên kiểm kê</button>
+            : sessions.data.items.length ? <ul className="staff-session-list">{sessions.data.items.slice(0, 3).map(item =>
+              <li key={item.id}><ClipboardList size={21}/><div><strong>Phiên {item.id.slice(0, 8)}</strong>
+                <small>{item.scanCount.toLocaleString('vi-VN')}/{item.snapshotCount.toLocaleString('vi-VN')} lượt quét · Mở {new Date(item.openedAt).toLocaleDateString('vi-VN')}</small></div>
+                <Link to={`/nhan-vien/kiem-ke/${item.id}`} aria-label={`Mở phiên ${item.id.slice(0, 8)}`}><ArrowUpRight size={19}/></Link></li>)}</ul>
+              : <div className="staff-empty-session"><CircleCheck size={23}/><p>Hiện không có phiên kiểm kê nào đang mở.</p></div>}
+      </section>
+      <section className="editorial-card" aria-labelledby="staff-quick-actions">
+        <div className="staff-panel-heading"><div><p className="eyebrow">Đi nhanh tới công việc</p><h2 id="staff-quick-actions" className="section-title">Việc thường dùng</h2></div></div>
+        <div className="staff-quick-links">
+          <Link to="/nhan-vien/danh-muc"><BookOpen size={19}/> Quản lý danh mục <ArrowUpRight size={16}/></Link>
+          <Link to="/nhan-vien/luu-thong"><Search size={19}/> Mượn và trả sách <ArrowUpRight size={16}/></Link>
+          <Link to="/nhan-vien/kiem-ke"><ClipboardList size={19}/> Kiểm kê <ArrowUpRight size={16}/></Link>
+          <Link to="/nhan-vien/bao-cao-luu-thong"><Boxes size={19}/> Báo cáo lưu thông <ArrowUpRight size={16}/></Link>
+        </div>
+      </section>
+    </div>
   </section>;
 }
 

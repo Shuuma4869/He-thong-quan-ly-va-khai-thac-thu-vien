@@ -35,6 +35,25 @@ class PublicCatalogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
 
+    @Test void batchCardsPreserveRequestedOrderAndBoundTheRequest() throws Exception {
+        UUID first = UUID.randomUUID(), second = UUID.randomUUID(), missing = UUID.randomUUID();
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Thẻ đầu','thẻ đầu'),(?,'Thẻ sau','thẻ sau')",
+                first, second);
+        String path = "/api/v1/public/catalog/books/batch";
+        mvc.perform(get(path).param("bookId", second.toString(), missing.toString(), first.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(second.toString()))
+                .andExpect(jsonPath("$[1].id").value(first.toString()))
+                .andExpect(jsonPath("$[2]").doesNotExist());
+        mvc.perform(get(path).param("bookId", first.toString(), first.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("bookId", first.toString()).param("bookId", second.toString()))
+                .andExpect(status().isOk());
+        mvc.perform(get(path).param("bookId", java.util.stream.IntStream.range(0, 21)
+                .mapToObj(i -> UUID.randomUUID().toString()).toArray(String[]::new)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
     @Test void importedBookExposesSourceWithoutPretendingToHaveAnEdition() throws Exception {
         UUID book = UUID.randomUUID();
         jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Nguồn thư mục','nguồn thư mục')", book);
@@ -68,6 +87,14 @@ class PublicCatalogIntegrationTest {
         jdbc.update("INSERT INTO editions(id,book_id,publication_year) VALUES (?,?,2022),(?,?,2024)", older, book, newer, book);
         insertCover(older, staff, "wikimedia");
         insertCover(newer, staff, "open-library");
+        jdbc.update("""
+                INSERT INTO catalog_media_references(id,author_id,source,source_id,source_url,image_url,
+                    license,license_url,attribution,evidence,mime,byte_size,approved_by,approved_at)
+                VALUES (?,?,'wikimedia','author-portrait','https://commons.wikimedia.org/wiki/File:Author.jpg',
+                    'https://upload.wikimedia.org/wikipedia/commons/a/a1/Author.jpg','CC BY-SA 4.0',
+                    'https://creativecommons.org/licenses/by-sa/4.0/','Ảnh tác giả đã duyệt','Đối chiếu định danh',
+                    'image/jpeg',500,?,now())
+                """, UUID.randomUUID(), author, staff);
         jdbc.update("INSERT INTO reviews(id,user_id,book_id,body,rating) VALUES (?,?,?,'Sách hữu ích',4)",
                 UUID.randomUUID(), staff, book);
         String list = "/api/v1/public/catalog/books";
@@ -93,6 +120,15 @@ class PublicCatalogIntegrationTest {
         mvc.perform(get("/api/v1/public/catalog/authors").param("query", "TAC GIA THAT"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(author.toString()));
+        mvc.perform(get("/api/v1/public/catalog/authors/media").param("itemId", author.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].context").value("portrait"))
+                .andExpect(jsonPath("$[0].attribution").value("Ảnh tác giả đã duyệt"))
+                .andExpect(jsonPath("$[0].approvedBy").doesNotExist());
+        mvc.perform(get("/api/v1/public/catalog/categories/media").param("itemId", category.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].context").value("book-cover"))
+                .andExpect(jsonPath("$[0].attribution").value("Nguồn ảnh đã duyệt"));
+        mvc.perform(get("/api/v1/public/catalog/categories/media").param("itemId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0]").doesNotExist());
         mvc.perform(get("/api/v1/public/catalog/authors").param("query", "x".repeat(151)))
                 .andExpect(status().isUnprocessableEntity());
         mvc.perform(get("/api/v1/public/catalog/books/{id}/editions", book)).andExpect(status().isOk())

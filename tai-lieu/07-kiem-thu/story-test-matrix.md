@@ -38,9 +38,9 @@ Core clean verify tại `ff054c4` đạt 121 test; đây là mốc backend, khô
 
 | Phase 5–7 / AC | PostgreSQL / service | Frontend / contract | Còn thiếu để đóng phase |
 |---|---|---|---|
-| Kiểm kê | Inventory session/scan/anomaly/resolution integration; E2E mở, quét, chốt và xác nhận chuyển Copy | Inventory UI và contract hiện hành | PR #25 query/snapshot của Toàn còn findings về giới hạn phạm vi và consistency, chưa tích hợp |
-| Search và Category Alias | PublicCatalogIntegrationTest lọc tên/bí danh, unknown, nhập nhằng, tham số xung đột; Search integration có FTS/ranking | CatalogFlow, catalog-api, Core OpenAPI và E2E UI với tên Category chuẩn cho `categoryTerm` | Chưa có API quản trị Alias và benchmark relevance/tải trên tập dữ liệu thư viện thật |
-| Acquisition | `recommendations.integration.ts` kiểm migration, evidence, reload, quyết định cạnh tranh và audit; score/source unit tests | Chưa mở API/UI đề xuất khi thiếu nguồn Core | Read projection/report/CSV của Toàn, auth giữa service, E2E nguồn thật và policy retention trước vận hành |
+| Kiểm kê | Inventory session/scan/anomaly/resolution integration; E2E mở, quét, chốt và xác nhận chuyển Copy | Inventory UI và contract hiện hành; truy vấn snapshot của Toàn đã vào main qua PR #25 | Chưa nghiệm thu quét thực địa và tải trên nhiều phiên lớn |
+| Search và Category Alias | PublicCatalogIntegrationTest lọc tên/bí danh, unknown, nhập nhằng, tham số xung đột; Search integration có FTS/ranking | CatalogFlow, API quản trị Alias, Core OpenAPI và E2E Search trên web/EXE | Chưa nghiệm thu relevance/tải trên dữ liệu vận hành thật và accessibility toàn diện |
+| Acquisition | `recommendations.integration.ts` kiểm migration, evidence, reload, quyết định cạnh tranh và audit; score/source unit tests | Core Facts API, Insight API/CSV và giao diện chọn phạm vi, xem bằng chứng, lưu và duyệt đề xuất | Lượt thêm Favorite còn thiếu nguồn lịch sử; E2E hiện mới kiểm trạng thái trống/quyền, retention trước vận hành chưa chốt |
 
 Snapshot đã xác minh ngày 23/10/2026: CI `39907400703` tại `ee929cd` đạt đủ năm job; local chạy `scripts/test-phase1-e2e.ps1 -Desktop` đạt 8/8 bài. Các yêu cầu “commit cuối” trong bảng là bước phải kiểm lại khi bàn giao một SHA mới, không còn là blocker Docker ở snapshot này. [Nguồn ảnh và kiểm EXE](../../ho-so-nop-bai/minh-chung-giao-dien/README.md) ghi môi trường, hash binary và giới hạn.
 

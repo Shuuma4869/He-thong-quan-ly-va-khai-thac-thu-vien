@@ -126,7 +126,7 @@ test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', a
   await page.getByRole('button', { name: 'Mở menu' }).click();
   await page.getByRole('navigation', { name: 'Điều hướng di động' }).getByRole('link', { name: 'Hồ sơ của tôi' }).click();
   await expect(page.getByText(address, { exact: true })).toBeVisible();
-  await expect(page.getByText(/Chưa có thông tin hồ sơ bổ sung/)).toBeVisible();
+  await expect(page.getByLabel('Họ và tên')).toHaveValue('Người đọc kiểm thử');
   await page.reload();
   await expect(page.getByText(address, { exact: true })).toBeVisible();
   const refreshCookie = (await page.context().cookies()).find(cookie => cookie.name === 'lams_refresh');
@@ -270,7 +270,8 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await reviewCard.getByRole('button', { name: `Lưu yêu thích ${book.title}` }).click();
   await expect(reviewCard.getByRole('button', { name: `Bỏ yêu thích ${book.title}` })).toHaveAttribute('aria-pressed', 'true');
   await navigate(page, '/thu-vien-cua-toi');
-  await expect(page.getByRole('link', { name: book.title, exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Sách yêu thích' })
+    .getByRole('link', { name: book.title, exact: true })).toBeVisible();
   await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
@@ -695,4 +696,112 @@ test('Phase 7: reader bị chặn, nhân viên thấy trạng thái chưa có ng
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/acquisition-empty-390.png', fullPage: true });
+});
+
+test('Tìm kiếm chung, thư viện cá nhân và điều hướng sidebar', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const headers = await staffApi(request);
+  const author = await createCatalog(request, headers, '/authors', { name: `Tác giả Premium ${suffix}` });
+  const category = await createCatalog(request, headers, '/categories', { name: `Thể loại Premium ${suffix}` });
+  const book = await createCatalog(request, headers, '/books', {
+    title: `Tác phẩm Premium ${suffix}`, authorIds: [author.id], categoryIds: [category.id],
+  });
+  await loginCatalog(page, 'READER');
+  await navigate(page, '/sach');
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const backToTop = page.getByRole('button', { name: 'Quay về đầu trang' });
+  await expect(backToTop).toBeVisible();
+  expect(await page.locator('.library-topbar').evaluate(element => Math.round(element.getBoundingClientRect().top))).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await backToTop.click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const search = page.getByRole('combobox', { name: 'Tìm sách, tác giả và thể loại' });
+  await search.fill(`Premium ${suffix}`);
+  const suggestions = page.getByRole('listbox', { name: 'Gợi ý tìm kiếm' });
+  await expect(suggestions.getByRole('option').filter({ hasText: book.title })).toBeVisible();
+  await search.press('ArrowDown');
+  await expect(search).toHaveAttribute('aria-activedescendant', /global-search-option-/);
+  await search.press('Escape');
+  await page.keyboard.press('Control+k');
+  await suggestions.getByRole('option').filter({ hasText: book.title }).click();
+  await expect(page).toHaveURL(new RegExp(`/sach/${book.id}$`));
+  await expect(page.getByRole('heading', { name: book.title })).toBeVisible();
+  await page.getByRole('button', { name: 'Lưu yêu thích', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Bỏ yêu thích' })).toBeVisible();
+
+  await navigate(page, '/sach');
+  await search.fill(`Premium ${suffix}`);
+  const authorSuggestion = suggestions.locator(`a[href$="/tac-gia/${author.id}"]`);
+  await expect(authorSuggestion).toBeVisible();
+  await authorSuggestion.click();
+  await expect(page).toHaveURL(new RegExp(`/tac-gia/${author.id}$`));
+  await navigate(page, '/sach');
+  await search.fill(`Premium ${suffix}`);
+  const categorySuggestion = suggestions.locator(`a[href$="/the-loai/${category.id}"]`);
+  await expect(categorySuggestion).toBeVisible();
+  await categorySuggestion.click();
+  await expect(page).toHaveURL(new RegExp(`/the-loai/${category.id}$`));
+
+  await navigate(page, '/thu-vien-cua-toi#sach-yeu-thich');
+  await expect(page.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
+  const desktopSidebar = page.locator('.library-sidebar-desktop');
+  await desktopSidebar.getByRole('button', { name: 'Thu gọn thanh điều hướng' }).click();
+  await expect(desktopSidebar).toHaveClass(/is-collapsed/);
+  await page.getByRole('link', { name: /Đánh giá của tôi/ }).first().click();
+  await expect(page).toHaveURL(/#danh-gia$/);
+  await expect(desktopSidebar.locator('.library-nav-active')).toHaveCount(1);
+  await page.reload();
+  await expect(desktopSidebar.locator('.library-nav-active')).toHaveCount(1);
+});
+
+test('Hồ sơ lưu thay đổi, email chờ xác minh và đổi mật khẩu thu hồi phiên', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  const email = `account-${randomUUID()}@example.test`;
+  const updatedPassword = `Updated-${randomUUID()}`;
+  const created = await request.post(`${core}/auth/register`, { data: {
+    fullName: 'Người đọc đổi hồ sơ', email, password,
+  } });
+  expect(created.status()).toBe(201);
+  const login = await request.post(`${core}/auth/login`, { data: { identifier: email, password } });
+  expect(login.status()).toBe(200);
+  const oldAccess = String((await login.json()).accessToken);
+
+  await navigate(page, '/dang-nhap');
+  await page.getByLabel('Email hoặc mã thành viên').fill(email);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+  await navigate(page, '/ho-so');
+  const personal = page.getByRole('region', { name: 'Thông tin cá nhân' });
+  await personal.getByLabel('Họ và tên').fill('Người đọc cập nhật');
+  await personal.getByLabel('Số điện thoại').fill('+84987654321');
+  await personal.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect(page.getByText('Đã cập nhật thông tin cá nhân.')).toBeVisible();
+  await page.reload();
+  await expect(personal.getByLabel('Họ và tên')).toHaveValue('Người đọc cập nhật');
+  await expect(personal.getByLabel('Số điện thoại')).toHaveValue('+84987654321');
+
+  const emailPanel = page.getByRole('region', { name: 'Địa chỉ email' });
+  await emailPanel.getByLabel('Email mới').fill(`new-${email}`);
+  await emailPanel.getByLabel('Mật khẩu hiện tại').fill(password);
+  await emailPanel.getByRole('button', { name: 'Ghi nhận email mới' }).click();
+  await expect(emailPanel.getByText(`new-${email}`, { exact: true })).toBeVisible();
+  await expect(emailPanel.getByText(email, { exact: true })).toBeVisible();
+  await emailPanel.getByRole('button', { name: 'Hủy yêu cầu' }).click();
+  await expect(emailPanel.getByText(`new-${email}`, { exact: true })).not.toBeVisible();
+
+  const security = page.getByRole('region', { name: 'Đổi mật khẩu' });
+  await security.getByLabel('Mật khẩu hiện tại').fill(password);
+  await security.getByLabel('Mật khẩu mới').fill(updatedPassword);
+  await security.getByRole('button', { name: 'Đổi mật khẩu' }).click();
+  await expect(page.getByLabel('Email hoặc mã thành viên')).toBeVisible();
+  expect((await request.get(`${core}/auth/me`, { headers: { Authorization: `Bearer ${oldAccess}` } })).status()).toBe(401);
+  expect((await request.post(`${core}/auth/login`, { data: { identifier: email, password } })).status()).toBe(401);
+  await page.getByLabel('Email hoặc mã thành viên').fill(email);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(updatedPassword);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+  await navigate(page, '/ho-so');
+  await expect(personal.getByLabel('Họ và tên')).toHaveValue('Người đọc cập nhật');
 });

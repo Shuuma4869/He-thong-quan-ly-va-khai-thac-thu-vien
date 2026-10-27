@@ -22,6 +22,10 @@ import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -30,6 +34,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
@@ -84,9 +90,22 @@ public class SecurityConfig {
     JwtEncoder jwtEncoder(SecretKey key) { return new NimbusJwtEncoder(new ImmutableSecret<>(key)); }
 
     @Bean
-    JwtDecoder jwtDecoder(SecretKey key) {
+    JwtDecoder jwtDecoder(SecretKey key, JdbcTemplate jdbc) {
         var decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("lams-core"));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer("lams-core"),
+                (Jwt jwt) -> {
+                    try {
+                        UUID id = UUID.fromString(jwt.getSubject());
+                        Object claim = jwt.getClaim("credentialVersion");
+                        if (claim != null && !(claim instanceof Number)) throw new IllegalArgumentException();
+                        int issuedVersion = claim == null ? 0 : ((Number) claim).intValue();
+                        Integer current = jdbc.queryForObject("SELECT credential_version FROM users WHERE id=?", Integer.class, id);
+                        if (current != null && current == issuedVersion) return OAuth2TokenValidatorResult.success();
+                    } catch (RuntimeException ignored) {
+                        // Missing or invalid account tokens are rejected like any other invalid JWT.
+                    }
+                    return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Phiên đăng nhập đã hết hiệu lực.", null));
+                }));
         return decoder;
     }
 

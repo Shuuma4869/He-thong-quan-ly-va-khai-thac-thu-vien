@@ -1,46 +1,37 @@
-# Design System Foundation
+# Hệ thống giao diện LAMS
 
-## Trang chủ và không gian thư viện
+Giao diện web và ứng dụng Windows dùng cùng bộ React. Trang giới thiệu giữ header, ảnh thư viện, tìm kiếm và các khối nội dung theo đề bài. Ảnh hero do nhóm cung cấp, ghi nguồn Olga Lioncat / Pexels ở footer. Phần ứng dụng sau khi vào thư viện dùng `frontend/src/styles/premium.css` trên nền các style hiện có.
 
-Trang `/` dùng header ngang, hero ảnh thư viện, thanh tìm kiếm đặt lên mép dưới hero, các khối thể loại và sách lấy từ Core, lời mời tạo tài khoản và footer. Ảnh hero là ảnh thư viện do nhóm cung cấp, lưu tại `frontend/src/assets/img/auth/auth-cover-library.webp`; nguồn ghi ở footer: Olga Lioncat / Pexels. File đã được thu về 1920 × 1280 và nén WebP để giảm tải trang. Trước khi phát hành công khai cần giữ lại thông tin nguồn ảnh trong hồ sơ tài sản của nhóm.
+## Màu và chữ
 
-Trang danh mục và các trang sau đăng nhập dùng sidebar trái rộng 258px từ 1024px. Dưới mốc đó, sidebar chuyển thành drawer; Escape đóng và trả focus về nút mở. Menu chỉ gồm route đã có và được phân theo khách, Reader, nhân viên. Header nội dung giữ ô tìm sách, tài khoản và lối vào khu nhân viên để tránh lặp menu. Card sách dùng tỷ lệ bìa 3:4; khi Core chưa có ảnh được duyệt thì hiện bìa chữ, không tạo ảnh thay thế từ ISBN.
+Nội dung đặt trên nền trắng `#FDFDFD`; nền bao quanh có sắc xanh nhạt. Màu xanh `#279AD2` dùng cho vùng nhấn, còn nút và liên kết dùng `#09658F` để chữ trên nền trắng dễ đọc hơn. Nâu đồng chỉ xuất hiện ở nhãn mục và chi tiết liên quan đến sách. Các màu được đặt thành biến trong `premium.css`; không lấy màu trực tiếp từ ảnh bìa để tô lại toàn bộ giao diện.
 
-Danh sách công khai dùng `/public/catalog/*`. Core chỉ đưa bìa của ấn bản có ảnh được nhân viên duyệt, chọn năm xuất bản mới nhất rồi UUID để ổn định khi cùng năm. Điểm trung bình và số lượt đánh giá lấy trực tiếp từ bảng review theo cả trang; chưa có đánh giá thì card không hiện điểm. Trạng thái yêu thích của tài khoản đăng nhập được đọc bằng một yêu cầu batch riêng, không lẫn vào dữ liệu công khai. Payload không có người duyệt, dữ liệu thành viên hoặc tình trạng mượn. Đây là danh mục thư mục công khai để tra cứu; người dùng vẫn cần đăng nhập khi lưu sách, đánh giá, mượn hoặc giữ chỗ. Nếu đơn vị thư viện có hạn chế công bố biên mục, cần xác nhận danh mục được phép public trước khi đưa lên môi trường production.
+Be Vietnam Pro là font chính cho điều hướng, bảng, form và nội dung tiếng Việt. Literata dùng cho tên sách ở card và trang chi tiết. Font được đóng gói trong bản build, nên EXE không cần tải font từ Internet. Tiêu đề trang dùng sans để giữ độ rõ ở các màn nghiệp vụ.
 
-Core giới hạn danh mục công khai 300 lượt/phút theo IP kết nối, lưu cửa sổ đếm trong bộ nhớ của từng instance. Chưa dùng `X-Forwarded-For` từ client. Trước pilot qua reverse proxy nhiều người dùng, cần cấu hình proxy đáng tin cậy và đo lại để tránh nhiều người cùng chia một hạn mức.
+## Bố cục và chuyển động
 
-## React-Bootstrap trong luồng biên mục
+Sidebar desktop rộng 218 px khi mở, 76 px khi thu gọn; lựa chọn được lưu trong `localStorage`. Trên màn hẹp sidebar thành drawer, giữ nút đóng, Escape và vòng focus khi dùng Tab. Topbar bám đầu trang. Nội dung giới hạn tối đa 1640 px, còn lưới thẻ sách ở 390 px chuyển thành card ngang để tên sách không bị ép quá nhỏ.
 
-MetadataHistory dùng Form/Button/Alert/Spinner thực tế. CSS chỉ dưới `.metadata-history`, không import Bootstrap Reboot để tránh phá Tailwind 4 và Auth layout. Lazy-load vùng này khi mở để không đưa toàn bộ component Bootstrap vào bundle đầu. Kiểm focus-visible, keyboard, reduced motion, wrap trên mobile theo [wireframes](wireframes.md); không tự kết luận nghiệm thu trực quan chỉ từ component tests.
+Chuyển động ngắn dùng ba mốc 140, 220 và 320 ms, chủ yếu cho sidebar, popover và trạng thái hover. Khi hệ điều hành yêu cầu giảm chuyển động, CSS rút ngắn hoặc tắt animation; nút quay về đầu trang cũng dùng cuộn tức thời.
 
-## Visual language
+## Tìm kiếm và hình ảnh
 
-Giao diện dùng khoảng thở rộng, nền sáng và đường viền nhẹ. Tiêu đề trang, tên sách và các khối giới thiệu ưu tiên `Segoe UI` trên Windows, rồi tới Arial và font hệ thống. Phần chữ còn lại khai báo `Inter` với font hệ thống dự phòng; repository không đóng gói Inter nên hình dáng chữ có thể khác giữa các máy. Đã bỏ kiểu chữ Georgia ở tên sách để dấu tiếng Việt không bị ngắt rời; bìa chữ khi thiếu ảnh vẫn dùng Georgia như một chi tiết trang trí.
+Ô tìm kiếm chung trên topbar gợi ý sách, tác giả và thể loại từ Core. Mỗi nhóm lấy tối đa bốn mục; người dùng có thể dùng mũi tên, Enter, Escape hoặc Ctrl+K. Catalog vẫn phân trang trên server, không tải toàn bộ 10.000 tác phẩm về trình duyệt.
 
-| Token | Giá trị |
-|---|---|
-| canvas / surface / muted | `#F6F8F7` / `#FFFFFF` / `#F0F4F2` |
-| text / muted / border | `#17211F` / `#66736F` / `#E1E8E5` |
-| primary / hover / soft | `#0F766E` / `#115E59` / `#CCFBF1` |
-| link / success / warning / danger | `#2563EB` / `#15803D` / `#B45309` / `#B91C1C` |
+Card sách ưu tiên bìa ấn bản đã duyệt. Danh sách tác giả chỉ hiện chân dung đã duyệt; ảnh thể loại chỉ lấy từ bìa đã duyệt của sách thuộc thể loại đó. Nếu dữ liệu demo chưa có ảnh hợp lệ, hình thay thế nói rõ nội dung thay vì gán ảnh ngẫu nhiên. Thông tin nguồn/giấy phép đi cùng ảnh thật theo [quy trình media](../03-du-lieu/media-strategy.md).
 
-Type: body 15–16px, label 14px, helper 13px, section 20–22px, page 28–32px. Spacing dựa trên 4px; radius chủ đạo 10–14px; shadow chỉ phân lớp nhẹ.
+Danh mục công khai chỉ trả bìa đã được duyệt, đánh giá tổng hợp và metadata Book. Trạng thái yêu thích của từng tài khoản được đọc bằng một request riêng. Core giới hạn danh mục công khai 300 lượt/phút theo IP kết nối, đếm trong bộ nhớ từng instance. Khi triển khai sau reverse proxy, cần xác định IP nguồn đáng tin cậy và đo lại hạn mức vì nhiều người dùng có thể dùng chung một địa chỉ.
 
-## Motion và responsive
+Màn tra cứu ISBN dùng React-Bootstrap trong phạm vi `.metadata-history`; không import Bootstrap Reboot lên toàn ứng dụng. Vùng này được lazy-load khi mở để giảm bundle đầu.
 
-Hover khoảng 160–200ms. Form đăng nhập xuất hiện trong 220ms; bộ chọn tham chiếu, nền phủ và drawer có hiệu ứng ngắn. Danh sách sách dùng skeleton khi tải. `prefers-reduced-motion` rút ngắn animation và transition trên toàn ứng dụng. Giao diện bắt đầu từ 320px; login chuyển một cột dưới 900px. Các bảng dữ liệu vẫn cần được kiểm tra theo từng nghiệp vụ trên màn hình hẹp; hiện chưa có hệ thống toast hay chuyển động spring dùng chung.
+## Phạm vi hiện có
 
-## Accessibility
-
-Các input và nút chính có focus nhìn rõ; drawer đóng bằng Escape và trả focus về nút mở. Bộ chọn tác giả/thể loại/sách hỗ trợ phím mũi tên, Enter và Escape. Lỗi, trạng thái tải và danh sách trống đều có chữ mô tả. Chưa có kết quả đo contrast và kích thước mục tiêu chạm trên toàn bộ màn hình, nên không coi phần này là chứng nhận WCAG.
+Reader có Catalog, My Library, đánh giá và Account Center. Staff dùng cùng topbar/sidebar nhưng có bảng điều khiển, quầy lưu thông, kiểm kê và các màn quản trị theo quyền. Bảng điều khiển chỉ hiện số liệu lấy từ API; chưa có feed hoạt động hay biểu đồ vì chưa có nguồn dữ liệu tương ứng. Email mới ở trạng thái chờ xác minh, không trở thành email đăng nhập khi chưa có bước xác nhận sở hữu hộp thư.
 
 ## Kiểm tra giao diện
 
-Lượt kiểm tra local ngày 26/10/2026 dùng dữ liệu Catalog đã seed và API Core thật. Trang chủ và danh mục được chụp ở 320, 390, 768 và 1440px; trang chi tiết sách ở desktop/mobile; danh sách tác giả ở desktop. Các màn đã kiểm không tràn ngang. Lỗi tên sách tiếng Việt bị bẻ giữa từ và trang tác giả kẹt ở trạng thái tải đã được sửa trong lượt này. Bộ Web E2E và EXE E2E còn kiểm trang chủ, danh mục ở 390, 768, 1024 và 1440px bằng cùng dữ liệu thử nghiệm cô lập. Ảnh chụp E2E nằm trong `frontend/test-results/` local, không được đưa vào Git.
+Lượt kiểm tra local ngày 27/10/2026 dùng cùng Core và dữ liệu Catalog demo để chụp giao diện trước/sau ở 390, 768, 1024, 1366, 1440, 1536 và 1920 px. Các màn đã kiểm không tràn ngang. Trước thay đổi, topbar của Catalog cuộn theo trang và ba mục cùng đường dẫn trong sidebar cùng được tô sáng; sau thay đổi topbar bám đầu, mỗi URL chỉ có một mục active. Ba sách yêu thích của tài khoản demo trước đây hiện thành ba ô tên sách; bản mới dùng Book Card có tác giả, bìa chữ khi thiếu ảnh và hành động tương ứng. Ảnh chụp kiểm tra nằm trong `.tools/premium-before-images/` và `.tools/premium-visual/` ở máy local, không phải asset cần commit.
 
-Phạm vi trên chưa bao gồm đo tốc độ trên máy cấu hình thấp, kiểm bằng screen reader, toàn bộ form nhân viên ở mức zoom cao hoặc ảnh bìa thật đã duyệt. Khi thay CSS hoặc component liên quan, chạy lại hành trình Web/EXE và kiểm ít nhất các kích thước trên; không dùng kết quả lượt này cho một commit khác chưa được thử.
+Web và EXE E2E chạy 17 ca trên PostgreSQL cô lập; bài test Search kiểm phím tắt, gợi ý thật, điều hướng hash, sidebar và back-to-top khi bật reduced motion. Đây không phải chứng nhận WCAG: screen reader, tương phản mọi trạng thái và toàn bộ form nhân viên ở mức zoom cao chưa được nghiệm thu.
 
-## Quy tắc copy tiếng Việt
-
-Mặc định `vi-VN`; câu ngắn, trực tiếp, không sáo rỗng. Button dùng động từ (“Lưu thay đổi”), empty state nói đúng nguyên nhân và hành động tiếp theo. Identifier kỹ thuật dùng tiếng Anh; comment business có ích dùng tiếng Việt.
+Mặc định dùng câu tiếng Việt ngắn, nút có động từ và trạng thái trống giải thích được nguyên nhân. Dữ liệu chưa có nguồn được ghi là chưa có, không tạo số liệu hoặc ảnh giả để làm đầy giao diện.

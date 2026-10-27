@@ -13,12 +13,12 @@ Phân công được ghi trong [hướng dẫn thành viên](tai-lieu/00-bat-dau
 
 ## Chức năng
 
-- **Người đọc:** đăng ký, đăng nhập, xem hồ sơ, duyệt tác giả/thể loại, tìm và lọc sách, xem ấn bản, lưu yêu thích, viết đánh giá, đặt giữ chỗ và theo dõi lượt mượn.
+- **Người đọc:** đăng ký, đăng nhập, cập nhật tên/số điện thoại, đổi mật khẩu, duyệt tác giả/thể loại, tìm và lọc sách, xem ấn bản, lưu yêu thích, viết đánh giá, đặt giữ chỗ và theo dõi lượt mượn. Yêu cầu đổi email được lưu ở trạng thái chờ; bản local chưa gửi thư xác minh nên email đăng nhập chưa thay đổi.
 - **Thủ thư, quản trị viên:** quản lý danh mục và bản sách, tra cứu thành viên, mượn/trả/gia hạn, xử lý giữ chỗ, xem báo cáo lưu thông, mở phiên kiểm kê, quét mã vạch và xác nhận xử lý sai lệch. Dashboard hiển thị các số đếm lấy từ API; chưa có feed hoạt động vì backend chưa cung cấp.
-- **Tìm kiếm:** PostgreSQL full-text search và trigram; có thể lọc bằng tên thể loại chuẩn hoặc bí danh đã lưu. Metadata ISBN và ảnh bìa dùng quy trình duyệt thủ công.
+- **Tìm kiếm:** PostgreSQL full-text search và trigram; có thể lọc bằng tên thể loại chuẩn hoặc bí danh đã lưu. Thanh tìm kiếm chung gợi ý sách, tác giả và thể loại bằng các truy vấn giới hạn trên server. Metadata ISBN và ảnh bìa dùng quy trình duyệt thủ công; mục chưa có ảnh được duyệt dùng hình thay thế.
 - **Đề xuất bổ sung sách:** nhân viên chọn sách, chi nhánh và khoảng thời gian; Core đọc số liệu thật trong một snapshot, Insight tính điểm, lưu bằng chứng và quyết định nội bộ. Có CSV xuất đề xuất đã lưu. Lượt thêm Favorite đã bị bỏ chưa có lịch sử nên tín hiệu này được ghi là thiếu, không điền 0.
 
-Truy vấn snapshot kiểm kê của Toàn bắt nguồn từ [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25) và đã được tích hợp vào nhánh Tuan bằng merge commit, giữ nguyên tác giả. Search, quản trị Alias và Acquisition đang ở [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27). Chúng chỉ có trên `main` sau khi PR được review và merge.
+Truy vấn snapshot kiểm kê của Toàn đã vào `main` qua [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25), merge commit `e525d34`, giữ nguyên lịch sử tác giả. Search, quản trị Alias, Acquisition và đợt giao diện mới đang ở [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27). Các phần này chỉ có trên `main` sau khi PR được review, CI ở commit cuối đạt và merge.
 
 ## Công nghệ và kiến trúc
 
@@ -31,6 +31,8 @@ Truy vấn snapshot kiểm kê của Toàn bắt nguồn từ [PR #25](https://g
 | Hạ tầng | Redis, Kafka, Docker Compose | Cache/coordination và truyền sự kiện |
 
 Luồng chính: **giao diện → Core/Insight → PostgreSQL**. Insight không đọc trực tiếp database của Core. [Sơ đồ container](tai-lieu/02-kien-truc/container-diagram.md), [ERD](tai-lieu/03-du-lieu/erd.md) và [hợp đồng API](contracts/openapi/) mô tả chi tiết. MinIO là dịch vụ Compose tùy chọn và mặc định tắt; ảnh Catalog hiện là URL tham chiếu đã duyệt.
+
+[Hệ thống giao diện](tai-lieu/06-giao-dien/design-system.md) ghi màu, font, bố cục và cách xử lý ảnh thiếu; [bản đồ chức năng](tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) nối từng màn với API và trạng thái thực tế.
 
 ## Cấu trúc repository
 
@@ -102,7 +104,7 @@ Lệnh build tạo EXE và gói cài trong `frontend/src-tauri/target/release/`.
 
 ## Demo và hồ sơ học phần
 
-[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_Thiet_ke_Web_nang_cao.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
+[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
 
 ## Giới hạn hiện tại
 

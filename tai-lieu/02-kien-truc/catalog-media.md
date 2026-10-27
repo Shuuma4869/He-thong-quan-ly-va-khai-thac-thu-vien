@@ -6,6 +6,8 @@ Core sở hữu Book (tác phẩm), Edition (ấn bản), BookCopy (bản vật 
 
 React dùng API client chung, Zod kiểm response, TanStack Query quản lý trạng thái mạng. `/sach` có query/author/category/page/size trong URL; lọc/phân trang chạy ở Core, không tải toàn bộ danh mục để lọc trên client. `ReferencePicker` tìm tác giả, thể loại và tác phẩm ở server, giới hạn 20 mục/trang, debounce và giữ UUID trong form. Route staff có guard; server vẫn là nơi quyết định quyền.
 
+Thanh tìm kiếm trên app shell gọi ba truy vấn nhỏ ở Core (tác phẩm, tác giả, thể loại), mỗi loại tối đa bốn gợi ý. Request cũ bị hủy khi người dùng đổi từ khóa. Danh sách yêu thích lấy metadata Book qua `/public/catalog/books/batch` với tối đa 20 ID mỗi lượt; giao diện dùng lại Book Card của Catalog thay vì tự dựng bản rút gọn. Hai API `/public/catalog/authors/media` và `/public/catalog/categories/media` trả ảnh đã được nhân viên duyệt cho các ID được hỏi. Ảnh thể loại là bìa đã duyệt của một tác phẩm thực sự thuộc thể loại đó. Khi chưa có ảnh phù hợp, giao diện hiển thị hình thay thế, không tự gán ảnh hoặc chân dung từ tên gọi.
+
 ## Hai luồng độc lập
 
 ```text

@@ -49,6 +49,32 @@ paths:
         '422': { description: Bộ lọc không hợp lệ }
         '409': { description: Tên Category hoặc Alias nhập nhằng }
         '429': { description: 'Vượt giới hạn tra cứu theo IP, xem Retry-After' }
+  /public/catalog/books/batch:
+    get:
+      operationId: getPublicBookCards
+      tags: [PublicCatalog]
+      summary: Lấy thông tin thẻ sách cho thư viện cá nhân
+      description: >-
+        Nhận từ 1 đến 20 bookId khác nhau. Trả về những tác phẩm còn tồn tại theo đúng thứ tự yêu cầu;
+        ID không còn tồn tại được bỏ qua. Mỗi thẻ chỉ có bìa đã duyệt, điểm đánh giá tổng hợp
+        và thông tin nguồn thư mục công khai. Cùng giới hạn 300 request/phút/IP với Catalog.
+      security: []
+      parameters:
+        - in: query
+          name: bookId
+          required: true
+          description: Lặp tham số để lấy nhiều tác phẩm.
+          schema: { type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: { type: string, format: uuid } }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Danh sách thẻ sách theo thứ tự yêu cầu
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PublicBook' } }
+        '422': { description: Số lượng hoặc mã sách không hợp lệ }
+        '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/books/{id}:
     get:
       operationId: getPublicBook
@@ -100,6 +126,28 @@ paths:
       responses:
         '200': { description: Trang tên và UUID tác giả/thể loại }
         '422': { description: Từ khóa quá dài hoặc phân trang không hợp lệ }
+        '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/{kind}/media:
+    get:
+      operationId: getPublicDirectoryImages
+      tags: [PublicCatalog]
+      summary: Ảnh tác giả và bìa sách đại diện thể loại đã được duyệt
+      description: >-
+        authors trả chân dung đã duyệt. categories chỉ trả bìa của tác phẩm thực sự thuộc thể loại;
+        đây là bìa minh họa, không phải ảnh thể loại. Không có ảnh phù hợp thì trả mảng rỗng.
+        Nguồn Google Books chưa bật. Không trả thông tin người duyệt.
+      security: []
+      parameters:
+        - { in: path, name: kind, required: true, schema: { type: string, enum: [authors, categories] } }
+        - in: query
+          name: itemId
+          required: true
+          schema: { type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: { type: string, format: uuid } }
+          style: form
+          explode: true
+      responses:
+        '200': { description: Ảnh theo thứ tự ID yêu cầu, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PublicDirectoryImage' } } } } }
+        '422': { description: Danh sách ID không hợp lệ }
         '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/{kind}/{id}:
     get:
@@ -461,6 +509,84 @@ paths:
               schema: { $ref: '#/components/schemas/CurrentMemberProfile' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+  /me/account:
+    get:
+      operationId: getMyAccount
+      tags: [Member]
+      summary: Đọc thông tin tài khoản của chính người đăng nhập
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Tài khoản hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateMyAccount
+      tags: [Member]
+      summary: Cập nhật họ tên và số điện thoại E.164 của chính người đăng nhập
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName]
+              properties:
+                fullName: { type: string, minLength: 1, maxLength: 150 }
+                phone: { type: [string, 'null'], pattern: '^\+[1-9][0-9]{7,14}$' }
+      responses:
+        '200': { description: Tài khoản sau khi lưu, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
+        '409': { description: Số điện thoại đã được sử dụng }
+        '422': { description: Dữ liệu không hợp lệ }
+  /me/account/password:
+    post:
+      operationId: changeMyPassword
+      tags: [Member]
+      summary: Đổi mật khẩu khi biết mật khẩu hiện tại, thu hồi mọi refresh token của tài khoản
+      description: Tăng phiên bản thông tin đăng nhập để JWT cũ hết hiệu lực ngay; client đăng xuất sau khi đổi.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 12, maxLength: 128 }
+      responses:
+        '204': { description: Đã đổi mật khẩu và thu hồi refresh token }
+        '403': { description: Mật khẩu hiện tại sai hoặc tài khoản ngừng hoạt động }
+        '422': { description: Mật khẩu mới không đạt yêu cầu }
+  /me/account/email-request:
+    post:
+      operationId: requestMyEmailChange
+      tags: [Member]
+      summary: Ghi nhận email mới ở trạng thái chờ xác minh
+      description: Pilot chưa có dịch vụ gửi thư; endpoint không đổi email đăng nhập và chưa thể hoàn tất xác minh.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, email]
+              properties:
+                currentPassword: { type: string }
+                email: { type: string, format: email, maxLength: 320 }
+      responses:
+        '200': { description: Email chờ xác minh, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
+        '403': { description: Mật khẩu hiện tại sai hoặc tài khoản ngừng hoạt động }
+        '409': { description: Email đã được sử dụng }
+    delete:
+      operationId: cancelMyEmailChange
+      tags: [Member]
+      summary: Hủy yêu cầu đổi email chưa xác minh
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã hủy yêu cầu }
   /me/favorites:
     get:
       operationId: listMyFavorites
@@ -2259,6 +2385,31 @@ components:
         licenseUrl: { type: string, format: uri }
         attribution: { type: string }
         approvedAt: { type: string, format: date-time }
+    PublicDirectoryImage:
+      type: object
+      required: [subjectId, imageUrl, source, sourceUrl, license, licenseUrl, attribution, approvedAt, context]
+      properties:
+        subjectId: { type: string, format: uuid }
+        imageUrl: { type: string, format: uri }
+        source: { type: string, enum: [open-library, wikimedia, standard-ebooks] }
+        sourceUrl: { type: string, format: uri }
+        license: { type: string }
+        licenseUrl: { type: string, format: uri }
+        attribution: { type: string }
+        approvedAt: { type: string, format: date-time }
+        context: { type: string, enum: [portrait, book-cover] }
+    AccountCenter:
+      type: object
+      required: [userId, memberCode, fullName, email, status, phone, pendingEmail, pendingEmailRequestedAt]
+      properties:
+        userId: { type: string, format: uuid }
+        memberCode: { type: string }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [ACTIVE, LOCKED, DISABLED] }
+        phone: { type: [string, 'null'] }
+        pendingEmail: { type: [string, 'null'], format: email }
+        pendingEmailRequestedAt: { type: [string, 'null'], format: date-time }
     PublicBook:
       type: object
       required: [id, title, description, authors, categories, cover, averageRating, ratingCount, catalogSource]
