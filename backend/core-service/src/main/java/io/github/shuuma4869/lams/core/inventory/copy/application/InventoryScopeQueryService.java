@@ -17,10 +17,11 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Read-only inventory scope queries. snapshot() is bounded to one audit-session scope. */
+/** Read-only, paged inventory scope queries and a separately bounded copy projection. */
 @Service
 public class InventoryScopeQueryService {
     private static final int MAX_SNAPSHOT_COPIES = 5_000;
+
     public record PageMetadata(int number, int size, long totalElements, long totalPages) {}
     public record PageResult(List<InventoryScopeCopy> items, PageMetadata page) {}
 
@@ -49,11 +50,12 @@ public class InventoryScopeQueryService {
     }
 
     /**
-     * Materializes at most 5,000 copies in keyset batches within one PostgreSQL REPEATABLE READ
-     * transaction. One extra row detects an oversized scope before returning anything;
-     * the transaction is closed before this method returns and must never span HTTP requests.
+     * Materializes at most 5,000 matching copies in keyset batches within one PostgreSQL
+     * REPEATABLE READ transaction. Larger scopes are rejected, never truncated. This read projection
+     * does not open an InventorySession; the session-start flow applies its own scope limit.
      */
-    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, propagation = Propagation.REQUIRES_NEW)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ,
+            propagation = Propagation.REQUIRES_NEW, timeout = 10)
     public List<InventoryScopeCopy> snapshot(UUID actorId, InventoryScopeFilter requested) {
         requireStaff(actorId);
         InventoryScopeFilter filter = validateFilter(requested);
@@ -61,12 +63,15 @@ public class InventoryScopeQueryService {
         String afterBarcode = null;
         UUID afterId = null;
         while (true) {
-            int limit = Math.min(batchSize, MAX_SNAPSHOT_COPIES + 1 - result.size());
-            var batch = scopes.nextBatch(filter, afterBarcode, afterId, limit);
+            int remainingPlusOne = MAX_SNAPSHOT_COPIES + 1 - result.size();
+            int fetchSize = Math.min(batchSize, remainingPlusOne);
+            var batch = scopes.nextBatch(filter, afterBarcode, afterId, fetchSize);
+            if (result.size() + batch.size() > MAX_SNAPSHOT_COPIES) {
+                throw invalid("Phạm vi snapshot vượt quá 5000 bản sách; hãy thu hẹp bộ lọc.");
+            }
+            if (batch.isEmpty()) break;
             result.addAll(batch);
-            if (result.size() > MAX_SNAPSHOT_COPIES)
-                throw invalid("Phạm vi vượt 5000 bản sách; hãy chọn một kệ nhỏ hơn.");
-            if (batch.size() < limit) break;
+            if (batch.size() < fetchSize) break;
             var last = batch.get(batch.size() - 1);
             afterBarcode = last.barcode();
             afterId = last.copyId();
