@@ -7,11 +7,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.shuuma4869.lams.core.shared.config.SecurityConfig;
 import io.github.shuuma4869.lams.core.shared.security.SecurityProblemWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @WebMvcTest(
         value = HealthController.class,
@@ -19,6 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
                 "lams.auth.jwt-secret=health-test-secret-with-at-least-32-bytes"})
 @Import({SecurityConfig.class, SecurityProblemWriter.class})
 class HealthControllerTest {
+    @MockitoBean
+    private JdbcTemplate jdbc;
     @Autowired
     private MockMvc mockMvc;
 

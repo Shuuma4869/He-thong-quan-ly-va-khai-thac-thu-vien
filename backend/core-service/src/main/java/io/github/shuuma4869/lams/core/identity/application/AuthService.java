@@ -132,6 +132,7 @@ public class AuthService {
         var claims = JwtClaimsSet.builder().issuer("lams-core").subject(user.id().toString())
                 .issuedAt(now).expiresAt(accessExpiry).id(UUID.randomUUID().toString())
                 .claim("email", user.email()).claim("memberCode", user.memberCode())
+                .claim("credentialVersion", repository.credentialVersion(user.id()))
                 .claim("roles", user.roles().stream().map(Enum::name).toList()).build();
         String access = jwt.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
                 .getTokenValue();

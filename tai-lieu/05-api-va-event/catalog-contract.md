@@ -29,6 +29,8 @@ GET danh sách hỗ trợ phân trang; tạo trả 201, đọc/cập nhật tr�
 - Response có `id`, `title`, `description`, `authors[]`, `categories[]`. Không có ISBN, barcode, số bản hoặc availability.
 - Không xóa Book đang được Edition hoặc nghiệp vụ khác tham chiếu; trả 409.
 
+Danh mục công khai `GET /api/v1/public/catalog/books` có thể lọc bằng `categoryId` hoặc `categoryTerm` (tên Category chuẩn/bí danh), không dùng hai tham số cùng lúc. `categoryTerm` tối đa 150 ký tự, được chuẩn hóa bằng cùng khóa của Taxonomy trước khi tìm Book. Tên chưa khai báo trả trang rỗng; tên khớp nhiều Category trả 409 để tránh trả sách sai. API bảo trì `/api/v1/books` ở trên vẫn dùng `categoryId`; bộ lọc Alias chỉ thuộc đường đọc công khai.
+
 ## Edition — ấn bản
 
 - `POST/GET /api/v1/books/{bookId}/editions`, `GET/PATCH/DELETE /api/v1/books/{bookId}/editions/{editionId}`.

@@ -13,6 +13,8 @@ import { ProfilePage } from '../../features/profile/ProfilePage';
 import { CatalogPage } from '../../features/catalog/CatalogPage';
 import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
+import { DirectoryPage } from '../../features/catalog/DirectoryPage';
+import { CategoryDetailPage } from '../../features/catalog/CategoryDetailPage';
 import { MyLibraryPage } from '../../features/my-library/MyLibraryPage';
 import { HoldCreatePage } from '../../features/circulation/HoldCreatePage';
 const MemberListPage = lazy(() => import('../../features/members/MemberListPage').then(value => ({ default: value.MemberListPage })));
@@ -22,6 +24,7 @@ const StaffCirculationPage = lazy(() => import('../../features/circulation/Staff
 const CirculationReportPage = lazy(() => import('../../features/circulation/CirculationReportPage').then(value => ({ default: value.CirculationReportPage })));
 const InventorySessionsPage = lazy(() => import('../../features/inventory/InventorySessionsPage').then(value => ({ default: value.InventorySessionsPage })));
 const InventorySessionPage = lazy(() => import('../../features/inventory/InventorySessionPage').then(value => ({ default: value.InventorySessionPage })));
+const AcquisitionPage = lazy(() => import('../../features/acquisition/AcquisitionPage').then(value => ({ default: value.AcquisitionPage })));
 
 function Deferred({ children }: { children: ReactNode }) {
   return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
@@ -36,7 +39,10 @@ export function AppRouter() {
       <Route element={<ReaderLayout />}>
         <Route path="sach" element={<CatalogPage />} />
         <Route path="sach/:bookId" element={<BookDetailPage />} />
+        <Route path="tac-gia" element={<DirectoryPage kind="authors" />} />
         <Route path="tac-gia/:authorId" element={<AuthorDetailPage />} />
+        <Route path="the-loai" element={<DirectoryPage kind="categories" />} />
+        <Route path="the-loai/:categoryId" element={<CategoryDetailPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="ho-so" element={<ProfilePage />} />
           <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
@@ -58,6 +64,7 @@ export function AppRouter() {
         <Route path="bao-cao-luu-thong" element={<Deferred><CirculationReportPage /></Deferred>} />
         <Route path="kiem-ke" element={<Deferred><InventorySessionsPage /></Deferred>} />
         <Route path="kiem-ke/:sessionId" element={<Deferred><InventorySessionPage /></Deferred>} />
+        <Route path="de-xuat-bo-sung" element={<Deferred><AcquisitionPage /></Deferred>} />
       </Route>
       </Route></Route>
       <Route path="*" element={<NotFoundPage />} />

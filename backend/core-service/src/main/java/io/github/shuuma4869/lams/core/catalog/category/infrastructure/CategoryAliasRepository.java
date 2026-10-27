@@ -2,6 +2,7 @@ package io.github.shuuma4869.lams.core.catalog.category.infrastructure;
 
 import io.github.shuuma4869.lams.core.catalog.category.domain.Category;
 import io.github.shuuma4869.lams.core.catalog.category.domain.CategoryAlias;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class CategoryAliasRepository {
+    public record Page(List<CategoryAlias> items, long totalElements) {}
     private final JdbcTemplate jdbc;
 
     public CategoryAliasRepository(JdbcTemplate jdbc) {
@@ -30,6 +32,25 @@ public class CategoryAliasRepository {
     public boolean update(CategoryAlias alias) {
         return jdbc.update("UPDATE category_aliases SET category_id=?,alias_name=?,normalized_alias=? WHERE id=?",
                 alias.categoryId(), alias.name(), alias.normalizedAlias(), alias.id()) == 1;
+    }
+
+    public boolean delete(UUID id) {
+        return jdbc.update("DELETE FROM category_aliases WHERE id=?", id) == 1;
+    }
+
+    public Page page(UUID categoryId, int page, int size) {
+        String filter = categoryId == null ? "" : " WHERE category_id=?";
+        Object[] args = categoryId == null ? new Object[0] : new Object[] { categoryId };
+        Long total = jdbc.queryForObject("SELECT count(*) FROM category_aliases" + filter,
+                Long.class, args);
+        var pageArgs = new ArrayList<Object>();
+        if (categoryId != null) pageArgs.add(categoryId);
+        pageArgs.add(size);
+        pageArgs.add((long) page * size);
+        var items = jdbc.query("SELECT id,category_id,alias_name,normalized_alias FROM category_aliases"
+                        + filter + " ORDER BY normalized_alias,id LIMIT ? OFFSET ?", (rs, row) -> map(rs),
+                pageArgs.toArray());
+        return new Page(items, total == null ? 0 : total);
     }
 
     public boolean aliasKeyExists(String normalizedAlias, UUID exceptId) {

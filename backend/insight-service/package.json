@@ -12,7 +12,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "test": "jest --runInBand",
-    "test:integration": "prisma generate && jest --runInBand --testRegex=\"(history|notifications).integration.ts$\"",
+    "test:integration": "prisma generate && jest --runInBand --testRegex=\"(history|notifications|recommendations).integration.ts$\"",
     "test:watch": "jest --watch",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
@@ -47,5 +47,10 @@
     "ts-node": "10.9.2",
     "tsconfig-paths": "4.2.0",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "multer": "2.5.0",
+    "body-parser": "2.4.0",
+    "fast-uri": "3.1.9"
   }
 }

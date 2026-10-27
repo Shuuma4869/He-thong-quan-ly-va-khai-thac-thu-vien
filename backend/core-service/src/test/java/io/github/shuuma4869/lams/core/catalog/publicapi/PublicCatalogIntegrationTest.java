@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.shuuma4869.lams.core.catalog.shared.CatalogText;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,45 @@ class PublicCatalogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
 
+    @Test void batchCardsPreserveRequestedOrderAndBoundTheRequest() throws Exception {
+        UUID first = UUID.randomUUID(), second = UUID.randomUUID(), missing = UUID.randomUUID();
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Thẻ đầu','thẻ đầu'),(?,'Thẻ sau','thẻ sau')",
+                first, second);
+        String path = "/api/v1/public/catalog/books/batch";
+        mvc.perform(get(path).param("bookId", second.toString(), missing.toString(), first.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(second.toString()))
+                .andExpect(jsonPath("$[1].id").value(first.toString()))
+                .andExpect(jsonPath("$[2]").doesNotExist());
+        mvc.perform(get(path).param("bookId", first.toString(), first.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("bookId", first.toString()).param("bookId", second.toString()))
+                .andExpect(status().isOk());
+        mvc.perform(get(path).param("bookId", java.util.stream.IntStream.range(0, 21)
+                .mapToObj(i -> UUID.randomUUID().toString()).toArray(String[]::new)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test void importedBookExposesSourceWithoutPretendingToHaveAnEdition() throws Exception {
+        UUID book = UUID.randomUUID();
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Nguồn thư mục','nguồn thư mục')", book);
+        jdbc.update("""
+                INSERT INTO catalog_external_sources(source_code,source_record_id,book_id,source_url,
+                  source_snapshot_sha256,source_title,source_authors,ebook_released_on)
+                VALUES ('PROJECT_GUTENBERG',?,?,'https://www.gutenberg.org/ebooks/12',
+                  repeat('a',64),'Nguồn thư mục','Tác giả',DATE '2001-02-03')
+                """, book.toString(), book);
+        mvc.perform(get("/api/v1/public/catalog/books/{id}", book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.catalogSource.sourceCode").value("PROJECT_GUTENBERG"))
+                .andExpect(jsonPath("$.catalogSource.sourceUrl").value("https://www.gutenberg.org/ebooks/12"))
+                .andExpect(jsonPath("$.catalogSource.ebookReleasedOn").value("2001-02-03"));
+        mvc.perform(get("/api/v1/public/catalog/books").param("query", "Nguồn thư mục"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].catalogSource.sourceCode").value("PROJECT_GUTENBERG"));
+        mvc.perform(get("/api/v1/public/catalog/books/{id}/editions", book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+    }
+
     @Test void anonymousReaderAndStaffSeeOnlyBibliographicDataAndApprovedCover() throws Exception {
         UUID staff = UUID.randomUUID(), author = UUID.randomUUID(), category = UUID.randomUUID();
         UUID book = UUID.randomUUID(), older = UUID.randomUUID(), newer = UUID.randomUUID();
@@ -47,6 +87,14 @@ class PublicCatalogIntegrationTest {
         jdbc.update("INSERT INTO editions(id,book_id,publication_year) VALUES (?,?,2022),(?,?,2024)", older, book, newer, book);
         insertCover(older, staff, "wikimedia");
         insertCover(newer, staff, "open-library");
+        jdbc.update("""
+                INSERT INTO catalog_media_references(id,author_id,source,source_id,source_url,image_url,
+                    license,license_url,attribution,evidence,mime,byte_size,approved_by,approved_at)
+                VALUES (?,?,'wikimedia','author-portrait','https://commons.wikimedia.org/wiki/File:Author.jpg',
+                    'https://upload.wikimedia.org/wikipedia/commons/a/a1/Author.jpg','CC BY-SA 4.0',
+                    'https://creativecommons.org/licenses/by-sa/4.0/','Ảnh tác giả đã duyệt','Đối chiếu định danh',
+                    'image/jpeg',500,?,now())
+                """, UUID.randomUUID(), author, staff);
         jdbc.update("INSERT INTO reviews(id,user_id,book_id,body,rating) VALUES (?,?,?,'Sách hữu ích',4)",
                 UUID.randomUUID(), staff, book);
         String list = "/api/v1/public/catalog/books";
@@ -66,6 +114,23 @@ class PublicCatalogIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(book.toString()));
         mvc.perform(get("/api/v1/public/catalog/categories")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].name").value("Lịch sử"));
+        mvc.perform(get("/api/v1/public/catalog/categories").param("query", "lich su"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(category.toString()));
+        mvc.perform(get("/api/v1/public/catalog/authors").param("query", "TAC GIA THAT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(author.toString()));
+        mvc.perform(get("/api/v1/public/catalog/authors/media").param("itemId", author.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].context").value("portrait"))
+                .andExpect(jsonPath("$[0].attribution").value("Ảnh tác giả đã duyệt"))
+                .andExpect(jsonPath("$[0].approvedBy").doesNotExist());
+        mvc.perform(get("/api/v1/public/catalog/categories/media").param("itemId", category.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].context").value("book-cover"))
+                .andExpect(jsonPath("$[0].attribution").value("Nguồn ảnh đã duyệt"));
+        mvc.perform(get("/api/v1/public/catalog/categories/media").param("itemId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0]").doesNotExist());
+        mvc.perform(get("/api/v1/public/catalog/authors").param("query", "x".repeat(151)))
+                .andExpect(status().isUnprocessableEntity());
         mvc.perform(get("/api/v1/public/catalog/books/{id}/editions", book)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(2));
         mvc.perform(get("/api/v1/public/catalog/editions/{id}/media", newer)).andExpect(status().isOk())
@@ -147,6 +212,46 @@ class PublicCatalogIntegrationTest {
         jdbc.update("UPDATE books SET title='Đường mới',normalized_title='đường mới' WHERE id=?", exact);
         mvc.perform(get(path).param("query", "duong moi").param("sort", "relevance"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(exact.toString()));
+    }
+
+    @Test void categoryAliasFilterUsesOneCanonicalCategoryAndRejectsAmbiguity() throws Exception {
+        UUID science = UUID.randomUUID(), literature = UUID.randomUUID();
+        UUID scienceBook = UUID.randomUUID(), literatureBook = UUID.randomUUID();
+        String canonical = "Khoa học " + science.toString().substring(0, 8);
+        String other = "Văn học " + literature.toString().substring(0, 8);
+        try {
+        jdbc.update("INSERT INTO categories(id,name,normalized_name) VALUES (?,?,?),(?,?,?)",
+                science, canonical, CatalogText.key(canonical), literature, other, CatalogText.key(other));
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Nghiên cứu thiên văn','nghiên cứu thiên văn'),"
+                + "(?,'Tập thơ khác','tập thơ khác')", scienceBook, literatureBook);
+        jdbc.update("INSERT INTO book_categories(book_id,category_id) VALUES (?,?),(?,?)",
+                scienceBook, science, literatureBook, literature);
+        jdbc.update("INSERT INTO category_aliases(id,category_id,alias_name,normalized_alias) VALUES (?,?,?,?)",
+                UUID.randomUUID(), science, "Thiên văn học", CatalogText.key("Thiên văn học"));
+
+        String path = "/api/v1/public/catalog/books";
+        mvc.perform(get(path).param("categoryTerm", "  THIÊN VĂN HỌC  ").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(scienceBook.toString()));
+        mvc.perform(get(path).param("categoryTerm", canonical))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(scienceBook.toString()));
+        mvc.perform(get(path).param("categoryTerm", "Không có bí danh này"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        mvc.perform(get(path).param("categoryTerm", "Thiên văn học").param("categoryId", literature.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("categoryTerm", "  "))
+                .andExpect(status().isUnprocessableEntity());
+
+        jdbc.update("INSERT INTO category_aliases(id,category_id,alias_name,normalized_alias) VALUES (?,?,?,?)",
+                UUID.randomUUID(), science, "Dữ liệu nhập sai", CatalogText.key(other));
+        mvc.perform(get(path).param("categoryTerm", other))
+                .andExpect(status().isConflict());
+        } finally {
+            jdbc.update("DELETE FROM category_aliases WHERE category_id IN (?,?)", science, literature);
+            jdbc.update("DELETE FROM book_categories WHERE book_id IN (?,?)", scienceBook, literatureBook);
+            jdbc.update("DELETE FROM books WHERE id IN (?,?)", scienceBook, literatureBook);
+            jdbc.update("DELETE FROM categories WHERE id IN (?,?)", science, literature);
+        }
     }
 
     private void insertCover(UUID edition, UUID staff, String source) {

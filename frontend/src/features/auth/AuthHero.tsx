@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import authCover from '../../assets/img/auth/auth-cover-library.jpg';
+import authCover from '../../assets/img/auth/auth-cover-library.webp';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
 
 export function AuthHero() {

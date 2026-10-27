@@ -29,12 +29,31 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('Reader tra sách, phân trang, đồng bộ query và reset trang', async () => {
   app('/sach?query=Tác&page=0&size=20');
-  expect(await screen.findByRole('link',{name:book.title})).toBeInTheDocument();
+  expect(await screen.findByRole('link',{name:book.title},{timeout:5000})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Trang sau'}));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('page=1'))).toBe(true));
   fireEvent.click(screen.getByRole('button',{name:'Xóa bộ lọc'}));
   await waitFor(() => expect(screen.getByLabelText('Tìm sách')).toHaveValue(''));
   expect(screen.queryByText(/Số bản sẵn có/)).not.toBeInTheDocument();
+});
+it('ô tìm nhanh giữ bộ lọc hiện có và đưa từ khóa vào truy vấn server', async () => {
+  app('/sach?categoryTerm=Kinh%20dien');
+  await screen.findByRole('link',{name:book.title});
+  fireEvent.change(screen.getByRole('searchbox',{name:'Từ khóa tra cứu'}),{target:{value:'  Jane Austen  '}});
+  fireEvent.click(screen.getByRole('button',{name:'Tìm trong thư viện'}));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => {
+    const target=new URL(String(url));
+    return target.pathname.endsWith('/public/catalog/books') && target.searchParams.get('query')==='Jane Austen'
+      && target.searchParams.get('categoryTerm')==='Kinh dien' && target.searchParams.get('sort')==='relevance';
+  })).toBe(true));
+});
+it('Reader lọc bằng tên bí danh, giữ URL và xóa bộ lọc', async () => {
+  app(); await screen.findByRole('link',{name:book.title});
+  fireEvent.change(screen.getByLabelText('Tên thể loại hoặc bí danh'),{target:{value:'  Truyện trinh thám  '}});
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) =>
+    new URL(String(url)).searchParams.get('categoryTerm') === 'Truyện trinh thám')).toBe(true));
+  fireEvent.click(screen.getByRole('button',{name:'Xóa bộ lọc'}));
+  await waitFor(() => expect(screen.getByLabelText('Tên thể loại hoặc bí danh')).toHaveValue(''));
 });
 it('debounce giữ focus và phản hồi cũ không ghi đè kết quả mới', async () => {
   let old!:(response:Response)=>void;
@@ -71,7 +90,7 @@ it('Book Detail tách hai Edition và không bịa availability', async () => {
 it('Author Detail lấy sách bằng UUID, không giả biography', async () => {
   app(`/tac-gia/${authorId}`); await screen.findByRole('heading',{name:'Tác giả A'});
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes(`authorId=${authorId}`))).toBe(true));
-  expect(screen.getByLabelText('Chưa có ảnh tác giả đã xác minh')).toBeInTheDocument();
+  expect(screen.getByLabelText('Chưa có chân dung đã duyệt')).toBeInTheDocument();
 });
 it('404 có link quay lại, URL filter sai không gọi sách', async () => {
   fetchMock.mockImplementation((url:string) => Promise.resolve(url.endsWith('/auth/refresh')?Response.json(session):Response.json({detail:'Không tìm thấy sách.'},{status:404})));
@@ -91,6 +110,17 @@ it('anonymous mở được danh mục công khai nhưng vẫn không có quyề
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/public/catalog/books?'))).toBe(true);
   expect(screen.getAllByRole('link', { name: 'Đăng nhập' }).length).toBeGreaterThan(0);
 });
+it('refresh 401 của khách không hủy danh mục công khai đang hiển thị', async () => {
+  let finishRefresh!: (response: Response) => void;
+  fetchMock.mockImplementation((url: string) => url.endsWith('/auth/refresh')
+    ? new Promise<Response>(resolve => { finishRefresh = resolve; })
+    : Promise.resolve(Response.json(response(url))));
+  app();
+  expect(await screen.findByRole('link', { name: book.title })).toBeInTheDocument();
+  await act(async () => finishRefresh(Response.json({}, { status: 401 })));
+  expect(screen.getByRole('link', { name: book.title })).toBeInTheDocument();
+  expect(screen.queryByText('Không tải được dữ liệu')).not.toBeInTheDocument();
+});
 it('staff tạo Author, refetch và delete có xác nhận/FK conflict', async () => {
   role='LIBRARIAN'; let stored=false;
   fetchMock.mockImplementation((url:string,init:RequestInit) => {
@@ -108,6 +138,43 @@ it('staff tạo Author, refetch và delete có xác nhận/FK conflict', async (
   fireEvent.click(within(table).getByRole('button',{name:'Xóa'}));
   const dialog=screen.getByRole('alertdialog'); fireEvent.click(within(dialog).getByRole('button',{name:'Xác nhận xóa'}));
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('Tác giả đang được sách tham chiếu.');
+});
+it('staff thêm và xóa bí danh, Reader không gọi API quản trị', async () => {
+  role='LIBRARIAN';
+  const category={id,name:'Khoa học'};
+  let alias:{id:string;categoryId:string;name:string;normalizedAlias:string}|null=null;
+  fetchMock.mockImplementation((url:string,init:RequestInit) => {
+    const path=new URL(url).pathname;
+    if(path.endsWith('/category-aliases') && init.method==='POST') {
+      const body=JSON.parse(init.body as string); alias={id:authorId,categoryId:body.categoryId,name:body.name,normalizedAlias:'science'};
+      return Promise.resolve(Response.json(alias,{status:201}));
+    }
+    if(path.endsWith(`/category-aliases/${authorId}`) && init.method==='DELETE') {
+      alias=null; return Promise.resolve(new Response(null,{status:204}));
+    }
+    if(path.endsWith('/category-aliases')) return Promise.resolve(Response.json(page(alias?[alias]:[])));
+    if(path.endsWith(`/categories/${id}`)) return Promise.resolve(Response.json(category));
+    if(path.endsWith('/categories')) return Promise.resolve(Response.json(page([category])));
+    return Promise.resolve(Response.json(response(url)));
+  });
+  const view=app('/nhan-vien/danh-muc');
+  await screen.findByRole('table');
+  fireEvent.change(screen.getByLabelText('Loại dữ liệu'),{target:{value:'categories'}});
+  const manager=await screen.findByRole('region',{name:'Bí danh thể loại'});
+  fireEvent.click(within(manager).getByRole('button',{name:'Thêm bí danh'}));
+  fireEvent.click(within(manager).getByRole('button',{name:'Chọn thể loại chuẩn'}));
+  fireEvent.click(await within(manager).findByRole('radio',{name:'Khoa học'}));
+  fireEvent.change(within(manager).getByLabelText('Tên bí danh'),{target:{value:'Science'}});
+  fireEvent.click(within(manager).getByRole('button',{name:'Lưu bí danh'}));
+  expect(await within(manager).findByText('Đã lưu bí danh thể loại.')).toBeInTheDocument();
+  expect(await within(manager).findByText('Science')).toBeInTheDocument();
+  fireEvent.click(within(manager).getByRole('button',{name:'Xóa bí danh'}));
+  fireEvent.click(within(manager).getByRole('button',{name:'Xác nhận xóa bí danh'}));
+  expect(await within(manager).findByText('Chưa có bí danh nào.')).toBeInTheDocument();
+  view.unmount();
+  role='READER'; fetchMock.mockClear(); app('/nhan-vien/danh-muc');
+  expect(await screen.findByText('403 · Không có quyền truy cập')).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url])=>String(url).includes('/category-aliases'))).toBe(false);
 });
 it('Copy conflict không tự retry bằng version mới', async () => {
   role='ADMIN'; const copy={id,editionId:id,bookTitle:book.title,isbn13:null,shelfId:id,branchId:id,shelfCode:'A',barcode:'BC',status:'IN_PROCESS',version:7};

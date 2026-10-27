@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 Push-Location (Get-LamsRoot)
 try {
-    Invoke-LamsNative 'docker' @('compose', 'down') 'Không thể dừng hạ tầng LAMS'
+    Invoke-LamsNative 'docker' @('compose', '--profile', 'media', 'down') 'Không thể dừng hạ tầng LAMS'
 } finally { Pop-Location }
 
 Write-Host '[OK] Đã dừng hạ tầng LAMS; named volumes vẫn được giữ.' -ForegroundColor Green

@@ -3,12 +3,12 @@ import { coreApi, insightApi } from '../../shared/api/client';
 import { publicCoverSchema } from './catalog-api';
 
 export type MediaKind = 'editions' | 'authors';
-const trustedHosts = ['openlibrary.org','covers.openlibrary.org','books.google.com','commons.wikimedia.org','upload.wikimedia.org','creativecommons.org','archive.org','developers.google.com'];
+const trustedHosts = ['openlibrary.org','covers.openlibrary.org','books.google.com','commons.wikimedia.org','upload.wikimedia.org','creativecommons.org','archive.org','developers.google.com','standardebooks.org'];
 export function safeMediaUrl(value: string) {
   try { const url=new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !url.port && trustedHosts.includes(url.hostname); } catch { return false; }
 }
 const url=z.string().url().refine(safeMediaUrl);
-export const mediaSchema=z.object({id:z.string().uuid(),source:z.enum(['open-library','google-books','wikimedia']),sourceId:z.string(),sourceUrl:url,imageUrl:url,
+export const mediaSchema=z.object({id:z.string().uuid(),source:z.enum(['open-library','google-books','wikimedia','standard-ebooks']),sourceId:z.string(),sourceUrl:url,imageUrl:url,
   license:z.string(),licenseUrl:url,attribution:z.string(),evidence:z.string(),mime:z.string(),byteSize:z.number().int().positive(),
   approvedBy:z.string().uuid(),approvedAt:z.string().datetime(),version:z.number().int().nonnegative()});
 export type Media=z.infer<typeof mediaSchema>;

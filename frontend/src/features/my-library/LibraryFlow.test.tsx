@@ -39,6 +39,7 @@ function result(url: string, init: RequestInit) {
     if (init.method === 'POST') { review = { ...initialReview, ...JSON.parse(String(init.body)) }; return Response.json(review, { status: 201 }); }
     return Response.json(page(review ? [review, otherReview] : [otherReview]));
   }
+  if (path.endsWith('/public/catalog/books/batch')) return Response.json([book]);
   if (path.endsWith(`/books/${bookId}`)) return Response.json(book);
   return Response.json(page([]));
 }
@@ -60,7 +61,7 @@ it('yêu thích chờ server, chặn double click và tải lại trạng thái'
   expect(await screen.findByRole('button', { name: 'Bỏ yêu thích' })).toHaveAttribute('aria-pressed', 'true');
   view.unmount(); app('/thu-vien-cua-toi');
   expect(await screen.findByRole('link', { name: book.title })).toBeInTheDocument();
-  fireEvent.click(await screen.findByRole('button', { name: 'Bỏ yêu thích' }));
+  fireEvent.click(await screen.findByRole('button', { name: `Bỏ yêu thích ${book.title}` }));
   expect(await screen.findByText('Chưa có sách yêu thích ở trang này.')).toBeInTheDocument();
 });
 

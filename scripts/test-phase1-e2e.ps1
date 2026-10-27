@@ -1,4 +1,4 @@
-param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable, [string]$MavenExecutable, [string]$Grep)
+param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable, [string]$MavenExecutable, [string]$Grep, [switch]$UseExistingPrismaClient)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 $projectRoot = Get-LamsRoot
@@ -102,7 +102,13 @@ try {
     Wait-TestHttp "http://127.0.0.1:$CorePort/api/v1/health"
     Push-Location (Join-Path $projectRoot 'backend\insight-service')
     try {
-        Invoke-LamsNative 'npm.cmd' @('run', 'prisma:generate') 'Prisma generate thất bại'
+        if ($UseExistingPrismaClient) {
+            if (-not (Test-Path -LiteralPath 'node_modules\.prisma\client\query_engine-windows.dll.node')) {
+                throw 'Chưa có Prisma client local để kiểm thử.'
+            }
+        } else {
+            Invoke-LamsNative 'npm.cmd' @('run', 'prisma:generate') 'Prisma generate thất bại'
+        }
         Invoke-LamsNative 'npm.cmd' @('run', 'prisma:deploy') 'Insight migration test thất bại'
         Invoke-LamsNative 'npm.cmd' @('run', 'build') 'Insight build thất bại'
     }

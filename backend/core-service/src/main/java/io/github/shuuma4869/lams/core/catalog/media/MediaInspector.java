@@ -31,17 +31,19 @@ public class MediaInspector {
             case "open-library" -> Set.of("covers.openlibrary.org");
             case "google-books" -> Set.of("books.google.com");
             case "wikimedia" -> Set.of("upload.wikimedia.org");
+            case "standard-ebooks" -> Set.of("standardebooks.org");
             default -> throw invalid();
         };
         Set<String> sourceHosts = switch (request.source()) {
             case "open-library" -> Set.of("openlibrary.org");
             case "google-books" -> Set.of("books.google.com");
+            case "standard-ebooks" -> Set.of("standardebooks.org");
             default -> Set.of("commons.wikimedia.org");
         };
         URI image = url(request.imageUrl(), imageHosts);
         url(request.sourceUrl(), sourceHosts);
         url(request.licenseUrl(), Set.of("creativecommons.org", "commons.wikimedia.org", "openlibrary.org",
-                "archive.org", "developers.google.com", "books.google.com"));
+                "archive.org", "developers.google.com", "books.google.com", "standardebooks.org"));
         if (!inFlight.tryAcquire()) throw new AuthFailure(429,"Đang có nhiều yêu cầu kiểm tra ảnh; vui lòng thử lại.");
         try {
             var pending = client.sendAsync(HttpRequest.newBuilder(image).timeout(Duration.ofSeconds(6))

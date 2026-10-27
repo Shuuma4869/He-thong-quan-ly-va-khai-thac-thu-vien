@@ -30,6 +30,12 @@ public class BookRepository {
         return findBooks("WHERE id = ?", new Object[]{id}, null, null).stream().findFirst();
     }
 
+    public List<Book> findByIds(List<UUID> ids) {
+        if (ids.isEmpty()) return List.of();
+        String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+        return findBooks("WHERE id IN (" + placeholders + ")", ids.toArray(), null, null);
+    }
+
     public BookPage list(int page, int size) {
         return list(page, size, "", null, null);
     }

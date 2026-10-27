@@ -1,0 +1,18 @@
+{
+  "source": "Project Gutenberg weekly catalog",
+  "sourceUrl": "https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz",
+  "sourceDownloaded": "2026-10-26",
+  "sourceSha256": "ebf4f6e54a34dddbcd26ca8a5ef593c9cf3e0ab8b331628ea7a49170a196a07e",
+  "snapshotSha256": "3c0acb2e27ba954f5065beb3ea22d679912f9f7d2e2ad60089912a2527c07d53",
+  "selection": "10.000 bản ghi Text tiếng Anh thuộc Bookshelf Novels đầu tiên, sau chuẩn hóa tên/tác giả và loại trùng trong feed",
+  "rights": "https://www.gutenberg.org/ebooks/offline_catalogs.html",
+  "notes": "Issued là ngày phát hành ebook Gutenberg, không phải năm xuất bản bản in. Không có ISBN, Publisher hoặc số Copy từ nguồn này.",
+  "stats": {
+    "sourceRows": 79674,
+    "textEnglish": 61900,
+    "novelCandidates": 18500,
+    "duplicateTitleAuthor": 154,
+    "missingOrInvalidMetadata": 82,
+    "selected": 10000
+  }
+}

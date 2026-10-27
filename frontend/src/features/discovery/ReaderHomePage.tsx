@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, BookOpen, LibraryBig, Search, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import heroImage from '../../assets/img/auth/auth-cover-library.jpg';
+import heroImage from '../../assets/img/auth/auth-cover-library.webp';
 import { useAuth } from '../auth/auth-context';
 import { BookList } from '../catalog/BookList';
+import { BookGridSkeleton } from '../catalog/BookGridSkeleton';
 import { getBooks, getPublicCategories, getRecentBooks, type Named } from '../catalog/catalog-api';
 import { ReferencePicker } from '../catalog/ReferencePicker';
 
@@ -45,18 +46,18 @@ export function ReaderHomePage() {
     </div>
     <section id="the-loai" className="landing-section landing-container" aria-labelledby="landing-categories-title">
       <div className="landing-section-head"><div><p className="eyebrow">Bắt đầu từ sở thích</p>
-        <h2 id="landing-categories-title">Khám phá theo thể loại</h2></div><Link to="/sach">Xem danh mục <ArrowRight size={17}/></Link></div>
+        <h2 id="landing-categories-title">Khám phá theo thể loại</h2></div><Link to="/the-loai">Xem thể loại <ArrowRight size={17}/></Link></div>
       {categories.isPending ? <p role="status">Đang tải thể loại…</p> : categories.isError
         ? <div className="landing-retry" role="alert">Chưa tải được thể loại. <button type="button" onClick={() => void categories.refetch()}>Thử lại</button></div>
         : categories.data.items.length ? <div className="landing-category-grid">{categories.data.items.slice(0, 8).map(item =>
-          <Link key={item.id} to={`/sach?categoryId=${item.id}`} className="landing-category-card">
+          <Link key={item.id} to={`/the-loai/${item.id}`} className="landing-category-card">
             <span className="landing-category-icon"><BookOpen size={27}/></span><span>{item.name}</span><ArrowRight size={18}/>
           </Link>)}</div> : <p>Thư viện chưa có thể loại để giới thiệu.</p>}
     </section>
     <section className="landing-section landing-section-soft" aria-labelledby="landing-recent-title">
       <div className="landing-container"><div className="landing-section-head"><div><p className="eyebrow">Từ danh mục thư viện</p>
         <h2 id="landing-recent-title">Sách mới cập nhật</h2></div><Link to="/sach">Xem tất cả <ArrowRight size={17}/></Link></div>
-        {recent.isPending ? <p role="status">Đang tải sách…</p> : recent.isError
+        {recent.isPending ? <BookGridSkeleton count={8} /> : recent.isError
           ? <div className="landing-retry" role="alert">Chưa tải được sách. <button type="button" onClick={() => void recent.refetch()}>Thử lại</button></div>
           : recent.data.items.length ? <BookList books={recent.data.items} /> : <p>Chưa có tác phẩm trong danh mục.</p>}
       </div>
@@ -82,7 +83,7 @@ function CategoryBooks({ categories }: { categories: Named[] }) {
   const [selected, setSelected] = useState(categories[0].id);
   const active = categories.find(item => item.id === selected) ?? categories[0];
   const books = useQuery({ queryKey: ['landing', 'category-books', active.id],
-    queryFn: ({ signal }) => getBooks({ query: '', authorId: '', categoryId: active.id,
+    queryFn: ({ signal }) => getBooks({ query: '', authorId: '', categoryId: active.id, categoryTerm: '',
       page: 0, size: 4, sort: 'updated' }, signal), retry: false });
   return <section className="landing-section landing-container" aria-labelledby="landing-category-books-title">
     <div className="landing-section-head"><div><p className="eyebrow">Từ những thể loại bạn quan tâm</p>
@@ -92,7 +93,7 @@ function CategoryBooks({ categories }: { categories: Named[] }) {
       {categories.map(item => <button type="button" key={item.id} aria-pressed={item.id === active.id}
         className="landing-category-chip" onClick={() => setSelected(item.id)}>{item.name}</button>)}
     </div>
-    {books.isPending ? <p role="status">Đang tải sách theo thể loại…</p> : books.isError
+    {books.isPending ? <BookGridSkeleton message="Đang tải sách theo thể loại…" /> : books.isError
       ? <div className="landing-retry" role="alert">Chưa tải được sách. <button type="button" onClick={() => void books.refetch()}>Thử lại</button></div>
       : <BookList books={books.data.items} />}
   </section>;

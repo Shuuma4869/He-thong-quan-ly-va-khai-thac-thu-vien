@@ -16,7 +16,7 @@ describe('nhận diện LAMS', () => {
 
   it('hero xác thực tham chiếu ảnh thư viện local', () => {
     const { container } = render(<MemoryRouter><AuthHero /></MemoryRouter>);
-    expect(container.querySelector('.login-brand')?.getAttribute('style')).toContain('auth-cover-library.jpg');
+    expect(container.querySelector('.login-brand')?.getAttribute('style')).toContain('auth-cover-library.webp');
     expect(screen.getByRole('heading', { name: /Tìm sách nhanh hơn/ })).toBeInTheDocument();
   });
 });

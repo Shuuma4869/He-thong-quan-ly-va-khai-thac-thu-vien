@@ -14,8 +14,10 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | RefreshToken (`refresh_tokens`, V2) | Phiên làm mới | SHA-256 `token_hash` unique; `family_id`, expiry, revoke, replacement, remember; không lưu raw token | Core/Identity |
 | Author (`authors`, V3) | Tác giả | UUID `id`; `name` bắt buộc, tối đa 200 ký tự; index theo tên; không áp đặt tên duy nhất; không xóa khi còn Book tham chiếu | Core/Catalog |
 | Category (`categories`, V4) | Thể loại | UUID `id`; `name` hiển thị; `normalized_name` duy nhất sau chuẩn hóa Unicode NFKC, gộp khoảng trắng và không phân biệt hoa thường | Core/Catalog |
+| CategoryAlias (`category_aliases`, V23) | Bí danh trỏ tới thể loại chuẩn | UUID `id`; FK `category_id` `ON DELETE RESTRICT`; `normalized_alias` duy nhất, service từ chối trùng khóa tên Category chuẩn; cần xử lý alias trước khi xóa Category | Core/Catalog |
 | Publisher (`publishers`, V5) | Nhà xuất bản | UUID `id`; `name` bắt buộc, tối đa 200 ký tự; index theo tên; không áp đặt tên duy nhất | Core/Catalog |
 | Book (`books`, V6/V22) | Tác phẩm logic | UUID `id`; title, normalized title, description; V22 thêm `search_title`, `search_description`, `search_vector` để tra cứu, cập nhật qua trigger; quan hệ nhiều-nhiều với Author/Category; không chứa barcode hoặc số lượng availability | Core/Catalog |
+| CatalogExternalSource (`catalog_external_sources`, V25) | Định danh thư mục ngoài của Book | Khóa `(source_code, source_record_id)`; `book_id` FK RESTRICT; URL nguồn, SHA-256 ảnh chụp metadata, title/author gốc, ngày phát hành ebook nếu có và thời điểm nhập. Không chứa ISBN hoặc tồn kho suy đoán | Core/Catalog |
 | Favorite (`favorites`, V14) | Liên kết sách yêu thích của user | FK `user_id`/`book_id`; unique ghép `(user_id, book_id)`; `created_at` UTC; xóa User hoặc Book sẽ cascade liên kết | Core/Reader contributions |
 | Review (`reviews`, V15) | Review và rating công khai của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `created_at`/`updated_at`; chưa có workflow moderation | Core/Reader contributions |
 | Edition (`editions`, V7) | Ấn bản của Book | UUID `id`; Book FK bắt buộc; Publisher tùy chọn; ISBN-13 tùy chọn, chưa unique; năm và ngôn ngữ tùy chọn | Core/Catalog |
@@ -34,6 +36,8 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | InventoryScan (`inventory_scans`, V20) | Lượt quét append-only | client_scan_id duy nhất trong phiên, barcode/kệ/người quét/thời điểm server; retry qua biên nhận giao dịch | Core/Inventory |
 | InventoryAnomaly (`inventory_anomalies`, V20) | Bất thường đã chốt | sáu kind, evidence JSONB cố định, Copy có thể null, thời điểm phát hiện | Core/Inventory |
 | InventoryResolution (`inventory_resolutions`, V21) | Quyết định rà soát của nhân viên | duy nhất theo anomaly; REVIEWED hoặc MOVE_TO_SCANNED_SHELF, reason, version Copy, actor và thời điểm | Core/Inventory |
+| AcquisitionRecommendation (`acquisition_recommendations`, Insight Prisma) | Đề xuất bổ sung sách nội bộ | Book/branch UUID, cửa sổ và thời điểm snapshot, phiên bản nguồn/công thức, điểm/confidence, evidence JSONB; trạng thái DRAFT/APPROVED/REJECTED, version và thông tin người duyệt; unique snapshot/phạm vi/phiên bản | Insight/Acquisition |
+| AcquisitionDecision (`acquisition_decisions`, Insight Prisma) | Lịch sử quyết định đề xuất | FK recommendation, action, actor, lý do, version; unique recommendation/version; không phải đơn đặt mua | Insight/Acquisition |
 | SearchEvent (thiết kế, chưa có bảng) | Tín hiệu tìm kiếm dự kiến | Chưa ghi query, kết quả rỗng hoặc session hash; không được dùng làm dữ liệu báo cáo hiện tại | Insight/Analytics |
 | DemandSignal (thiết kế, chưa có bảng) | Tín hiệu nhu cầu quy chuẩn dự kiến | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
 
@@ -49,8 +53,8 @@ V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, khô
 - Catalog: `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories` và `editions` có migration V3–V7; V22 thêm chỉ mục tìm kiếm Book, không tạo bảng SearchEvent.
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; phiên/snapshot/scan/anomaly ở V20 và resolution ở V21. `copy_location_history` chuyên biệt chưa có; quyết định chuyển kệ từ kiểm kê được truy qua resolution và version Copy.
 - Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
-- Discovery: `search_documents`, `acquisition_recommendations`.
-- System: `notifications`, `system_policies`, `audit_logs`, `outbox_events`, `media_assets`.
+- Discovery: `search_documents` chưa có migration; tra cứu từ vựng dùng cột và chỉ mục trên `books`. Trên nhánh Tuan, Core có endpoint read facts cho Copy/Hold/Loan; Insight có migration lưu `acquisition_recommendations` và `acquisition_decisions`, adapter đọc Core và API nội bộ tạo/duyệt đề xuất. Chưa có E2E xuyên hai dịch vụ trên dữ liệu thật.
+- System dự kiến: `notifications`, `system_policies`, `audit_logs`, `media_assets` là tên trong mô hình mục tiêu, chưa phải bảng đang có. `outbox_events` được tạo từ V1 và bổ sung cơ chế giao nhận ở V19; thông báo người dùng hiện lưu trong bảng `circulation_notices` của Insight.
 
 ## Media asset
 

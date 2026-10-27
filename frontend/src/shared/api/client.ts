@@ -57,12 +57,13 @@ async function request<T>(baseUrl: string | undefined, method: Method, path: str
   const hooks = authHooks;
   const generation = hooks?.generation?.();
   const token = hooks?.token();
+  const publicCatalogRequest = method === 'GET' && path.startsWith('/public/catalog/');
   const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-LAMS-Client': '1' };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token && !publicCatalogRequest) headers.Authorization = `Bearer ${token}`;
   const { response, data } = await send(`${baseUrl}${path}`, {
     method, headers, credentials: 'include', body: body === undefined ? undefined : JSON.stringify(body),
   }, signal, binary);
-  const protectedRequest = !['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path.split('?')[0]);
+  const protectedRequest = !publicCatalogRequest && !['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path.split('?')[0]);
   const sameSession = () => authHooks === hooks && hooks?.generation?.() === generation;
   if (protectedRequest && !sameSession()) throw new ApiError(401, 'Phiên đăng nhập đã thay đổi.');
   if (response.status === 401 && retry && hooks && authHooks === hooks && protectedRequest) {

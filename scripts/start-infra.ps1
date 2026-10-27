@@ -9,7 +9,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.env'))) {
 Push-Location $projectRoot
 try {
     Invoke-LamsNative 'docker' @('compose', 'config', '--quiet') 'Docker Compose config không hợp lệ'
-    Invoke-LamsNative 'docker' @('compose', 'up', '-d', '--build', '--wait', 'postgres', 'redis', 'kafka', 'minio') 'Không thể khởi động hạ tầng LAMS'
+    Invoke-LamsNative 'docker' @('compose', 'up', '-d', '--build', '--wait', 'postgres', 'redis', 'kafka') 'Không thể khởi động hạ tầng LAMS'
 } finally { Pop-Location }
 
-Write-Host '[OK] PostgreSQL, Redis, Kafka và MinIO đã sẵn sàng.' -ForegroundColor Green
+Write-Host '[OK] PostgreSQL, Redis và Kafka đã sẵn sàng.' -ForegroundColor Green

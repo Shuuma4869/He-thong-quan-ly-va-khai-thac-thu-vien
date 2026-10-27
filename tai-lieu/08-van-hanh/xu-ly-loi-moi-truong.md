@@ -33,7 +33,7 @@ Xem `docker compose logs postgres`, kiểm tra URL/credential trong `.env`, rồ
 ## Xem log và dừng an toàn
 
 ```powershell
-docker compose logs --tail 200 postgres redis kafka minio
+docker compose logs --tail 200 postgres redis kafka
 .\scripts\stop-infra.ps1
 ```
 

@@ -1,78 +1,114 @@
-# LAMS — Library Access & Management System
+# LAMS — Hệ thống quản lý và khai thác thư viện
 
-LAMS là nền tảng quản lý và khai thác thư viện: giúp người đọc tìm và tiếp cận tài liệu, đồng thời hỗ trợ thủ thư quản lý lưu thông, tồn kho và nhu cầu sử dụng sách.
+LAMS giúp người đọc tra cứu sách, giữ chỗ, theo dõi lượt mượn và đánh giá sách. Thủ thư quản lý danh mục, lưu thông và kiểm kê trên cùng một hệ thống. Giao diện chạy trên trình duyệt hoặc trong cửa sổ ứng dụng Windows bằng Tauri.
 
-## Trạng thái
+## Thông tin học phần
 
-Auth Phase 1A và Member backend chỉ đọc của Phase 1B đã có trên `main`. Phase 1C bổ sung trang `/ho-so` cho người đã đăng nhập và `/nhan-vien/thanh-vien` cho LIBRARIAN/ADMIN, dùng API thật và hỗ trợ tìm kiếm/lọc/sắp xếp/phân trang. Phạm vi và đầu ra công việc được quản lý trong [hướng dẫn thành viên](tai-lieu/00-bat-dau/huong-dan-thanh-vien.md); kết quả từng lần chạy xem ở CI của PR.
+| Lớp học phần | Thành viên | MSSV |
+|---|---|---|
+| Thiết kế Web nâng cao-1-1-26(N01) | Nguyễn Trọng Tuấn | 23010690 |
+|  | Vũ Đức Toàn | 23010062 |
 
-Profile hiện chỉ đọc; `profile: null` là chủ đích, không có form sửa, bảng Member riêng hoặc PATCH. Phase 2 có Catalog/Inventory API, giao diện tra cứu và quản trị tám loại dữ liệu, metadata theo ISBN và tham chiếu ảnh duyệt thủ công. Xem [hợp đồng Catalog](tai-lieu/05-api-va-event/catalog-contract.md) và [kiến trúc Catalog/media](tai-lieu/02-kien-truc/catalog-media.md). Mượn/trả và tìm kiếm nâng cao chưa triển khai; đây chưa phải sản phẩm hoàn chỉnh.
+Phân công được ghi trong [hướng dẫn thành viên](tai-lieu/00-bat-dau/huong-dan-thanh-vien.md). Lịch sử commit và PR thể hiện phần mã thực tế của từng người.
 
-## Kiến trúc ngắn
+## Chức năng
 
-Phase 2.5 được bàn giao ở [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Insight có lịch sử tra cứu ISBN dùng Prisma/PostgreSQL, giao diện ở nút “Lịch sử tra cứu ISBN” trong trang quản trị danh mục. PostgreSQL, E2E web và EXE/WebView2 đã kiểm thử đạt ở bản `ee929cd`; PR ghi CI của SHA bàn giao cuối. Xem [ORM và giới hạn](tai-lieu/02-kien-truc/metadata-history-orm.md), [User Stories](tai-lieu/01-yeu-cau/user-stories.md), [wireframe](tai-lieu/06-giao-dien/wireframes.md) và [gate hiện hành](ho-so-nop-bai/doi-chieu-rubric.md). Academic Final Gate vẫn cần xác nhận bên ngoài.
+- **Người đọc:** đăng ký, đăng nhập, cập nhật tên/số điện thoại, đổi mật khẩu, duyệt tác giả/thể loại, tìm và lọc sách, xem ấn bản, lưu yêu thích, viết đánh giá, đặt giữ chỗ và theo dõi lượt mượn. Yêu cầu đổi email được lưu ở trạng thái chờ; bản local chưa gửi thư xác minh nên email đăng nhập chưa thay đổi.
+- **Thủ thư, quản trị viên:** quản lý danh mục và bản sách, tra cứu thành viên, mượn/trả/gia hạn, xử lý giữ chỗ, xem báo cáo lưu thông, mở phiên kiểm kê, quét mã vạch và xác nhận xử lý sai lệch. Dashboard hiển thị các số đếm lấy từ API; chưa có feed hoạt động vì backend chưa cung cấp.
+- **Tìm kiếm:** PostgreSQL full-text search và trigram; có thể lọc bằng tên thể loại chuẩn hoặc bí danh đã lưu. Thanh tìm kiếm chung gợi ý sách, tác giả và thể loại bằng các truy vấn giới hạn trên server. Metadata ISBN và ảnh bìa dùng quy trình duyệt thủ công; mục chưa có ảnh được duyệt dùng hình thay thế.
+- **Đề xuất bổ sung sách:** nhân viên chọn sách, chi nhánh và khoảng thời gian; Core đọc số liệu thật trong một snapshot, Insight tính điểm, lưu bằng chứng và quyết định nội bộ. Có CSV xuất đề xuất đã lưu. Lượt thêm Favorite đã bị bỏ chưa có lịch sử nên tín hiệu này được ghi là thiếu, không điền 0.
 
-Phase 2.5 đã merge qua PR #12 tại `b9cf5f3`, CI main `39985051027` đạt 5/5. Đoạn nghiệm thu EXE phía trên chỉ áp dụng cho SHA `ee929cd`, không thay kiểm thử commit mới.
+Truy vấn snapshot kiểm kê của Toàn đã vào `main` qua [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25), merge commit `e525d34`, giữ nguyên lịch sử tác giả. Search, quản trị Alias, Acquisition và đợt giao diện mới đang ở [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27). Các phần này chỉ có trên `main` sau khi PR được review, CI ở commit cuối đạt và merge.
 
-Phase 3 đã merge qua [PR #13](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/13) tại `ea93b7a`: Favorites, Reviews/Rating ở chi tiết sách và `/thu-vien-cua-toi` dùng Core API thật. Backend nền tảng thuộc Toan (PR #11); Tuan bổ sung UI, truy vấn cá nhân và sửa cạnh tranh PATCH/FK, validation rating. Xem [cơ chế và giới hạn](tai-lieu/02-kien-truc/favorites-reviews.md) và [bàn giao](tai-lieu/00-bat-dau/handoff-phase3-4.md). Kết quả kiểm thử phải đối chiếu PR/CI của đúng SHA đang dùng.
+## Công nghệ và kiến trúc
 
-- `frontend`: Tauri 2 + WebView2 trên Windows; React + TypeScript + Vite dùng chung UI theo feature. Bản release mở cửa sổ riêng, không cần Chrome/Vite.
-- `backend/core-service`: Java 21 + Spring Boot, sở hữu dữ liệu và giao dịch cốt lõi.
-- `backend/insight-service`: NestJS + Prisma, dành cho discovery, analytics và tích hợp bất đồng bộ.
-- `PostgreSQL`: hai database `lams_core`, `lams_insight`; là source of truth.
-- `Redis`, `Kafka`, `MinIO`: hạ tầng cho cache/coordination, event transport và object storage theo roadmap; không coi dịch vụ có trong Compose là nghiệp vụ đã tích hợp.
+| Thành phần | Công nghệ | Vai trò |
+|---|---|---|
+| Giao diện | React, TypeScript, Vite, Tauri 2/WebView2 | Cùng một UI cho web và Windows |
+| Core Service | Java 21, Spring Boot, Flyway | Tài khoản, Catalog, lưu thông và kiểm kê |
+| Insight Service | NestJS, Prisma | Metadata, discovery và đề xuất bổ sung sách |
+| Dữ liệu | PostgreSQL (`lams_core`, `lams_insight`) | Hai database tách theo service |
+| Hạ tầng | Redis, Kafka, Docker Compose | Cache/coordination và truyền sự kiện |
 
-## Yêu cầu môi trường
+Luồng chính: **giao diện → Core/Insight → PostgreSQL**. Insight không đọc trực tiếp database của Core. [Sơ đồ container](tai-lieu/02-kien-truc/container-diagram.md), [ERD](tai-lieu/03-du-lieu/erd.md) và [hợp đồng API](contracts/openapi/) mô tả chi tiết. MinIO là dịch vụ Compose tùy chọn và mặc định tắt; ảnh Catalog hiện là URL tham chiếu đã duyệt.
 
-Git, Java 21, Node.js 22.x, npm 10.x, Docker Engine/Desktop và Docker Compose. Version được pin trong `.java-version`, `.nvmrc`, `.node-version` và `package.json`. Maven hệ thống không bắt buộc vì Core có Maven Wrapper 3.9.11.
+[Hệ thống giao diện](tai-lieu/06-giao-dien/design-system.md) ghi màu, font, bố cục và cách xử lý ảnh thiếu; [bản đồ chức năng](tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) nối từng màn với API và trạng thái thực tế.
 
-## Khởi chạy desktop Windows
+## Cấu trúc repository
 
-Từ thư mục clone trên Windows PowerShell:
+| Thư mục | Nội dung |
+|---|---|
+| `backend/core-service/` | Spring Boot và Flyway migration |
+| `backend/insight-service/` | NestJS, Prisma schema và migration |
+| `frontend/` | React UI, Tauri và kiểm thử giao diện |
+| `contracts/` | OpenAPI và AsyncAPI |
+| `infra/`, `scripts/` | Hạ tầng và lệnh cài/chạy/kiểm tra |
+| `tai-lieu/` | Yêu cầu, kiến trúc, nghiệp vụ và vận hành |
+| `ho-so-nop-bai/` | Báo cáo nguồn, rubric và slide |
+
+## Chạy trên Windows
+
+Máy cần Git, Java 21, PowerShell 7, Docker Desktop/Engine, Node.js 22 và npm 10. Maven dùng wrapper trong repository. Để build desktop còn cần Rust, C++ Build Tools, Windows SDK và WebView2; [script setup](scripts/setup-desktop.ps1) kiểm tra/cài các thành phần này. Docker phải chạy trước khi bootstrap.
 
 ```powershell
-.\scripts\setup-desktop.ps1
-.\scripts\bootstrap-local.ps1
-.\scripts\smoke-test.ps1
-.\scripts\check-quality.ps1
+git clone https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien.git
+cd .\He-thong-quan-ly-va-khai-thac-thu-vien
+pwsh -NoProfile -File .\scripts\setup-desktop.ps1
+pwsh -NoProfile -File .\scripts\bootstrap-local.ps1
+pwsh -NoProfile -File .\scripts\smoke-test.ps1
 ```
 
-Bootstrap kiểm tra prerequisite, tạo `.env` nếu thiếu, chạy `npm ci`, Prisma validate/generate/deploy và khởi động hạ tầng. Script không ghi đè `.env` và không xóa volume.
+`bootstrap-local.ps1` tạo `.env` với mật khẩu PostgreSQL và JWT secret ngẫu nhiên khi chưa có, cài dependency, khởi động Compose và chạy Prisma migration. Nếu `.env` đã có, script kiểm tra cấu hình rồi giữ nguyên secret; không xóa volume cũ. Core chạy Flyway khi khởi động. Dùng PowerShell 7 để các script UTF-8 được đọc đúng.
 
-Sau đó mở ba terminal tại root project:
+Nếu dùng **Git Bash trong VS Code**, chạy `./scripts/lams.sh doctor`, `./scripts/lams.sh bootstrap`, `./scripts/lams.sh smoke`. Wrapper gọi các script PowerShell 7, xử lý đường dẫn có dấu/khoảng trắng và dùng Node 22 cục bộ nếu có. Các lệnh `core`, `insight`, `web`, `desktop` chạy ở foreground trong từng terminal riêng; `Ctrl+C` dừng tiến trình đó. Xem [hướng dẫn chạy local](tai-lieu/08-van-hanh/chay-local.md) để biết tất cả lệnh.
+
+Mở **ba cửa sổ PowerShell** tại thư mục repository, mỗi cửa sổ chạy một lệnh:
 
 ```powershell
-.\scripts\start-core.ps1
-
-.\scripts\start-insight.ps1
-
-.\scripts\start-desktop.ps1
+# Cửa sổ 1 — Core
+pwsh -NoProfile -File .\scripts\start-core.ps1
 ```
 
-Desktop mở bằng lệnh trên; Core health: `http://localhost:8080/api/v1/health`; Insight health: `http://localhost:3000/api/v1/health`.
+```powershell
+# Cửa sổ 2 — Insight
+pwsh -NoProfile -File .\scripts\start-insight.ps1
+```
 
-Xem [hướng dẫn desktop Windows](tai-lieu/08-van-hanh/desktop-windows.md) để build EXE/bộ cài, yêu cầu C++/Rust/WebView2 và xử lý lỗi. Backend/database vẫn chạy riêng; bộ cài giao diện chưa phải gói offline toàn hệ thống. Chế độ web vẫn có thể chạy `npm run dev` trong frontend để phát triển/kiểm thử.
+```powershell
+# Cửa sổ 3 — ứng dụng Windows
+pwsh -NoProfile -File .\scripts\start-desktop.ps1
+```
 
-[Cấu hình pilot Render + Neon](tai-lieu/08-van-hanh/cloud-pilot.md) đã được chuẩn bị cho Core HTTPS và PostgreSQL tập trung. Đây là cấu hình để triển khai sau khi có tài khoản, không phải thông báo đã có máy chủ hoạt động. Chưa có updater, ký số hay nghiệm thu trên máy Windows thứ hai.
+Core health: `http://localhost:8080/api/v1/health`; Insight health: `http://localhost:3000/api/v1/health`. Để phát triển giao diện web, chạy `./scripts/lams.sh web` trong Git Bash hoặc `npm run dev` trong `frontend/` sau khi Core và Insight đã sẵn sàng. [Dữ liệu demo](tai-lieu/09-demo/du-lieu-demo.md) có lệnh seed Catalog và tạo ba tài khoản không lưu mật khẩu trong repository. [Bản đồ chức năng giao diện](tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) ghi đường vào và phạm vi của từng màn.
+
+Bộ seed nhỏ có 32 tác phẩm và 64 bản sách mô phỏng để thử nghiệp vụ. Có thêm [catalog tham khảo 10.000 định danh Project Gutenberg](tai-lieu/09-demo/catalog-nguon-gutenberg.md) cho tìm kiếm quy mô lớn; dữ liệu này không tạo ấn bản hoặc tồn kho vật lý. Trên máy demo, tám bìa Standard Ebooks đã được đối chiếu và duyệt qua Core; [hướng dẫn dữ liệu demo](tai-lieu/09-demo/du-lieu-demo.md#ảnh-bìa) chỉ cách tạo lại các tham chiếu đó trên máy khác. 24 ảnh còn lại chỉ là ứng viên, chưa tự động xuất hiện trên giao diện. Muốn thử hành trình có đăng nhập, người vận hành chạy script tạo tài khoản và nhập mật khẩu tại terminal của chính mình.
 
 ## Kiểm thử và build
 
 ```powershell
 .\scripts\check-quality.ps1
+python -m pip install -r contracts/openapi/requirements.txt
+python .\scripts\validate-openapi.py
 ```
 
-E2E Auth/Member/Catalog: `scripts/test-phase1-e2e.ps1`; thêm `-Desktop` để chạy trên EXE/WebView2 sau khi build. Kiểm toàn bộ OpenAPI bằng Python 3.12+ trong môi trường riêng: `python -m pip install -r contracts/openapi/requirements.txt`, rồi `python scripts/validate-openapi.py`. CI có job `api-contracts` riêng, không chỉ parse YAML.
+`check-quality.ps1` chạy Core `clean verify`, Prisma, Insight test/integration/build, frontend typecheck/lint/test/build và kiểm Compose. OpenAPI validator, E2E web/desktop và kiểm thử bảo mật được chạy riêng theo [pre-push gate](tai-lieu/08-van-hanh/pre-push-gate.md). Kết quả kiểm thử cần gắn với đúng commit; build thành công không thay bài E2E trên EXE.
 
-Ảnh chưa duyệt dùng placeholder/initials. Tra cứu metadata cần Insight và Core cùng chạy; Google Books mặc định tắt, chỉ bật khi có server API key và kiểm tra điều kiện sử dụng. Không đưa key vào frontend. [Chiến lược media](tai-lieu/03-du-lieu/media-strategy.md) nêu cấu hình, quyền sử dụng và giới hạn hiện tại.
+## Ứng dụng Windows và bộ cài
 
-## Cấu trúc
+```powershell
+.\scripts\build-desktop.ps1
+.\scripts\start-desktop.ps1 -Release
+```
 
-- `backend/`: hai service có trách nhiệm tách biệt.
-- `frontend/`: router, layout và feature UI.
-- `contracts/`: OpenAPI hiện thực tối thiểu và AsyncAPI planned.
-- `infra/`: PostgreSQL init, Nginx, Kafka và monitoring foundation.
-- `tai-lieu/`: yêu cầu, kiến trúc, dữ liệu, workflow, API, UI, test, vận hành, demo.
-- `kiem-thu/`: nơi dành cho kiểm thử xuyên service.
-- `ho-so-nop-bai/`: báo cáo nguồn học phần, ma trận rubric và ảnh minh chứng có nguồn/SHA; mẫu trường và video thật còn cần bổ sung.
+Lệnh build tạo EXE và gói cài trong `frontend/src-tauri/target/release/`. [Hướng dẫn desktop](tai-lieu/08-van-hanh/desktop-windows.md) có đường dẫn cụ thể và cách xử lý lỗi. EXE mở cửa sổ riêng, không cần tab Chrome hoặc Vite khi chạy bản release. **Core, Insight và PostgreSQL vẫn phải chạy hoặc được triển khai riêng**; bộ cài chưa phải hệ thống offline trọn gói. Chưa có updater hoặc ký số.
 
-Đọc [hướng dẫn chạy local](tai-lieu/08-van-hanh/chay-local.md), [xử lý lỗi môi trường](tai-lieu/08-van-hanh/xu-ly-loi-moi-truong.md) và [pre-push gate](tai-lieu/08-van-hanh/pre-push-gate.md) khi cần chi tiết.
+## Demo và hồ sơ học phần
+
+[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
+
+## Giới hạn hiện tại
+
+- Phase 5: truy vấn snapshot của Toàn đã vào main qua PR #25; phần phiên, scan, xử lý bất thường và UI có test PostgreSQL cùng E2E Web/EXE. Đã đo một phiên 5.000 Copy với 100 scan; chưa thử máy quét vật lý hoặc tải nhiều phiên trên mạng thật.
+- Phase 6: Core có FTS/trigram, xếp hạng, bí danh Category và gợi ý; giao diện đã nối Search/API. Đã đo trên 10.013 Book demo, nhưng sáu câu relevance chỉ là mẫu nhỏ và chưa có SLA production.
+- Phase 7: Core có read projection theo Book/chi nhánh, Insight có luồng phân tích/tạo/duyệt và CSV của các đề xuất đã lưu; E2E Core → Insight → UI trên Web/EXE đã đạt tại source `1580bf6`. Chưa có lịch sử đầy đủ lượt thêm Favorite, số lần tìm không ra sách, ngân sách hay luồng đặt mua; `APPROVED` chỉ là quyết định nội bộ.
+- [Cấu hình pilot HTTPS](tai-lieu/08-van-hanh/cloud-pilot.md) đã được chuẩn bị, chưa có máy chủ công cộng. Chưa nghiệm thu production, bộ cài trên máy Windows thứ hai hoặc chính sách lưu/xóa dữ liệu đề xuất.

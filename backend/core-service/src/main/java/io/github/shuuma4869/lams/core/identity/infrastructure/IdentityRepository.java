@@ -40,6 +40,11 @@ public class IdentityRepository {
         return jdbc.query("SELECT * FROM users WHERE id=?", (rs, row) -> mapUser(rs), id).stream().findFirst();
     }
 
+    public int credentialVersion(UUID id) {
+        Integer version = jdbc.queryForObject("SELECT credential_version FROM users WHERE id=?", Integer.class, id);
+        return version == null ? 0 : version;
+    }
+
     private IdentityUser mapUser(ResultSet rs) throws SQLException {
         UUID id = rs.getObject("id", UUID.class);
         List<RoleCode> roles = jdbc.query("SELECT role_code FROM user_roles WHERE user_id=? ORDER BY role_code",

@@ -12,7 +12,11 @@ Tra tác giả dùng Open Library Author ID → Wikidata ID → kiểm P648 tr�
 
 Trong quản trị Catalog, chọn Author hoặc Edition rồi mở **Ảnh và nguồn**. Tra metadata hoặc nhập tham chiếu thủ công. Đối chiếu định danh, đọc giấy phép, ghi attribution và bằng chứng; xác nhận trước khi lưu. Core xác minh URL, loại file và kích thước, rồi lưu `catalog_media_references` (V12): URL nguồn/ảnh/giấy phép, source ID, license, attribution, evidence, MIME/bytes, người/thời điểm duyệt và version. Chỉ giữ lần duyệt hiện tại; chưa có audit history ảnh.
 
+Bộ demo có thêm [ứng viên bìa Standard Ebooks](../09-demo/anh-bia-ung-vien.csv) cho 32 tác phẩm. V24 mở nguồn `standard-ebooks` trong bảng media; Core chỉ chấp nhận URL ảnh/trang nguồn HTTPS tại `standardebooks.org`. Tám bìa đầu được đối chiếu từ trang tác phẩm và colophon, có thể ghi vào database demo bằng [script duyệt có kiểm tra Edition](../09-demo/du-lieu-demo.md#ảnh-bìa); 24 ứng viên còn lại chưa duyệt. Danh sách ứng viên không tự tạo tham chiếu đã duyệt. [Chính sách nguồn của Standard Ebooks](https://standardebooks.org/about/standard-ebooks-and-the-public-domain) nói về phần họ tạo và bìa trong ebook, nhưng không thay việc kiểm quyền đối với tác phẩm/tranh gốc tại nơi triển khai. Nhân viên vẫn đối chiếu từng Edition, quyền sử dụng, ghi công và bằng chứng trước khi xác nhận.
+
 Thay/gỡ ảnh phải có version hiện tại; 409 yêu cầu tải lại, không tự ghi đè. Chưa có ảnh dùng typography cho Edition, initials cho Author. Ảnh tải hỏng quay lại fallback; lỗi metadata/ảnh không làm mất nội dung Catalog. Nguồn/giấy phép/ghi công luôn đi cùng ảnh. Google Books chỉ hiện nội dung sau khi tải được nhãn “Powered by Google”; mất nhãn thì không hiện nội dung nguồn này.
+
+Catalog mới dùng bìa chữ nhiều tông màu với đúng tên sách và tác giả khi không có tham chiếu đã duyệt. Bìa chữ không được ghi là ảnh bìa thật. Ảnh thật được giữ nguyên tỷ lệ trong card và trang chi tiết, có ghi công dưới ảnh; lỗi tải ảnh quay lại bìa chữ. Font được đóng gói trong ứng dụng, nhưng ảnh bên ngoài vẫn do trình duyệt/WebView tải từ nguồn đã duyệt, nên cần kết nối mạng để xem. Không đóng gói trước 32 ảnh ứng viên vào Git hoặc EXE và không tự động duyệt toàn bộ 10.000 tác phẩm tham khảo.
 
 ## Bảo vệ mạng và tài nguyên
 
@@ -33,4 +37,4 @@ Pilot hiện mới có cấu hình Core, chưa triển khai Insight công khai. 
 
 ## Tài liệu nguồn
 
-[Open Library APIs](https://openlibrary.org/developers/api), [Books API](https://openlibrary.org/dev/docs/api/books), [Google Books API](https://developers.google.com/books/docs/v1/using), [Google Books branding](https://developers.google.com/books/branding), [Wikimedia Imageinfo](https://www.mediawiki.org/wiki/API:Imageinfo). Kiểm lại điều khoản tại thời điểm sử dụng/phân phối; URL công khai không mặc nhiên cấp quyền sao chép ảnh.
+[Open Library APIs](https://openlibrary.org/developers/api), [Books API](https://openlibrary.org/dev/docs/api/books), [Google Books API](https://developers.google.com/books/docs/v1/using), [Google Books branding](https://developers.google.com/books/branding), [Wikimedia Imageinfo](https://www.mediawiki.org/wiki/API:Imageinfo), [Standard Ebooks và phạm vi public domain](https://standardebooks.org/about/standard-ebooks-and-the-public-domain). Kiểm lại điều khoản tại thời điểm sử dụng/phân phối; URL công khai không mặc nhiên cấp quyền sao chép ảnh.

@@ -2,7 +2,7 @@
 
 Mức ưu tiên: **MVP** cần cho vòng nghiệp vụ đầu; **Advanced** tạo khác biệt sản phẩm; **Future** chỉ định hướng.
 
-Bảng dưới là roadmap sản phẩm, không phải checklist chức năng đã triển khai. Phạm vi học phần hiện thực và mã FR-01–22 nằm trong [User Stories/trace](user-stories.md) và [use case](use-case.md). FR-17–20 có backend mượn/trả/gia hạn/giữ chỗ; FR-21–22 bổ sung lịch sử mượn và thống kê nhóm Loan/CSV. Giao diện và E2E lưu thông chưa hoàn thành. Availability, quản trị role/policy/audit và analytics nhu cầu chưa được coi là hoàn thành; Member hiện chỉ đọc. Phase 2.5 thêm FR-13 history ISBN owner-only trong Insight, không tự sửa Catalog.
+Bảng dưới là roadmap sản phẩm, không phải checklist chức năng đã triển khai. Phạm vi học phần và mã FR-01–22 nằm trong [User Stories/trace](user-stories.md) và [use case](use-case.md). FR-17–22 đã có API mượn/trả/gia hạn/giữ chỗ, lịch sử mượn, báo cáo Loan/CSV cùng giao diện và E2E tương ứng. Availability được tính từ trạng thái Copy trong các luồng hiện có; chưa có dịch vụ dự báo tổng quát. Quản trị role/policy, audit tổng thể và analytics nhu cầu chưa hoàn thành; Member hiện chỉ đọc. Phase 2.5 thêm FR-13 history ISBN owner-only trong Insight, không tự sửa Catalog.
 
 | Actor | MVP | Advanced | Future |
 |---|---|---|---|

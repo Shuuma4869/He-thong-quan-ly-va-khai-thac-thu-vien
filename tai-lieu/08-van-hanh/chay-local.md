@@ -3,6 +3,7 @@
 ## Yêu cầu
 
 - Git.
+- PowerShell 7 (`pwsh`) trên Windows; không chạy script UTF-8 bằng Windows PowerShell 5.1.
 - Java 21.
 - Node.js 22.x và npm 10.x.
 - Docker Desktop/Engine và Docker Compose.
@@ -14,28 +15,31 @@ Không cần Maven hệ thống. `mvnw.cmd` lưu Maven 3.9.11 trong cache ngư�
 Từ `<thu-muc-du-an>`:
 
 ```powershell
-.\scripts\setup-desktop.ps1
-.\scripts\bootstrap-local.ps1
-.\scripts\smoke-test.ps1
-.\scripts\check-quality.ps1
+pwsh -NoProfile -File .\scripts\setup-desktop.ps1
+pwsh -NoProfile -File .\scripts\bootstrap-local.ps1
+pwsh -NoProfile -File .\scripts\smoke-test.ps1
+pwsh -NoProfile -File .\scripts\check-quality.ps1
 ```
 
-Bootstrap không ghi đè `.env` đã tồn tại và không xóa volume. Flyway chạy khi Core khởi động; Prisma migration được bootstrap deploy.
+Bootstrap không ghi đè `.env` đã tồn tại và không xóa volume. Với môi trường mới, script tạo ngẫu nhiên mật khẩu PostgreSQL và JWT secret; với môi trường cũ, script kiểm tra giá trị bắt buộc, mật khẩu giữa Core/Insight và lỗi xác thực volume. Flyway chạy khi Core khởi động; Prisma migration được bootstrap deploy.
+Mặc định Compose chỉ khởi động PostgreSQL, Redis và Kafka. MinIO không phục vụ ảnh Catalog hiện tại nên nằm trong profile `media` và không tiêu thụ tài nguyên khi khởi động thông thường.
+
+Trong Git Bash của VS Code có thể dùng `./scripts/lams.sh doctor|setup|bootstrap|smoke|seed-demo|core|insight|web|desktop|quality|e2e|desktop-e2e|build-desktop|stop`. Chạy `./scripts/lams.sh` không tham số để xem trợ giúp. `core`, `insight`, `web` và `desktop` dùng terminal riêng, kiểm cổng trước khi chạy để tránh mở trùng service. Đường dẫn có dấu tiếng Việt và khoảng trắng được wrapper chuyển sang đường dẫn Windows khi gọi PowerShell 7.
 
 ## Chạy ứng dụng
 
 Mở ba terminal tại root project:
 
 ```powershell
-.\scripts\start-core.ps1
+pwsh -NoProfile -File .\scripts\start-core.ps1
 ```
 
 ```powershell
-.\scripts\start-insight.ps1
+pwsh -NoProfile -File .\scripts\start-insight.ps1
 ```
 
 ```powershell
-.\scripts\start-desktop.ps1
+pwsh -NoProfile -File .\scripts\start-desktop.ps1
 ```
 
 Health:
@@ -52,10 +56,12 @@ Health:
 | PostgreSQL | `localhost:15432` | `postgres:5432` |
 | Redis | `localhost:16379` | `redis:6379` |
 | Kafka | `localhost:19092` | `kafka:29092` |
-| MinIO API | `localhost:19000` | `minio:9000` |
-| MinIO Console | `localhost:19001` | `minio:9001` |
+| MinIO API (tùy chọn) | `localhost:19000` | `minio:9000` |
+| MinIO Console (tùy chọn) | `localhost:19001` | `minio:9001` |
 
 Ứng dụng chạy trực tiếp trên host dùng các giá trị `localhost` trong `.env`. Container ứng dụng phải được truyền URL service-name/internal-port; không dùng host port hoặc `localhost` để gọi container khác.
+
+Chỉ khi cần kiểm tra MinIO riêng, chạy `docker compose --profile media up -d --build --wait minio` rồi `.\scripts\smoke-test.ps1 -IncludeMinio`. Profile này không xóa hoặc tạo lại volume khi dừng. Nếu máy đã có container MinIO chạy từ cấu hình cũ và không còn dùng, `docker compose stop minio` sẽ hạ dịch vụ mà giữ dữ liệu.
 
 ## Database và migration
 
@@ -70,7 +76,7 @@ npm run prisma:deploy
 
 Các lệnh Prisma cần `INSIGHT_DATABASE_URL` đã được nạp vào môi trường terminal. Từ root PowerShell có thể dùng `. .\scripts\common.ps1` rồi `Import-LamsEnv` trước khi `cd`; không in URL/secret ra log. Bootstrap đã thực hiện bước này.
 
-Không dùng `prisma db push` thay migration. Core chạy chuỗi Flyway V1–V15 trên database mới; V14/V15 thuộc backend Favorites/Reviews/Rating. Insight chạy foundation và `202610230001_metadata_lookup_history`. Sau khi pull thay đổi Phase 2.5 vào môi trường có dữ liệu: sao lưu theo quy trình vận hành, chạy `npm ci`, `npm run prisma:generate`, `npm run prisma:deploy` tại Insight trước khi restart. Frontend cũng cần `npm ci` vì bổ sung React-Bootstrap. Không dùng database development để thử migration thất bại.
+Không dùng `prisma db push` thay migration. Core chạy Flyway theo các file `V*.sql` hiện có; Insight có foundation, lịch sử tra cứu ISBN và notification read model. Khi cập nhật một môi trường có dữ liệu, sao lưu theo quy trình vận hành rồi chạy `npm ci`, `npm run prisma:generate`, `npm run prisma:deploy` tại Insight trước khi restart. Chạy `npm ci` tại frontend nếu lockfile đổi. Không dùng database development để thử migration thất bại.
 
 Insight từ Phase 2.5 yêu cầu PostgreSQL sẵn sàng khi khởi động. Nếu không kết nối được, sửa cấu hình/database trước; không thay bằng JSON hoặc bỏ lifecycle Prisma. Kiểm database cô lập bằng `npm run test:integration`; hành trình UI thật bằng `.\scripts\test-phase1-e2e.ps1` tại root, thêm `-Desktop` cho EXE đã build. Xem [vòng đời ORM](../02-kien-truc/metadata-history-orm.md).
 
@@ -80,7 +86,7 @@ Insight từ Phase 2.5 yêu cầu PostgreSQL sẵn sàng khi khởi động. N�
 .\scripts\stop-infra.ps1
 ```
 
-Script chỉ chạy `docker compose down`, không xóa named volume. Xem [xử lý lỗi môi trường](xu-ly-loi-moi-truong.md) trước khi can thiệp dữ liệu.
+Script chạy `docker compose --profile media down` để dừng cả MinIO nếu dịch vụ tùy chọn đã được bật; không xóa named volume. Xem [xử lý lỗi môi trường](xu-ly-loi-moi-truong.md) trước khi can thiệp dữ liệu.
 
 ## Desktop và web
 

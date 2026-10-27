@@ -5,12 +5,15 @@ export const pageSchema = z.object({ number: z.number().int().nonnegative(), siz
   totalElements: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() });
 const named = z.object({ id: z.string().uuid(), name: z.string() });
 export const publicCoverSchema = z.object({ editionId: z.string().uuid(), imageUrl: z.string().url(),
-  source: z.enum(['open-library', 'wikimedia']), sourceUrl: z.string().url(), license: z.string(), licenseUrl: z.string().url(),
+  source: z.enum(['open-library', 'wikimedia', 'standard-ebooks']), sourceUrl: z.string().url(), license: z.string(), licenseUrl: z.string().url(),
   attribution: z.string(), approvedAt: z.string().datetime() });
 export type PublicCover = z.infer<typeof publicCoverSchema>;
+export const catalogSourceSchema = z.object({ sourceCode: z.string(), sourceUrl: z.url().refine(value => value.startsWith('https://')),
+  ebookReleasedOn: z.string().nullable() });
 export const bookSchema = z.object({ id: z.string().uuid(), title: z.string(), description: z.string().nullable(),
   authors: z.array(named), categories: z.array(named), cover: publicCoverSchema.nullable().optional(),
-  averageRating: z.number().min(1).max(5).nullable().optional(), ratingCount: z.number().int().nonnegative().optional() });
+  averageRating: z.number().min(1).max(5).nullable().optional(), ratingCount: z.number().int().nonnegative().optional(),
+  catalogSource: catalogSourceSchema.nullable().optional() });
 export const editionSchema = z.object({ id: z.string().uuid(), bookId: z.string().uuid(), bookTitle: z.string().nullable(),
   isbn13: z.string().nullable(), publisherId: z.string().uuid().nullable(), publisherName: z.string().nullable(),
   publicationYear: z.number().int().nullable(), language: z.string().nullable() });
@@ -30,8 +33,11 @@ export type Named = z.infer<typeof named>;
 const integer = (fallback: number, min: number, max: number) => z.coerce.number().int().min(min).max(max).default(fallback);
 export const catalogQuerySchema = z.object({ query: z.string().max(500).default(''),
   authorId: z.union([z.string().uuid(), z.literal('')]).default(''), categoryId: z.union([z.string().uuid(), z.literal('')]).default(''),
+  categoryTerm: z.string().max(150).default(''),
   page: integer(0, 0, 2147483647), size: integer(20, 1, 50), sort: z.enum(['title', 'updated', 'relevance']).default('title') })
-  .refine(value => value.sort !== 'relevance' || value.query.trim().length > 0);
+  .refine(value => value.sort !== 'relevance' || value.query.trim().length > 0)
+  .refine(value => !value.categoryId || !value.categoryTerm)
+  .refine(value => !value.categoryTerm || value.categoryTerm.trim().length > 0);
 export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 export function parseCatalogQuery(params: URLSearchParams) {
   const values = Object.fromEntries(params);
@@ -61,15 +67,27 @@ export async function getPublicCategories(signal?: AbortSignal) {
     await coreApi.get<unknown>('/public/catalog/categories?size=50', true, signal));
 }
 export async function getBook(id: string, signal?: AbortSignal) { return bookSchema.parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(id)}`, true, signal)); }
+export async function getBookCards(ids: string[], signal?: AbortSignal) {
+  if (ids.length === 0) return [];
+  if (ids.length > 20 || new Set(ids).size !== ids.length) throw new Error('Cần từ 1 đến 20 mã sách khác nhau.');
+  const params = new URLSearchParams();
+  for (const id of ids) params.append('bookId', z.string().uuid().parse(id));
+  return z.array(bookSchema).parse(await coreApi.get<unknown>(`/public/catalog/books/batch?${params}`, true, signal));
+}
 export async function getAuthor(id: string, signal?: AbortSignal) { return named.parse(await coreApi.get<unknown>(`/public/catalog/authors/${encodeURIComponent(id)}`, true, signal)); }
 export async function getEditions(bookId: string, page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(editionSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(bookId)}/editions?page=${page}&size=20`, true, signal));
 }
-export async function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string) {
-  const path = resource === 'authors' || resource === 'categories'
+export function getCatalogPage(resource: 'authors' | 'categories', page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: Named[]; page: Page }>;
+export function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: CatalogRecord[]; page: Page }>;
+export async function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query = '', size = 20) {
+  const searchable = resource === 'authors' || resource === 'categories' || resource === 'books';
+  const path = searchable
     ? `/public/catalog/${resource}` : resourcePath(resource, bookId);
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (searchable && query.trim()) params.set('query', query.trim());
   return z.object({ items: z.array(schemas[resource]), page: pageSchema }).parse(
-    await coreApi.get<unknown>(`${path}?page=${page}&size=20`, true, signal));
+    await coreApi.get<unknown>(`${path}?${params}`, true, signal));
 }
 export async function getCatalogItem(resource: Resource, id: string, signal?: AbortSignal, bookId?: string) {
   const path = resource === 'authors' || resource === 'categories'

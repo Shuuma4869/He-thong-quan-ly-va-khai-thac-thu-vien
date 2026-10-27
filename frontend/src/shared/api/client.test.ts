@@ -21,6 +21,20 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+it('Catalog công khai không gắn token hoặc phụ thuộc thế hệ phiên', async () => {
+  let generation = 1;
+  const refresh = vi.fn();
+  const fetchMock = vi.fn((_url: string, init: RequestInit) => {
+    generation++;
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    return Promise.resolve(Response.json({ items: [], page: { number: 0, size: 20, totalElements: 0, totalPages: 0 } }));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  configureCoreAuth({ token: () => 'old-token', generation: () => generation, refresh, clear: vi.fn() });
+  await expect(coreApi.get('/public/catalog/books?size=20')).resolves.toHaveProperty('items');
+  expect(refresh).not.toHaveBeenCalled();
+});
+
 it('CSV dùng Authorization và refresh một lần, không đưa token vào URL', async () => {
   let token = 'expired'; const refresh = vi.fn(async () => { token = 'fresh'; return true; });
   const fetchMock = vi.fn((_url: string, init: RequestInit) => Promise.resolve(
@@ -29,7 +43,13 @@ it('CSV dùng Authorization và refresh một lần, không đưa token vào URL
       : Response.json({ detail: 'Hết hạn' }, { status: 401 })));
   vi.stubGlobal('fetch', fetchMock); configureCoreAuth({ token: () => token, refresh, clear: vi.fn() });
   const blob = await coreApi.download('/reports/circulation.csv?from=test');
-  expect(await blob.text()).toBe('ngày,chi nhánh\r\n'); expect(refresh).toHaveBeenCalledTimes(1);
+  const csv = typeof blob.text === 'function' ? await blob.text() : await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+  expect(csv).toBe('ngày,chi nhánh\r\n'); expect(refresh).toHaveBeenCalledTimes(1);
   expect(fetchMock.mock.calls.every(([url]) => !url.includes(token) && !url.includes('expired'))).toBe(true);
 });
 

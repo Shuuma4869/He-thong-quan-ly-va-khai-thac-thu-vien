@@ -2,7 +2,7 @@
 
 ## Mục đích
 
-Phân biệt request đồng bộ và event bất đồng bộ planned.
+Phân biệt request đồng bộ với luồng event đã có mã nguồn nhưng mặc định chưa bật để vận hành chung.
 
 ```mermaid
 flowchart LR
@@ -10,14 +10,13 @@ flowchart LR
   R -->|Critical REST| S[Spring Core]
   R -->|Discovery REST| N[Nest Insight]
   S -->|transaction| CDB[(lams_core)]
-  N -->|Prisma: metadata_lookups| IDB[(lams_insight)]
+  N -->|Prisma: history và notification read model| IDB[(lams_insight)]
   N -->|auth/me kiểm principal và role| S
   N -->|tra ISBN hiện tại, không lưu payload| MP[Metadata provider]
   S -.cache/coordination planned.-> RC[(Redis)]
   N -.cache phân tán planned.-> RC
-  S -.object storage planned.-> OS[(MinIO)]
-  S -.outbox publisher.-> K{{Kafka}}
-  K -.domain fact.-> N
+  S -.publisher khi được bật.-> K{{Kafka}}
+  K -.consumer khi được bật.-> N
   S -->|HTTP response| R
   N -->|HTTP response| R
 ```
@@ -26,9 +25,9 @@ flowchart LR
 sequenceDiagram
   participant C as Core transaction
   participant O as outbox_events
-  participant P as Publisher (planned)
+  participant P as Publisher
   participant K as Kafka
-  participant I as Insight consumer (planned)
+  participant I as Insight consumer
   C->>O: Ghi event cùng COMMIT
   P->>O: Lấy event chưa publish
   P->>K: Publish eventId/version
@@ -38,4 +37,4 @@ sequenceDiagram
   I->>I: Dedupe + update read model
 ```
 
-Request ID đi từ client qua log; correlation ID sẽ nối command và event khi publisher/consumer được triển khai. Redis là tối ưu/coordination, không là source of truth. Outbox retry và việc không rollback Core khi Kafka/Insight lỗi là thiết kế mục tiêu, chưa có nghiệp vụ Loan để xác nhận bằng runtime. Desktop release gọi API loopback HTTP, không phải HTTPS production; xem [desktop Windows](desktop-windows.md).
+Redis là tối ưu/coordination, không là source of truth. Giao dịch Loan/Hold ghi outbox ở Core; publisher và consumer có retry, dedupe và read model nhưng đều mặc định tắt. Test riêng của hai phía không thay thế nghiệm thu xuyên suốt từ HTTP Core đến thông báo Insight. MinIO tùy chọn và chưa được Core dùng để lưu ảnh. Desktop release gọi API loopback HTTP, chưa phải HTTPS production; xem [desktop Windows](desktop-windows.md).

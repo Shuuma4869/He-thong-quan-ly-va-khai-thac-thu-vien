@@ -1,6 +1,6 @@
 # ERD mục tiêu
 
-## Insight history đã có schema
+## Insight đã có schema
 
 ```mermaid
 erDiagram
@@ -11,9 +11,32 @@ erDiagram
     jsonb attempts "provider/status, không payload"
     timestamptz created_at
   }
+  ACQUISITION_RECOMMENDATIONS ||--o{ ACQUISITION_DECISIONS : records
+  ACQUISITION_RECOMMENDATIONS {
+    uuid id PK
+    uuid book_id "Core Book; không FK xuyên database"
+    uuid branch_id "Core Branch; không FK xuyên database"
+    timestamptz window_from
+    timestamptz window_to
+    timestamptz snapshot_at
+    varchar source_revision
+    decimal score
+    decimal confidence
+    jsonb evidence
+    varchar state
+    int version
+  }
+  ACQUISITION_DECISIONS {
+    uuid id PK
+    uuid recommendation_id FK
+    varchar action
+    uuid actor_id "Core principal; không FK xuyên database"
+    varchar reason
+    int version
+  }
 ```
 
-Database Insight sở hữu lịch sử tra cứu; không nối Book bằng FK và không sao chép Catalog. Schema đã viết không tự chứng minh migration runtime đã được nghiệm thu.
+Database Insight sở hữu lịch sử tra cứu và đề xuất nội bộ; không nối Book bằng FK xuyên database và không sao chép Catalog. Trên nhánh Tuan, Core đã có read projection cho số Copy, Hold và Loan; Insight đọc qua adapter và bảo vệ API tạo/duyệt đề xuất. Các phần này có kiểm thử riêng, nhưng chưa có E2E tạo đề xuất xuyên Core → Insight → giao diện trên dữ liệu thật.
 
 ## Core đã có migration
 
@@ -31,8 +54,10 @@ erDiagram
   AUTHORS ||--o{ BOOK_AUTHORS : writes
   BOOKS ||--o{ BOOK_AUTHORS : credited
   CATEGORIES ||--o{ BOOK_CATEGORIES : groups
+  CATEGORIES ||--o{ CATEGORY_ALIASES : named_by
   BOOKS ||--o{ BOOK_CATEGORIES : classified
   BOOKS ||--o{ EDITIONS : has
+  BOOKS ||--o{ CATALOG_EXTERNAL_SOURCES : identified_by
   PUBLISHERS |o--o{ EDITIONS : optional_publisher
   EDITIONS ||--o{ BOOK_COPIES : manifests
   BRANCHES ||--o{ SHELVES : contains
@@ -40,6 +65,8 @@ erDiagram
   AUTHORS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_author
   EDITIONS |o--o| CATALOG_MEDIA_REFERENCES : exclusive_edition
 ```
+
+V25 thêm `catalog_external_sources` để giữ định danh và link nguồn thư mục cho Book. Một Book có thể gắn nhiều định danh ngoài; khóa `(source_code, source_record_id)` là duy nhất. Ngày `ebook_released_on` chỉ là ngày phát hành ebook tại nguồn, không điền vào năm xuất bản của Edition. FK `ON DELETE RESTRICT` giữ bằng chứng nguồn khi nhân viên sửa Book; cần xử lý liên kết nguồn có chủ đích trước khi xóa Book. Bộ import demo không tạo Edition hoặc BookCopy từ feed.
 
 My Library: Core API và UI Phase 3:
 
@@ -75,7 +102,7 @@ erDiagram
 
 V17: `users 1—n circulation_requests`, khóa chính `(actor_id, request_id)`; `book_copies 1—n copy_state_changes`, unique `(copy_id, copy_version)`. Audit tham chiếu actor là users khi HUMAN, không có actor khi SYSTEM. Job hết hạn/phân bổ Hold ghi SYSTEM.
 
-FK RESTRICT giữ lịch sử; unique partial `copy_id WHERE returned_at IS NULL` chặn hai Loan đang mở. V18 giới hạn một WAITING/READY mỗi reader/Book và một READY mỗi Copy; Hold lịch sử vẫn tham chiếu Copy sau khi đóng. [Kiến trúc lưu thông](../02-kien-truc/circulation.md) ghi transaction và giới hạn schema/policy/retention. Giao diện lưu thông chưa hoàn thành chỉ từ schema/API này.
+FK RESTRICT giữ lịch sử; unique partial `copy_id WHERE returned_at IS NULL` chặn hai Loan đang mở. V18 giới hạn một WAITING/READY mỗi reader/Book và một READY mỗi Copy; Hold lịch sử vẫn tham chiếu Copy sau khi đóng. [Kiến trúc lưu thông](../02-kien-truc/circulation.md) ghi transaction và giới hạn schema/policy/retention. Giao diện lưu thông được kiểm riêng bằng E2E Web/EXE; schema/API không thay bằng chứng đó.
 
 Mô tả target model để thống nhất tên và ownership. Đây không phải khẳng định mọi bảng đã được migration trong Giai đoạn 01.
 

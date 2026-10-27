@@ -8,6 +8,7 @@ import { CatalogError, Pagination } from './CatalogStates';
 import { CatalogForm } from './CatalogForm';
 import { ReferencePicker } from './ReferencePicker';
 import { MediaEditor } from './MediaEditor';
+import { CategoryAliasManager } from './CategoryAliasManager';
 const MetadataHistory = lazy(() => import('./MetadataHistory').then(module => ({ default: module.MetadataHistory })));
 
 const labels: Record<Resource,string> = { books:'Tác phẩm',authors:'Tác giả',categories:'Thể loại',publishers:'Nhà xuất bản',editions:'Ấn bản',branches:'Chi nhánh',shelves:'Kệ sách',copies:'Bản sách' };
@@ -21,6 +22,7 @@ export function StaffCatalogPage() {
     {historyOpen && <Suspense fallback={<p role="status">Đang mở lịch sử…</p>}><MetadataHistory /></Suspense>}
     <label className="field my-5 max-w-sm">Loại dữ liệu<select value={resource} onChange={event => setResource(event.target.value as Resource)}>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
     <CatalogManager key={resource} resource={resource} />
+    {resource === 'categories' && <CategoryAliasManager />}
   </section>;
 }
 function CatalogManager({ resource }: { resource: Resource }) {

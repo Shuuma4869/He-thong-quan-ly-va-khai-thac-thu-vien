@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { Menu } from 'lucide-react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { LibrarySidebar } from './LibrarySidebar';
+import { SearchCommand } from '../../features/catalog/SearchCommand';
+import { BackToTop } from './BackToTop';
 
 export function StaffLayout() {
   const auth = useAuth();
@@ -20,11 +22,11 @@ export function StaffLayout() {
             aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={21}/></button>
           <span className="library-topbar-section"><span className="library-topbar-section-full">Nền tảng vận hành thư viện</span>
             <span className="library-topbar-section-short">LAMS</span></span>
-          <Link className="library-topbar-search" to="/sach">Xem danh mục</Link>
+          <SearchCommand/>
           <span className="library-topbar-user">{auth.user?.fullName}</span>
           <button className="library-topbar-action" type="button" onClick={() => void signOut()}>Đăng xuất</button>
         </header>
-        <main className="library-main staff-main"><Outlet /></main>
+        <main className="library-main staff-main"><Outlet /></main><BackToTop/>
       </div>
     </div>
   );

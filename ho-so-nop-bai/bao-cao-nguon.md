@@ -4,7 +4,7 @@ Bản nguồn nội dung báo cáo học phần. Chưa có mẫu Phenikaa chính
 
 ## 1. Mục tiêu và phạm vi
 
-LAMS hỗ trợ tra cứu và biên mục thư viện, tách tác phẩm, ấn bản và bản sách. Phạm vi thực thi: Auth, Member chỉ đọc, Catalog/Inventory, metadata và ảnh duyệt thủ công; Phase 2.5 bổ sung history ISBN trong Insight. Backend Favorites/Reviews/Rating đã merge nhưng UI chưa triển khai. Circulation/Hold/search nâng cao vẫn roadmap, không đưa vào demo như chức năng có thật.
+LAMS hỗ trợ tra cứu và biên mục thư viện, tách tác phẩm, ấn bản và bản sách. Ứng dụng hiện có Auth, hồ sơ và danh sách thành viên chỉ đọc, Catalog/Inventory, lịch sử tra ISBN, Favorites/Reviews/Rating, mượn/trả/gia hạn, giữ chỗ và tìm kiếm từ vựng. Web và ứng dụng Windows dùng chung giao diện; ảnh bên ngoài chỉ hiển thị sau khi nhân viên duyệt. Phần đề xuất bổ sung sách đã có luồng nội bộ trên nhánh Tuan, nhưng còn cần kiểm chứng xuyên dịch vụ trước khi đưa vào demo như một hành trình hoàn chỉnh.
 
 ## 2. Yêu cầu người dùng
 
@@ -28,7 +28,7 @@ Spring Boot Java 21 sở hữu Identity/Catalog/Inventory và các giao dịch C
 
 ## 7. Giao diện
 
-Auth, Profile, Member, Catalog/detail/staff theo design system LAMS. History dùng React-Bootstrap Form/Button/Alert/Spinner với CSS scoped không import Reboot toàn cục. Tham khảo nguyên tắc search/filter/action rõ ràng của Booking.com, không sao chép hình ảnh/logo. Wireframe có loading/empty/error/pending. [Wireframe và kiểm thao tác](../tai-lieu/06-giao-dien/wireframes.md) ghi điểm bắt đầu, cách đếm và kết quả từ E2E web thật. Chưa kết luận mọi hành trình đạt bốn tương tác hoặc thay thế nghiên cứu với người dùng.
+Giao diện có trang cho người đọc, danh mục, My Library, mượn và giữ chỗ; nhân viên có màn hình biên mục, quầy lưu thông, kiểm kê và báo cáo. History dùng React-Bootstrap Form/Button/Alert/Spinner với CSS scoped. Các màn hình có trạng thái tải, rỗng và lỗi theo từng luồng. [Bản đồ chức năng](../tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) nối màn hình với API và bài kiểm thử; [wireframe](../tai-lieu/06-giao-dien/wireframes.md) ghi cách đếm thao tác. Chưa có kết quả nghiên cứu với người dùng để khẳng định mọi hành trình đạt bốn tương tác.
 
 ## 8. Bảo mật
 
@@ -44,14 +44,14 @@ Theo [README](../README.md), [runbook local](../tai-lieu/08-van-hanh/chay-local.
 
 ## 11. Phân công và đóng góp
 
-Tuan phụ trách kiến trúc/frontend/tích hợp/Insight Phase 2.5; Toan phụ trách các module backend được task map giao, gồm PR #11. Không nhận công việc Toan là của Tuan. PR/commit là nguồn truy vết; alias “「锋」Phong” cần xác nhận. Tác giả, committer, reviewer và người hỗ trợ không đồng nghĩa nhau. [Hướng dẫn thành viên](../tai-lieu/00-bat-dau/huong-dan-thanh-vien.md) là phân công, không tự chứng minh mọi task DONE.
+Tuan phụ trách kiến trúc, frontend và tích hợp; Toan phụ trách các module backend được task map giao. PR/commit là nguồn truy vết; alias “「锋」Phong” cần xác nhận với chủ tài khoản. Tác giả code, người merge và người review là các vai trò khác nhau. [Hướng dẫn thành viên](../tai-lieu/00-bat-dau/huong-dan-thanh-vien.md) ghi phân công, không tự chứng minh mọi task đã hoàn thành. Các thay đổi Phase 5–7 đang trên nhánh Tuan cần đối chiếu với lịch sử Git trước khi chốt bảng đóng góp cuối cùng.
 
 | Bằng chứng Git | Tác giả hiển thị | Nội dung kiểm được | Giới hạn diễn giải |
 |---|---|---|---|
 | PR #10, squash 8698405 | Nguyễn Trọng Tuấn | Tích hợp Phase 2 | Không nhận toàn bộ code nền của Toan là của người merge |
-| PR #11, f4dcbcb; merge b8e7bc6 | 23010062-star; merge Nguyễn Trọng Tuấn | Favorites/Reviews/Rating backend | Tách author code khỏi người merge; chưa UI |
+| PR #11, f4dcbcb; merge b8e7bc6 | 23010062-star; merge Nguyễn Trọng Tuấn | Favorites/Reviews/Rating backend | Tách author code khỏi người merge; UI được bổ sung ở PR sau |
 | PR #12, b3b067e | 「锋」Phong | History Nest/Prisma + contract/test | Thực hiện trên nhánh DEV1; alias cần chủ tài khoản xác nhận |
-| PR #12, 160b6b5 | 「锋」Phong | UI history, React-Bootstrap, bảo vệ phiên | Có AI hỗ trợ như mục đạo đức; không giả review của con người |
+| PR #12, 160b6b5 | 「锋」Phong | UI history, React-Bootstrap, bảo vệ phiên | Không suy kết quả review chỉ từ người tạo commit |
 | PR #12, 08f5b35 và các commit tiếp | 「锋」Phong | Thiết kế/hồ sơ/test bổ sung | Xem lịch sử PR để lấy SHA nộp cuối; không suy điểm chuyên cần |
 | PR #13, fe16d64–6598dd3; merge ea93b7a | 「锋」Phong; merge Nguyễn Trọng Tuấn | Sửa lỗi tích hợp backend, truy vấn cá nhân và UI Favorites/Reviews/Rating/My Library | Backend gốc vẫn thuộc Toan; head PR đạt CI 5/5 tại 40010074211; kết quả EXE phân biệt checkout/binary trong thư mục minh chứng |
 
@@ -61,7 +61,7 @@ Tuan phụ trách kiến trúc/frontend/tích hợp/Insight Phase 2.5; Toan ph�
 
 ## 13. Hạn chế và hướng phát triển
 
-Chưa đóng xác nhận hybrid từ giảng viên, format trường, quyền bản quyền, video thật, điểm danh/thảo luận. Web và EXE history đã có kiểm thử persistence và ảnh đối chiếu; còn nghiệm thu trợ năng/usability với người dùng và triển khai HTTPS. [Chính sách vòng đời history](../tai-lieu/03-du-lieu/vong-doi-lich-su-isbn.md) đã phân biệt hành vi hiện tại với đề xuất trước pilot; mốc lưu giữ, xử lý tài khoản ngừng dùng/bị xóa và backup chưa được code tự động thực thi. Phase 3 review update cạnh tranh cần xử lý ở đợt review tiếp theo. [Handoff Phase 3/4](../tai-lieu/00-bat-dau/handoff-phase3-4.md) không phải lời tuyên bố đã triển khai.
+Chưa đóng xác nhận hybrid từ giảng viên, định dạng trường, quyền sử dụng ảnh, video thật và minh chứng điểm danh/thảo luận. Web và EXE đã có E2E cho các hành trình chính; nghiệm thu trợ năng/usability với người dùng và triển khai HTTPS vẫn chưa có. [Chính sách vòng đời history](../tai-lieu/03-du-lieu/vong-doi-lich-su-isbn.md) phân biệt hành vi hiện tại với đề xuất trước pilot; mốc lưu giữ, xử lý tài khoản ngừng dùng/bị xóa và backup chưa được code tự động thực thi. Dữ liệu demo mới có Catalog; tài khoản mẫu và ảnh bìa cần bước chuẩn bị riêng trước khi quay video.
 
 ## 14. Phụ lục bằng chứng
 
