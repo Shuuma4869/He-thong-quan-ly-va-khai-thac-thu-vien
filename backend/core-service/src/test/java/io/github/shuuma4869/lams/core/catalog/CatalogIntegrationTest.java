@@ -90,6 +90,13 @@ class CatalogIntegrationTest {
             assertThat((Map<String, Object>) book.get("properties")).doesNotContainKeys("barcode", "available", "total");
             var copy = (Map<String, Object>) schemas.get("BookCopy");
             assertThat((Map<String, Object>) copy.get("properties")).containsKeys("editionId", "shelfId", "barcode", "status", "version");
+            var inventoryCopy = (Map<String, Object>) schemas.get("InventoryCopyView");
+            assertThat((Map<String, Object>) inventoryCopy.get("properties"))
+                    .containsKeys("id", "copyId", "barcode", "branchId", "shelfId", "status", "version");
+            var copyGet = (Map<String, Object>) ((Map<String, Object>) paths.get("/copies")).get("get");
+            var copyParameters = (java.util.List<Map<String, Object>>) copyGet.get("parameters");
+            assertThat(copyParameters).extracting(parameter -> parameter.get("name"))
+                    .contains("branchId", "editionId", "shelfId", "barcode", "status", "page", "size");
         }
     }
 }

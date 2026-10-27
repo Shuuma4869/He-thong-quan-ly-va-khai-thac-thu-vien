@@ -1,6 +1,7 @@
 package io.github.shuuma4869.lams.core.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,19 +10,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
+import io.github.shuuma4869.lams.core.inventory.copy.application.InventoryScopeQueryService;
+import io.github.shuuma4869.lams.core.inventory.copy.domain.InventoryScopeFilter;
+import io.github.shuuma4869.lams.core.inventory.copy.infrastructure.InventoryScopeRepository;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doAnswer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -41,11 +60,15 @@ class InventoryCatalogIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("lams.auth.jwt-secret", () -> "integration-test-secret-with-at-least-32-bytes");
+        registry.add("lams.inventory.scope-batch-size", () -> 1000);
     }
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
-    @Autowired JdbcTemplate jdbc;
+    @MockitoSpyBean JdbcTemplate jdbc;
+    @Autowired InventoryScopeQueryService inventoryScope;
+    @Autowired PlatformTransactionManager transactionManager;
+    @MockitoSpyBean InventoryScopeRepository inventoryScopeRepository;
 
     @BeforeEach
     void clearFixtures() {
@@ -83,18 +106,37 @@ class InventoryCatalogIntegrationTest {
     }
 
     private String staffToken() throws Exception {
+        return staffToken("LIBRARIAN");
+    }
+
+    private String staffToken(String role) throws Exception {
         String email = "inventory-" + UUID.randomUUID() + "@example.test";
         mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("fullName", "Nhân viên", "email", email,
                                 "password", "correct-password-123"))))
                 .andExpect(status().isCreated());
         UUID userId = jdbc.queryForObject("SELECT id FROM users WHERE email_normalized=?", UUID.class, email);
-        jdbc.update("INSERT INTO user_roles(user_id,role_code) VALUES (?, 'LIBRARIAN')", userId);
+        jdbc.update("INSERT INTO user_roles(user_id,role_code) VALUES (?, ?)", userId, role);
         var login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("identifier", email,
                                 "password", "correct-password-123", "remember", false))))
                 .andExpect(status().isOk()).andReturn();
         return json.readTree(login.getResponse().getContentAsString()).path("accessToken").asText();
+    }
+
+    private UUID actorId(String token) throws Exception {
+        var response = mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn();
+        return UUID.fromString(json.readTree(response.getResponse().getContentAsString()).path("id").asText());
+    }
+
+    private String readerToken() throws Exception {
+        String email = "inventory-reader-" + UUID.randomUUID() + "@example.test";
+        var registration = mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("fullName", "Bạn đọc", "email", email,
+                                "password", "correct-password-123"))))
+                .andExpect(status().isCreated()).andReturn();
+        return json.readTree(registration.getResponse().getContentAsString()).path("accessToken").asText();
     }
 
     private JsonNode postJson(String token, String path, Object body, int expected) throws Exception {
@@ -121,6 +163,16 @@ class InventoryCatalogIntegrationTest {
                 .path("id").asText());
         return UUID.fromString(postJson(token, "/api/v1/books/" + bookId + "/editions",
                 Map.of("publicationYear", 2020), 201).path("id").asText());
+    }
+
+    private void insertAvailableCopies(UUID editionId, UUID shelfId, int count, String barcodePrefix) {
+        var rows = new ArrayList<Object[]>(count);
+        for (int i = 0; i < count; i++) {
+            rows.add(new Object[]{UUID.randomUUID(), editionId,
+                    barcodePrefix + String.format(Locale.ROOT, "%05d", i), shelfId, "AVAILABLE", 0L});
+        }
+        jdbc.batchUpdate("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status,version) VALUES (?,?,?,?,?,?)",
+                rows);
     }
 
     @Test
@@ -212,5 +264,236 @@ class InventoryCatalogIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("editionId", editionId,"barcode", "BAR-3","shelfId", UUID.randomUUID()))))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void inventoryQueriesFilterBranchShelfAndCopyWithoutChangingState() throws Exception {
+        String token = staffToken();
+        UUID activeBranch = branch(token, "Q-A", "Chi nhánh query A");
+        UUID disabledBranch = UUID.fromString(postJson(token, "/api/v1/branches",
+                Map.of("code", "Q-B", "name", "Chi nhánh query B", "status", "DISABLED"), 201)
+                .path("id").asText());
+
+        UUID activeShelf = shelf(token, activeBranch, "Q-1", "Kệ query A");
+        UUID otherShelf = shelf(token, disabledBranch, "Q-1", "Kệ query B");
+        UUID editionId = edition(token);
+        var first = postJson(token, "/api/v1/copies", Map.of("editionId", editionId,
+                "barcode", "A_%'/?", "shelfId", activeShelf), 201);
+        UUID firstCopy = UUID.fromString(first.path("id").asText());
+        var second = postJson(token, "/api/v1/copies", Map.of("editionId", editionId,
+                "barcode", "SCOPE-A2", "shelfId", activeShelf), 201);
+        UUID secondCopy = UUID.fromString(second.path("id").asText());
+        var other = postJson(token, "/api/v1/copies", Map.of("editionId", editionId,
+                "barcode", "SCOPE-B", "shelfId", otherShelf), 201);
+        UUID otherCopy = UUID.fromString(other.path("id").asText());
+        jdbc.update("UPDATE book_copies SET status='AVAILABLE' WHERE id IN (?,?)", firstCopy, secondCopy);
+        jdbc.update("UPDATE book_copies SET status='LOST' WHERE id=?", otherCopy);
+
+        mvc.perform(get("/api/v1/shelves").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(activeShelf.toString()));
+        mvc.perform(get("/api/v1/shelves").header("Authorization", "Bearer " + token)
+                        .param("branchId", UUID.randomUUID().toString()))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("status", "AVAILABLE")
+                        .param("page", "0").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(firstCopy.toString()))
+                .andExpect(jsonPath("$.items[0].copyId").value(firstCopy.toString()))
+                .andExpect(jsonPath("$.items[0].branchId").value(activeBranch.toString()))
+                .andExpect(jsonPath("$.items[0].shelfId").value(activeShelf.toString()))
+                .andExpect(jsonPath("$.items[0].barcode").value("A_%'/?"))
+                .andExpect(jsonPath("$.items[0].status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.items[0].version").value(0));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("status", "AVAILABLE")
+                        .param("page", "1").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(secondCopy.toString()));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("shelfId", activeShelf.toString())
+                        .param("barcode", " A_%'/? ").param("status", "available"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].copyId").value(firstCopy.toString()));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("barcode", "a_%'/?"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("barcode", "A_%"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(0));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("shelfId", otherShelf.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0))
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", disabledBranch.toString()).param("status", "LOST"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(otherCopy.toString()));
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", UUID.randomUUID().toString()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("shelfId", UUID.randomUUID().toString()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + token)
+                        .param("branchId", activeBranch.toString()).param("status", "UNKNOWN"))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + readerToken()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/copies")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/copies").header("Authorization", "Bearer " + staffToken("ADMIN")))
+                .andExpect(status().isOk());
+
+        assertThat(jdbc.query("SELECT status,version FROM book_copies WHERE id IN (?,?,?) ORDER BY barcode",
+                (rs, row) -> rs.getString("status") + ":" + rs.getLong("version"), firstCopy, secondCopy, otherCopy))
+                .containsExactly("AVAILABLE:0", "AVAILABLE:0", "LOST:0");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM book_copies WHERE id=? AND version=0", Integer.class, firstCopy)).isOne();
+    }
+
+    @Test
+    void snapshotRejectsScopesAbove5000WithoutTruncatingAndBoundsEmptyFilter() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "LIMIT", "Snapshot limit");
+        UUID shelf = shelf(token, branch, "L-1", "Limit shelf");
+        UUID editionId = edition(token);
+        var filtered = new InventoryScopeFilter(branch, null, shelf, null, "AVAILABLE");
+
+        insertAvailableCopies(editionId, shelf, 4_999, "BELOW-");
+        assertThat(inventoryScope.snapshot(actor, filtered)).hasSize(4_999);
+
+        jdbc.update("DELETE FROM book_copies");
+        insertAvailableCopies(editionId, shelf, 5_000, "EXACT-");
+        assertThat(inventoryScope.snapshot(actor, filtered)).hasSize(5_000);
+
+        jdbc.update("DELETE FROM book_copies");
+        insertAvailableCopies(editionId, shelf, 5_001, "OVER-");
+        assertThatThrownBy(() -> inventoryScope.snapshot(actor, filtered))
+                .isInstanceOfSatisfying(AuthFailure.class, failure -> assertThat(failure.status()).isEqualTo(422));
+        assertThatThrownBy(() -> inventoryScope.snapshot(actor,
+                new InventoryScopeFilter(null, null, null, null, null)))
+                .isInstanceOfSatisfying(AuthFailure.class, failure -> assertThat(failure.status()).isEqualTo(422));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM book_copies", Integer.class)).isEqualTo(5_001);
+    }
+
+    @Test
+    void pageCountAndItemsUseOneRepeatableReadSnapshotAcrossConcurrentUpdate() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "PAGE-SNAPSHOT", "Page snapshot");
+        UUID shelf = shelf(token, branch, "P-1", "Page shelf");
+        UUID editionId = edition(token);
+        UUID firstId = UUID.fromString(postJson(token, "/api/v1/copies", Map.of(
+                "editionId", editionId, "barcode", "PAGE-A", "shelfId", shelf), 201).path("id").asText());
+        UUID lastId = UUID.fromString(postJson(token, "/api/v1/copies", Map.of(
+                "editionId", editionId, "barcode", "PAGE-Z-LAST", "shelfId", shelf), 201).path("id").asText());
+        insertAvailableCopies(editionId, shelf, 999, "PAGE-M-");
+        jdbc.update("UPDATE book_copies SET status='AVAILABLE' WHERE id IN (?,?)", firstId, lastId);
+
+        var countRead = new CountDownLatch(1);
+        var allowItemsQuery = new CountDownLatch(1);
+        var paused = new AtomicBoolean();
+        var pageBackendPid = new AtomicInteger();
+        doAnswer(invocation -> {
+            String sql = invocation.getArgument(0);
+            Object count = invocation.callRealMethod();
+            if (sql.startsWith("SELECT count(*) FROM book_copies c JOIN shelves s ON s.id=c.shelf_id")
+                    && paused.compareAndSet(false, true)) {
+                assertThat(jdbc.queryForObject("SHOW transaction_isolation", String.class))
+                        .isEqualTo("repeatable read");
+                pageBackendPid.set(jdbc.queryForObject("SELECT pg_backend_pid()", Integer.class));
+                countRead.countDown();
+                if (!allowItemsQuery.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out between page count and item query.");
+                }
+            }
+            return count;
+        }).when(jdbc).queryForObject(any(String.class), any(Class.class), any(Object[].class));
+
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            var future = executor.submit(() -> inventoryScope.page(actor,
+                    new InventoryScopeFilter(branch, null, shelf, null, "AVAILABLE"), "0", "100"));
+            assertThat(countRead.await(10, TimeUnit.SECONDS)).isTrue();
+            Integer writerBackendPid = new TransactionTemplate(transactionManager).execute(transaction -> {
+                int pid = jdbc.queryForObject("SELECT pg_backend_pid()", Integer.class);
+                jdbc.update("UPDATE book_copies SET status='LOST',version=version+1 WHERE id=?", firstId);
+                return pid;
+            });
+            assertThat(writerBackendPid).isNotEqualTo(pageBackendPid.get());
+            allowItemsQuery.countDown();
+            var page = future.get(10, TimeUnit.SECONDS);
+
+            assertThat(page.page().totalElements()).isEqualTo(1_001);
+            assertThat(page.items()).hasSize(100);
+            assertThat(page.items()).extracting("copyId").contains(firstId);
+            assertThat(page.items()).extracting("status").containsOnly("AVAILABLE");
+            assertThat(page.items()).extracting("version").containsOnly(0L);
+            assertThat(jdbc.queryForObject("SELECT status FROM book_copies WHERE id=?", String.class, firstId))
+                    .isEqualTo("LOST");
+            assertThat(jdbc.queryForObject("SELECT version FROM book_copies WHERE id=?", Long.class, firstId))
+                    .isEqualTo(1L);
+        } finally {
+            allowItemsQuery.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void repeatableReadSnapshotKeepsAllKeysetBatchesAtOneDatabaseState() throws Exception {
+        String token = staffToken();
+        UUID actor = actorId(token);
+        UUID branch = branch(token, "SNAP", "Snapshot");
+        UUID shelf = shelf(token, branch, "S-1", "Snapshot shelf");
+        UUID edition = edition(token);
+        var first = postJson(token, "/api/v1/copies", Map.of("editionId", edition,
+                "barcode", "SNAP-A", "shelfId", shelf), 201);
+        var second = postJson(token, "/api/v1/copies", Map.of("editionId", edition,
+                "barcode", "SNAP-Z-LAST", "shelfId", shelf), 201);
+        UUID firstId = UUID.fromString(first.path("id").asText());
+        UUID secondId = UUID.fromString(second.path("id").asText());
+        insertAvailableCopies(edition, shelf, 999, "SNAP-M-");
+        jdbc.update("UPDATE book_copies SET status='AVAILABLE' WHERE id IN (?,?)", firstId, secondId);
+
+        var firstBatchRead = new CountDownLatch(1);
+        var allowSnapshotToContinue = new CountDownLatch(1);
+        var paused = new AtomicBoolean();
+        doAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            var batch = (List<io.github.shuuma4869.lams.core.inventory.copy.domain.InventoryScopeCopy>)
+                    invocation.callRealMethod();
+            if (paused.compareAndSet(false, true)) {
+                firstBatchRead.countDown();
+                if (!allowSnapshotToContinue.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to continue snapshot test.");
+                }
+            }
+            return batch;
+        }).when(inventoryScopeRepository).nextBatch(any(InventoryScopeFilter.class), nullable(String.class),
+                nullable(UUID.class), anyInt());
+
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            var future = executor.submit(() -> inventoryScope.snapshot(actor,
+                    new InventoryScopeFilter(branch, null, shelf, null, "AVAILABLE")));
+            assertThat(firstBatchRead.await(10, TimeUnit.SECONDS)).isTrue();
+            new TransactionTemplate(transactionManager).executeWithoutResult(transaction ->
+                    jdbc.update("UPDATE book_copies SET status='LOST',version=version+1 WHERE id=?", secondId));
+            allowSnapshotToContinue.countDown();
+            var snapshot = future.get(10, TimeUnit.SECONDS);
+
+            assertThat(snapshot).hasSize(1_001);
+            assertThat(snapshot).extracting("copyId").contains(firstId, secondId);
+            assertThat(snapshot).extracting("status").containsOnly("AVAILABLE");
+            assertThat(snapshot).extracting("version").containsOnly(0L);
+            assertThat(jdbc.queryForObject("SELECT status FROM book_copies WHERE id=?", String.class, secondId))
+                    .isEqualTo("LOST");
+            assertThat(jdbc.queryForObject("SELECT version FROM book_copies WHERE id=?", Long.class, secondId))
+                    .isEqualTo(1L);
+        } finally {
+            allowSnapshotToContinue.countDown();
+            executor.shutdownNow();
+        }
     }
 }

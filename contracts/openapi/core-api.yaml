@@ -1239,16 +1239,19 @@ paths:
     get:
       operationId: listCopies
       tags: [Inventory]
-      summary: Tìm bản sách theo ấn bản, kệ hoặc trạng thái
+      summary: Tìm bản sách theo chi nhánh, kệ, ấn bản hoặc trạng thái
+      description: Các filter được kết hợp bằng AND; branchId và shelfId không khớp trả trang rỗng. Kết quả chỉ đọc, sắp xếp ổn định theo barcode rồi id.
       security: [{ bearerAuth: [] }]
       parameters:
+        - { name: branchId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: editionId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: shelfId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: barcode, in: query, required: false, schema: { type: string, minLength: 1, maxLength: 100 }, description: So khớp chính xác sau khi bỏ khoảng trắng hai đầu. }
         - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/CopyStatus' } }
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
         - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200': { description: Danh sách bản sách, content: { application/json: { schema: { $ref: '#/components/schemas/CopyPage' } } } }
+        '200': { description: Danh sách bản sách trong scope. Count và items nhất quán trong một request; các request lấy trang riêng biệt không chia sẻ snapshot., content: { application/json: { schema: { $ref: '#/components/schemas/CopyPage' } } } }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
@@ -2379,8 +2382,24 @@ components:
       type: object
       required: [items, page]
       properties:
-        items: { type: array, items: { $ref: '#/components/schemas/BookCopy' } }
+        items: { type: array, items: { $ref: '#/components/schemas/InventoryCopyView' } }
         page: { $ref: '#/components/schemas/PageMetadata' }
+    InventoryCopyView:
+      type: object
+      description: Projection chỉ đọc cho inventory query; id giữ tương thích với response cũ, copyId là tên rõ nghĩa cho consumer kiểm kê.
+      required: [id, copyId, editionId, shelfId, branchId, shelfCode, barcode, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        copyId: { type: string, format: uuid }
+        editionId: { type: string, format: uuid }
+        bookTitle: { type: string }
+        isbn13: { type: [string, 'null'] }
+        shelfId: { type: string, format: uuid }
+        branchId: { type: string, format: uuid }
+        shelfCode: { type: string }
+        barcode: { type: string }
+        status: { $ref: '#/components/schemas/CopyStatus' }
+        version: { type: integer, minimum: 0 }
     CatalogMediaRequest:
       type: object
       required: [source, sourceId, sourceUrl, imageUrl, license, licenseUrl, attribution, evidence, confirmed]
