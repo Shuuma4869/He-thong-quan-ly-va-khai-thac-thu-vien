@@ -110,3 +110,15 @@ test('CSV lấy dữ liệu thật và vô hiệu hóa công thức trong lời 
   expect(csv).toContain('""https://example.test""');
   expect((await workflow.exportCsv('DRAFT')).includes(draft.id)).toBe(false);
 });
+
+test('retention preview chỉ đếm, không thay đổi đề xuất hoặc audit', async () => {
+  const before = await db.acquisitionRecommendation.count();
+  const audit = await db.acquisitionDecision.count();
+  const output = execFileSync(process.execPath,
+    ['scripts/acquisition-retention-preview.mjs', '2099-01-01T00:00:00Z'],
+    { encoding: 'utf8', env: process.env });
+  const preview = JSON.parse(output) as { recommendations: number; decisions: number; evidenceSnapshots: number };
+  expect(preview).toMatchObject({ recommendations: before, decisions: audit, evidenceSnapshots: before });
+  expect(await db.acquisitionRecommendation.count()).toBe(before);
+  expect(await db.acquisitionDecision.count()).toBe(audit);
+});

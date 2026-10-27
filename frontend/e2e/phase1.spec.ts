@@ -698,6 +698,155 @@ test('Phase 7: reader bị chặn, nhân viên thấy trạng thái chưa có ng
   await page.screenshot({ path: 'test-results/acquisition-empty-390.png', fullPage: true });
 });
 
+test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên PostgreSQL thật', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const insight = process.env.LAMS_E2E_INSIGHT_URL!;
+  const staffHeaders = await staffApi(request);
+  const book = await createCatalog(request, staffHeaders, '/books', {
+    title: `Nhu cầu bổ sung ${suffix}`, authorIds: [], categoryIds: [],
+  });
+  const edition = await createCatalog(request, staffHeaders, `/books/${book.id}/editions`, {});
+  const branch = await createCatalog(request, staffHeaders, '/branches', {
+    code: `A-${suffix}`, name: `Chi nhánh đề xuất ${suffix}`,
+  });
+  const shelf = await createCatalog(request, staffHeaders, '/shelves', {
+    branchId: branch.id, code: 'A1', label: 'Kệ đề xuất', sortOrder: 0,
+  });
+  const copy = await createCatalog(request, staffHeaders, '/copies', {
+    editionId: edition.id, shelfId: shelf.id, barcode: `A-${suffix}`,
+  });
+  const ready = await request.post(`${core}/copies/${copy.id}/state`, { headers: staffHeaders,
+    data: { requestId: randomUUID(), version: copy.version, status: 'AVAILABLE', reason: 'Đã kiểm tra bản sách thử' } });
+  expect(ready.status()).toBe(200);
+
+  const readerLogin = await request.post(`${core}/auth/login`, { data: {
+    identifier: accounts.READER.email, password, remember: false,
+  } });
+  expect(readerLogin.status()).toBe(200);
+  const reader = await readerLogin.json();
+  const borrowed = await createCatalog(request, staffHeaders, '/loans', {
+    requestId: randomUUID(), copyId: copy.id, readerId: reader.user.id, branchId: branch.id,
+    copyVersion: (await ready.json()).version,
+  });
+  const waitingReader = await request.post(`${core}/auth/register`, { data: {
+    fullName: `Bạn đọc chờ ${suffix}`, email: `acquisition-${suffix}@example.test`, password,
+  } });
+  expect(waitingReader.status()).toBe(201);
+  const waitingLogin = await request.post(`${core}/auth/login`, { data: {
+    identifier: `acquisition-${suffix}@example.test`, password, remember: false,
+  } });
+  expect(waitingLogin.status()).toBe(200);
+  const waitingToken = String((await waitingLogin.json()).accessToken);
+  const hold = await request.post(`${core}/holds`, { headers: { Authorization: `Bearer ${waitingToken}` },
+    data: { requestId: randomUUID(), bookId: book.id, branchId: branch.id, editionId: edition.id, anyEdition: false } });
+  expect(hold.status(), await hold.text()).toBe(201);
+  expect((await hold.json()).status).toBe('WAITING');
+
+  const from = new Date(Date.now() - 86_400_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  await expect.poll(() => Date.now() > Date.parse(borrowed.borrowedAt) + 2_000).toBe(true);
+  const to = new Date(Date.now() - 1_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const scope = { bookId: book.id, branchId: branch.id, from, to };
+  expect((await request.get(`${insight}/acquisition/analysis`, { params: scope })).status()).toBe(401);
+  const factsResponse = await request.get(`${core}/reports/acquisition-facts`, { headers: staffHeaders, params: scope });
+  expect(factsResponse.status(), await factsResponse.text()).toBe(200);
+  const facts = await factsResponse.json();
+  expect(facts).toMatchObject({ bookId: book.id, branchId: branch.id, copiesOwned: 1,
+    copiesAvailable: 0, waitingHolds: { count: 1 }, loansStarted: { count: 1 },
+    favoritesAdded: { count: null } });
+  const analysis = await request.get(`${insight}/acquisition/analysis`, { headers: staffHeaders, params: scope });
+  expect(analysis.status(), await analysis.text()).toBe(200);
+  const result = await analysis.json();
+  expect(result.snapshot).toMatchObject({ bookId: book.id, branchId: branch.id,
+    waitingHolds: { count: 1 }, loansStarted: { count: 1 } });
+  expect(result.score).toMatchObject({ version: 'acquisition-v1', confidence: 0.85,
+    components: { waitingHolds: { contribution: 50 }, loansStarted: { contribution: 8.8 },
+      favoritesAdded: { count: null, contribution: 0 } } });
+  expect(result.score.score).toBe(58.8);
+
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/nhan-vien/de-xuat-bo-sung');
+  await page.getByRole('button', { name: 'Chọn sách cần phân tích' }).click();
+  await page.getByRole('combobox', { name: 'Tìm trong sách cần phân tích' }).fill(book.title);
+  await page.getByRole('radio', { name: book.title }).click();
+  await page.getByRole('button', { name: 'Chọn chi nhánh phân tích' }).click();
+  await page.getByRole('radio', { name: new RegExp(branch.name) }).click();
+  const local = (value: string) => {
+    const date = new Date(value);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
+  };
+  await page.getByLabel('Từ thời điểm').fill(local(from));
+  await page.getByLabel('Đến trước thời điểm').fill(local(to));
+  await page.getByRole('button', { name: 'Xem số liệu và điểm nhu cầu' }).click();
+  await expect(page.getByLabel('Kết quả phân tích')).toContainText('Điểm 58.8/100');
+  await expect(page.getByLabel('Kết quả phân tích')).toContainText('1 lượt mượn trong kỳ');
+  await page.getByRole('button', { name: 'Lưu đề xuất chờ duyệt' }).click();
+  await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('Chờ duyệt');
+
+  const list = await request.get(`${insight}/acquisition/recommendations?state=DRAFT`, { headers: staffHeaders });
+  expect(list.status()).toBe(200);
+  const draft = (await list.json()).items.find((item: { bookId: string }) => item.bookId === book.id);
+  expect(draft).toMatchObject({ state: 'DRAFT', version: 0, bookId: book.id,
+    evidence: { waitingHolds: { count: 1 }, loansStarted: { count: 1 },
+      favoritesAdded: { count: null }, purchaseDecisionAllowed: false } });
+  const dbRow = execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_insight_test',
+    '-t', '-A', '-c', `SELECT state || ':' || version FROM acquisition_recommendations WHERE id='${draft.id}'`],
+  { encoding: 'utf8' }).trim();
+  expect(dbRow).toBe('DRAFT:0');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Xem bằng chứng' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Xem bằng chứng' }).first().click();
+  await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('58.8/100');
+  await page.getByLabel('Lý do quyết định').fill('Đã đối chiếu số bản, lượt mượn và hàng chờ.');
+  await page.getByRole('button', { name: 'Duyệt nội bộ' }).click();
+  await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('Đã duyệt nội bộ');
+  const approved = await request.get(`${insight}/acquisition/recommendations/${draft.id}`, { headers: staffHeaders });
+  expect((await approved.json())).toMatchObject({ state: 'APPROVED', version: 1,
+    decisions: [{ action: 'APPROVED', version: 1 }] });
+  expect((await request.post(`${insight}/acquisition/recommendations/${draft.id}/decision`, { headers: staffHeaders,
+    data: { action: 'REJECTED', reason: 'Không đủ căn cứ sau khi duyệt.', expectedVersion: 0 } })).status()).toBe(409);
+  const auditCount = execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_insight_test',
+    '-t', '-A', '-c', `SELECT count(*) FROM acquisition_decisions WHERE recommendation_id='${draft.id}'`],
+  { encoding: 'utf8' }).trim();
+  expect(auditCount).toBe('1');
+  const csv = await request.get(`${insight}/acquisition/recommendations.csv?state=APPROVED`, { headers: staffHeaders });
+  expect(csv.status()).toBe(200);
+  expect(await csv.text()).toContain(draft.id);
+  const secondScope = { ...scope, from: new Date(Date.parse(from) + 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z') };
+  const rejectedDraft = await request.post(`${insight}/acquisition/recommendations`,
+    { headers: staffHeaders, data: secondScope });
+  expect(rejectedDraft.status(), await rejectedDraft.text()).toBe(201);
+  const rejectedId = (await rejectedDraft.json()).id as string;
+  const rejection = await request.post(`${insight}/acquisition/recommendations/${rejectedId}/decision`, {
+    headers: staffHeaders, data: { action: 'REJECTED', reason: 'Cần kiểm tra thêm nhu cầu tại chi nhánh.', expectedVersion: 0 },
+  });
+  expect(rejection.status()).toBe(201);
+  expect((await rejection.json())).toMatchObject({ state: 'REJECTED', version: 1,
+    decisions: [{ action: 'REJECTED', version: 1 }] });
+  const thirdScope = { ...scope, from: new Date(Date.parse(from) + 120_000).toISOString().replace(/\.\d{3}Z$/, 'Z') };
+  const competingDraft = await request.post(`${insight}/acquisition/recommendations`,
+    { headers: staffHeaders, data: thirdScope });
+  expect(competingDraft.status(), await competingDraft.text()).toBe(201);
+  const competingId = (await competingDraft.json()).id as string;
+  const adminLogin = await request.post(`${core}/auth/login`, { data: {
+    identifier: accounts.ADMIN.email, password, remember: false,
+  } });
+  expect(adminLogin.status()).toBe(200);
+  const adminHeaders = { Authorization: `Bearer ${String((await adminLogin.json()).accessToken)}` };
+  const decisions = await Promise.all([
+    request.post(`${insight}/acquisition/recommendations/${competingId}/decision`, { headers: staffHeaders,
+      data: { action: 'APPROVED', reason: 'Đã đối chiếu đủ số liệu đề xuất.', expectedVersion: 0 } }),
+    request.post(`${insight}/acquisition/recommendations/${competingId}/decision`, { headers: adminHeaders,
+      data: { action: 'REJECTED', reason: 'Cần xác minh thêm tại chi nhánh.', expectedVersion: 0 } }),
+  ]);
+  expect(decisions.map(item => item.status()).sort()).toEqual([201, 409]);
+  const competingAudit = execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_insight_test',
+    '-t', '-A', '-c', `SELECT count(*) FROM acquisition_decisions WHERE recommendation_id='${competingId}'`],
+  { encoding: 'utf8' }).trim();
+  expect(competingAudit).toBe('1');
+  const after = await request.get(`${core}/copies/${copy.id}`, { headers: staffHeaders });
+  expect((await after.json()).status).toBe('ON_LOAN');
+});
+
 test('Tìm kiếm chung, thư viện cá nhân và điều hướng sidebar', async ({ page, request }) => {
   test.setTimeout(120_000);
   const headers = await staffApi(request);

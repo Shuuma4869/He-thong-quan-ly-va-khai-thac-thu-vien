@@ -1,44 +1,17 @@
 # Kịch bản demo LAMS
 
-## Phần có thể demo ở Phase 1
+## Chuẩn bị
 
-Mở cửa sổ LAMS theo [runbook desktop](../08-van-hanh/desktop-windows.md), với Core và hạ tầng đang chạy. Reader đăng ký/đăng nhập, đọc Hồ sơ của tôi, reload để kiểm khôi phục phiên, rồi đăng xuất. Profile bổ sung hiện chưa có nên hiển thị trạng thái trống, không có form lưu.
+Chạy Docker PostgreSQL/Redis/Kafka, Core cổng 8080, Insight cổng 3000 và Web cổng 5173 theo hướng dẫn chạy local. EXE nằm trong frontend/src-tauri/target/release; backend vẫn phải chạy. Đăng nhập tài khoản Librarian đã cấp theo tài liệu dữ liệu demo, không đưa mật khẩu lên slide hoặc video.
 
-Với tài khoản Librarian/Admin đã được cấp quyền hợp lệ, mở Thành viên, tìm theo mã/họ tên, lọc trạng thái, sắp xếp, phân trang và reload/Back. Reader không được mở danh sách staff. Ứng dụng không có API công khai tự nâng quyền; fixture E2E staff chỉ thuộc database kiểm thử tạm, không dùng để cấp quyền trên dữ liệu thật.
+Bộ demo có 10.013 Book nhưng chỉ 64 Copy vật lý. Các bản Gutenberg tham khảo không mặc nhiên có thể mượn. Chọn đúng Book, chi nhánh, kệ và barcode của bộ 32 sách nghiệp vụ khi trình diễn Inventory/Acquisition. E2E tự tạo dữ liệu trên PostgreSQL tạm; nó không thêm Loan/Hold hay đề xuất vào database demo.
 
-Catalog đã có API và UI Phase 2. Chuẩn bị dữ liệu minh họa có nguồn rõ trên môi trường demo riêng; không suy database có sẵn dữ liệu. Không dùng tài khoản hoặc dữ liệu cá nhân thật trong slide/video nếu chưa được phép.
+## Luồng trình diễn Phase 5–7
 
-## Kịch bản học phần dự kiến 7 phút 20 giây
+1. Kiểm kê: Nhân viên mở phiên theo chi nhánh/kệ, quét barcode bằng bàn phím hoặc máy quét kiểu bàn phím, rồi chốt. Có thể quét ở kệ khác trên database demo để tạo bằng chứng sai kệ; xem snapshot, scan và anomaly trước khi xác nhận chuyển kệ. Việc xác nhận thay đổi vị trí Copy demo, nên ghi lại vị trí ban đầu nếu cần trình diễn lại. Không có camera/offline; chưa kiểm máy quét vật lý trên máy thứ hai.
+2. Tìm sách: Tìm tên có dấu và không dấu, thử tên gần đúng, tác giả và ISBN có trong Catalog. Chọn bí danh “Khoa học giả tưởng” để lọc về Category chuẩn “Khoa học viễn tưởng”; mở trang tiếp theo rồi reload để thấy URL giữ bộ lọc. Gợi ý trên topbar gọi API Core, không tải toàn bộ 10.013 Book vào trình duyệt.
+3. Chuẩn bị số liệu Acquisition: Với cùng Book và chi nhánh có Copy vật lý, tạo một Loan và một Hold đang WAITING qua luồng nghiệp vụ. Chọn cửa sổ UTC bắt đầu trước Loan và kết thúc sau Loan nhưng không vượt hiện tại. Nếu chưa chuẩn bị, trang phân tích vẫn hợp lệ nhưng sẽ cho số liệu thấp hoặc rỗng; không mô tả nó là nhu cầu cao.
+4. Phân tích và quyết định: Librarian mở “Đề xuất bổ sung sách”, chọn Book/chi nhánh/cửa sổ, xem số Copy, Hold, Loan, score, confidence và lý do thiếu Favorite. Lưu DRAFT, reload để kiểm persistence, nhập lý do rồi duyệt nội bộ. Tạo một đề xuất khác ở cửa sổ khác để thử từ chối. Mở bằng chứng/audit và tải CSV. APPROVED không tạo đơn mua, thanh toán hoặc Copy mới.
+5. Kết thúc: Cho xem kết quả test và CI của đúng commit đang báo cáo. Nêu rõ Web/EXE là bản demo local; email pending chưa xác minh, thời hạn lưu dữ liệu Acquisition chưa được đơn vị vận hành phê duyệt, zero-result search và lịch sử thêm Favorite chưa có nguồn hoàn chỉnh.
 
-| Thời gian | Thao tác | Bằng chứng |
-|---|---|---|
-| 0:00–0:35 | Giới thiệu phạm vi, Book/Edition/Copy | Sơ đồ và SHA demo |
-| 0:35–1:20 | Login, Profile, Reader bị chặn staff | UI và response thật |
-| 1:20–2:15 | Tìm/filter sách, xem Edition và Author | API server, không fake availability |
-| 2:15–3:00 | Staff tra Member, pagination | Không lộ dữ liệu ngoài DTO |
-| 3:00–4:00 | Biên mục, Copy/version, duyệt ảnh thủ công | Dữ liệu chuẩn bị minh bạch |
-| 4:00–5:30 | Tra ISBN và lưu history, reload, lọc/mở lại | Insight PostgreSQL; nguồn unavailable hiển thị đúng |
-| 5:30–6:10 | User khác không đọc/xóa; chủ xóa history | 404 và persistence thật |
-| 6:10–6:50 | Test/CI đúng SHA, phân biệt unit/integration/E2E | Không lấy screenshot thay kết quả test |
-| 6:50–7:20 | Phân công, giới hạn, roadmap | Phân biệt implementation, bằng chứng SHA và các nghiệp vụ chưa có |
-
-Đây là phân bổ thời gian dự kiến, chưa phải video đã quay hoặc đo thời lượng. Chỉ quay sau khi gate kỹ thuật đạt; không có link video cho đến khi xuất bản thật.
-
-## Câu chuyện mục tiêu cho các phase sau
-
-Tài liệu này mô tả câu chuyện mục tiêu, **không khẳng định feature đã tồn tại**.
-
-1. Reader tìm “Clean Code”, xem các edition và availability theo branch.
-2. Khi không còn copy, reader tạo hold và thấy vị trí/ETA có giải thích.
-3. Librarian nhận một copy trả, hệ thống phân bổ hold kế tiếp trong transaction và chuẩn bị thông báo.
-4. Librarian mở phiên kiểm kê một shelf, scan barcode và review misshelved/status mismatch.
-5. Admin xem demand signal tổng hợp từ hold, circulation và zero-result search, rồi duyệt/từ chối đề xuất mua thêm.
-6. Audit cho thấy actor, policy version, request/correlation ID và event liên quan.
-
-Demo chỉ được dùng khi từng bước có test và dữ liệu chuẩn bị minh bạch. Không seed dữ liệu để giả vờ workflow đã hoàn thành.
-
-## Phần bổ sung Phase 3
-
-Sau Catalog, dùng một Book fixture và hai tài khoản được tạo cho demo: Reader lưu yêu thích → viết review điểm 1 → reload → sửa điểm 5 → mở Thư viện của tôi. Đăng xuất và đăng nhập tài khoản khác: danh sách cá nhân rỗng, review công khai vẫn đọc được nhưng không có nút sửa/xóa của tác giả. Trở lại tài khoản đầu, xác nhận xóa review và bỏ yêu thích; summary về null/0. Chỉ trình diễn trên bản đã đạt E2E web/desktop tương ứng; không dùng database đang chứa dữ liệu thật cho bước tạo/xóa fixture.
-
-Hành trình này được tự động hóa trong bài E2E “Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ liệu thật”. Không ghép thời lượng của đoạn bổ sung vào video bảy phút cũ rồi tuyên bố đã quay; cần biên tập và đo lại thời gian thực tế.
+Hành trình tích cực của bước 3–4 được tự động hóa trong bài frontend/e2e/phase1.spec.ts trên Core, Insight và hai PostgreSQL tạm. Bài đó kiểm giá trị snapshot, trạng thái PostgreSQL, reload, duyệt/từ chối, audit cạnh tranh và CSV. Xem lệnh chạy trong ma trận kiểm thử để thử lại trên Web hoặc EXE. Không dùng ảnh chụp hoặc bộ cài thay cho bằng chứng chạy test.

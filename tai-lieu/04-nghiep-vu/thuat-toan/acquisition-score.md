@@ -1,6 +1,6 @@
 # Điểm nhu cầu bổ sung sách
 
-Insight có bộ tính điểm `acquisition-v1` nhận số liệu tổng hợp theo Book, chi nhánh và khoảng thời gian. Đây là hàm tính thuần: cùng đầu vào cho cùng kết quả. [Hợp đồng nguồn](../../05-api-va-event/acquisition-read-contract.md) nêu tín hiệu nào Core hiện có và cách giữ `null` khi chưa đủ lịch sử. Trên nhánh Tuan, Core đã có read projection cho Copy, Hold và Loan; Insight đọc qua adapter, lưu đề xuất và quyết định, mở API có kiểm quyền và xuất CSV. Chưa có E2E tạo đề xuất xuyên hai dịch vụ trên dữ liệu thật; không dùng các trường thiếu như lượt Favorite mới hoặc tìm kiếm không có kết quả để tăng điểm.
+Insight có bộ tính điểm `acquisition-v1` nhận số liệu tổng hợp theo Book, chi nhánh và khoảng thời gian. Đây là hàm tính thuần: cùng đầu vào cho cùng kết quả. [Hợp đồng nguồn](../../05-api-va-event/acquisition-read-contract.md) nêu tín hiệu nào Core hiện có và cách giữ `null` khi chưa đủ lịch sử. Trên nhánh Tuan, Core đã có read projection cho Copy, Hold và Loan; Insight đọc qua adapter, lưu đề xuất và quyết định, mở API có kiểm quyền và xuất CSV. Web và EXE E2E tại máy phát triển đã đi qua Core → Insight → UI và hai PostgreSQL tạm, gồm Loan/Hold thật, bằng chứng, quyết định và audit. CI của commit bàn giao cần kiểm riêng. Không dùng các trường thiếu như lượt Favorite mới hoặc tìm kiếm không có kết quả để tăng điểm.
 
 | Thành phần | Chuẩn hóa | Trọng số |
 |---|---|---:|

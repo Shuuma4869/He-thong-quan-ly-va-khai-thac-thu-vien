@@ -7,3 +7,24 @@ V22 cài `unaccent` và `pg_trgm` trong schema `public` của PostgreSQL, kể c
 Thứ tự phù hợp ưu tiên ISBN đúng, tên đúng, tiền tố tên, full text, tác giả, phần tên và cuối cùng là tên gần đúng. Tên gần đúng chỉ tham gia với từ khóa từ ba ký tự. Các giá trị tìm kiếm đều là tham số SQL; tên cột và kiểu sắp xếp không nhận trực tiếp từ người dùng. Cùng một bộ ứng viên được dùng cho cả ba cách sắp xếp. Ở chế độ phù hợp, điểm rồi ID quyết định thứ tự. Một request đọc count và trang trong transaction `REPEATABLE READ`; hai request phân trang riêng biệt không phải cùng một snapshot nếu Catalog thay đổi giữa chừng.
 
 Đây là tra cứu từ vựng trên Core, chưa có vector, mô hình ngữ nghĩa, search event, cache liên dịch vụ hoặc đề xuất sửa chính tả. Truy vấn không có kết quả chỉ hiện trạng thái trống; hiện chưa ghi tín hiệu `SEARCH_ZERO_RESULT`. Bộ lọc tên thể loại không nhận đồng thời `categoryId`; tên không có trong taxonomy trả trang rỗng, dữ liệu nhập nhằng trả 409 để người dùng không nhận nhầm sách. Đo tải trên dữ liệu thực và quyền cài extension phải được kiểm tra ở môi trường triển khai trước khi bật cho production.
+
+## Đo trên bộ demo local
+
+Ngày 27/10/2026, `scripts/benchmark-catalog.mjs` gọi API Core đang chạy với 10.013 Book: một lượt làm nóng rồi 20 lượt đo cho mỗi kịch bản. Đây là thời gian HTTP trên máy phát triển, gồm đọc SQL và tạo response; không phải thời gian SQL riêng hay SLA production. Bộ lọc bí danh dùng `Khoa học giả tưởng` đã có trong database demo. Gợi ý gọi song song API Book/Author/Category.
+
+| Kịch bản | Tổng kết quả | P50 | P95 |
+|---|---:|---:|---:|
+| Trang đầu A–Z | 10.013 | 19,7 ms | 23,7 ms |
+| Trang 100 A–Z | 10.013 | 17,8 ms | 20,5 ms |
+| Tên đầy đủ | 13 | 256,7 ms | 271,8 ms |
+| Tiền tố tên | 34 | 209,7 ms | 222,7 ms |
+| Tên gần đúng | 7 | 195,5 ms | 205,0 ms |
+| Tác giả | 7 | 183,0 ms | 188,7 ms |
+| Bí danh thể loại | 5 | 16,0 ms | 24,0 ms |
+| Từ khóa và thể loại | 241 | 213,8 ms | 309,0 ms |
+| Không có kết quả | 0 | 195,2 ms | 203,6 ms |
+| Gợi ý Book/Author/Category | 104/12/0 | 160,1 ms | 186,2 ms |
+
+`scripts/evaluate-catalog-relevance.mjs` dùng ba câu hỏi được chọn trước với mục tiêu *Alice's Adventures in Wonderland*: tên đầy đủ đứng thứ 1, tiền tố thứ 1, từ gõ gần đúng thứ 2; Hit@5 = 3/3 và MRR = 0,833. Tập này quá nhỏ để suy ra chất lượng tìm kiếm toàn thư viện hoặc đặt mục tiêu precision production.
+
+`scripts/explain-catalog-search.sql` dùng câu truy vấn trang đầu tương ứng `BookRepository.search` với từ `adventures`. `EXPLAIN (ANALYZE, BUFFERS)` trên cùng PostgreSQL demo trả 20 hàng, `shared hit=362`, planning 7,993 ms, execution 123,201 ms; trong đó JIT 35,718 ms. Đây chỉ là câu SQL chọn trang, chưa gồm câu đếm và các batch lấy bìa/điểm/nguồn. `scripts/benchmark-catalog-concurrent.mjs` chạy 4 request tìm kiếm song song × 20 lượt: mỗi request P50 184,1 ms, P95 218,5 ms; thời gian một lượt P50 194,1 ms, P95 224,4 ms. Không thấy 429 trong lượt đo này. Những số đo local và ba câu đánh giá thủ công chưa đủ để cam kết SLA hoặc relevance trên dữ liệu production.
