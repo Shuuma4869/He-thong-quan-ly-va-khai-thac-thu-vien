@@ -36,7 +36,7 @@ erDiagram
   }
 ```
 
-Database Insight sở hữu lịch sử tra cứu và đề xuất nội bộ; không nối Book bằng FK xuyên database và không sao chép Catalog. Trên nhánh Tuan, Core đã có read projection cho số Copy, Hold và Loan; Insight đọc qua adapter và bảo vệ API tạo/duyệt đề xuất. Các phần này có kiểm thử riêng, nhưng chưa có E2E tạo đề xuất xuyên Core → Insight → giao diện trên dữ liệu thật.
+Database Insight sở hữu lịch sử tra cứu và đề xuất nội bộ; không nối Book bằng FK xuyên database và không sao chép Catalog. Core cung cấp read projection cho số Copy, Hold và Loan; Insight đọc qua adapter và bảo vệ API tạo/duyệt đề xuất. Bài E2E tạo Loan/Hold thật qua Core, phân tích và quyết định trên giao diện, rồi đối chiếu dữ liệu/audit trong PostgreSQL Insight cô lập.
 
 ## Core đã có migration
 
