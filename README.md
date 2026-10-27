@@ -104,11 +104,11 @@ Lệnh build tạo EXE và gói cài trong `frontend/src-tauri/target/release/`.
 
 ## Demo và hồ sơ học phần
 
-[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_CI.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
+[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
 
 ## Giới hạn hiện tại
 
-- Phase 5: nhánh Tuan đã nhận commit truy vấn của Toàn và thêm giới hạn snapshot; trạng thái hoàn tất phụ thuộc kiểm thử CI ở commit bàn giao cuối.
-- Phase 6: có API và màn hình quản trị Alias trên nhánh Tuan; cần review và CI ở commit bàn giao cuối.
-- Phase 7: Core có read projection theo Book/chi nhánh, Insight có luồng phân tích/tạo/duyệt và CSV của các đề xuất đã lưu. Chưa có lịch sử đầy đủ lượt thêm Favorite, số lần tìm không ra sách, ngân sách hay luồng đặt mua; `APPROVED` chỉ là quyết định nội bộ.
+- Phase 5: truy vấn snapshot của Toàn đã vào main qua PR #25; phần phiên, scan, xử lý bất thường và UI có test PostgreSQL cùng E2E Web/EXE. Đã đo một phiên 5.000 Copy với 100 scan; chưa thử máy quét vật lý hoặc tải nhiều phiên trên mạng thật.
+- Phase 6: Core có FTS/trigram, xếp hạng, bí danh Category và gợi ý; giao diện đã nối Search/API. Đã đo trên 10.013 Book demo, nhưng sáu câu relevance chỉ là mẫu nhỏ và chưa có SLA production.
+- Phase 7: Core có read projection theo Book/chi nhánh, Insight có luồng phân tích/tạo/duyệt và CSV của các đề xuất đã lưu; E2E Core → Insight → UI trên Web/EXE đã đạt tại source `1580bf6`. Chưa có lịch sử đầy đủ lượt thêm Favorite, số lần tìm không ra sách, ngân sách hay luồng đặt mua; `APPROVED` chỉ là quyết định nội bộ.
 - [Cấu hình pilot HTTPS](tai-lieu/08-van-hanh/cloud-pilot.md) đã được chuẩn bị, chưa có máy chủ công cộng. Chưa nghiệm thu production, bộ cài trên máy Windows thứ hai hoặc chính sách lưu/xóa dữ liệu đề xuất.
