@@ -18,7 +18,7 @@ Phân công được ghi trong [hướng dẫn thành viên](tai-lieu/00-bat-dau
 - **Tìm kiếm:** PostgreSQL full-text search và trigram; có thể lọc bằng tên thể loại chuẩn hoặc bí danh đã lưu. Thanh tìm kiếm chung gợi ý sách, tác giả và thể loại bằng các truy vấn giới hạn trên server. Metadata ISBN và ảnh bìa dùng quy trình duyệt thủ công; mục chưa có ảnh được duyệt dùng hình thay thế.
 - **Đề xuất bổ sung sách:** nhân viên chọn sách, chi nhánh và khoảng thời gian; Core đọc số liệu thật trong một snapshot, Insight tính điểm, lưu bằng chứng và quyết định nội bộ. Có CSV xuất đề xuất đã lưu. Lượt thêm Favorite đã bị bỏ chưa có lịch sử nên tín hiệu này được ghi là thiếu, không điền 0.
 
-Truy vấn snapshot kiểm kê của Toàn đã vào `main` qua [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25), merge commit `e525d34`, giữ nguyên lịch sử tác giả. Search, quản trị Alias, Acquisition và đợt giao diện mới đang ở [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27). Các phần này chỉ có trên `main` sau khi PR được review, CI ở commit cuối đạt và merge.
+Truy vấn snapshot kiểm kê của Toàn đã vào `main` qua [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25), merge commit `e525d34`, giữ nguyên lịch sử tác giả. Search, quản trị Alias, Acquisition và đợt giao diện đã vào `main` qua [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27), merge commit `41c4c89`. Bài E2E Web và EXE tại máy phát triển đạt 18/18 mỗi loại trên database cô lập; [CI PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40544635046) đạt 5/5 tại head `63d1508`.
 
 ## Công nghệ và kiến trúc
 

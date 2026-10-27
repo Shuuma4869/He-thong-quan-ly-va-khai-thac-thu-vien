@@ -19,7 +19,7 @@ Bảng này nối nghiệp vụ với API và đường vào trên giao diện. 
 | Báo cáo lưu thông và CSV | Core report API | `/nhan-vien/bao-cao-luu-thong` | `report-api`, `CirculationFlow` | Có UI và export; không đồng nhất với báo cáo Acquisition. |
 | Phiên kiểm kê, quét và xử lý sai lệch | Core `/inventory-sessions/*` | `/nhan-vien/kiem-ke` và trang phiên | `InventoryFlow`, Web E2E | Có UI; Web E2E đã kiểm hành trình mở, quét, chốt và xác nhận chuyển Copy trên database cô lập. |
 | Dashboard nhân viên | Core Catalog và Inventory read API | `/nhan-vien/bang-dieu-khien` | `StaffDashboardPage` | Hiện số lượng thật và trạng thái tải/lỗi; không có feed hoạt động gần đây vì chưa có API tương ứng. |
-| Đề xuất bổ sung | Core read facts, Insight Acquisition API | `/nhan-vien/de-xuat-bo-sung` | `AcquisitionFlow` | UI đã nối API trên nhánh Tuan; chưa coi là hoàn tất học phần trước CI/E2E của commit bàn giao. |
+| Đề xuất bổ sung | Core read facts, Insight Acquisition API | `/nhan-vien/de-xuat-bo-sung` | `AcquisitionFlow`, Web/EXE E2E 18/18 | UI đã nối API; E2E kiểm Loan/Hold thật, phân tích, lưu, reload, duyệt/từ chối, audit và CSV. Chưa có lịch sử Favorite, sự kiện tìm rỗng hoặc chính sách retention production. |
 
 Điều hướng Sidebar chỉ trỏ tới các route trên. Tài khoản Reader không có quyền mở trang nhân viên; API kiểm quyền độc lập với guard ở giao diện. OpenAPI trong `contracts/openapi/` là nguồn chi tiết cho request/response và mã lỗi.
 

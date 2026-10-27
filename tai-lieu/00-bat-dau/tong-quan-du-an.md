@@ -2,7 +2,7 @@
 
 ## Bài toán và mục tiêu
 
-LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần kiểm kê và dữ liệu nhu cầu. Ứng dụng đã có giao diện Windows bằng Tauri, Catalog, lưu thông/giữ chỗ và phiên kiểm kê. Tìm kiếm từ vựng đã có trên Web/EXE; đề xuất bổ sung sách trên nhánh Tuan mới được kiểm ở từng lớp, chưa có E2E xuyên dịch vụ.
+LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư viện. Người đọc cần biết tài liệu nào tồn tại và có thể tiếp cận; thủ thư cần trạng thái bản vật lý đáng tin; quản trị viên cần kiểm kê và dữ liệu nhu cầu. Ứng dụng có giao diện Windows bằng Tauri, Catalog, lưu thông/giữ chỗ và phiên kiểm kê. Tìm kiếm từ vựng và đề xuất bổ sung sách đã vào main qua PR #27. Luồng đề xuất đã được kiểm E2E xuyên Core, Insight và giao diện trên hai database PostgreSQL cô lập, ở cả Web và EXE; chính sách lưu giữ production vẫn cần phê duyệt.
 
 ## Actors
 
@@ -20,7 +20,7 @@ Chưa có tìm kiếm ngữ nghĩa/vector, đề xuất bổ sung sách được
 
 ## Flagship features định hướng
 
-Smart Hold & Availability và Live Shelf Audit đã có các luồng giao dịch/kiểm kê chính. Smart Discovery hiện có metadata lookup và tìm kiếm từ vựng, chưa có semantic search. Demand-to-Acquisition Intelligence đã có phép tính và luồng đề xuất nội bộ trên nhánh Tuan; chưa có E2E xuyên dịch vụ hoặc quy trình mua sách.
+Smart Hold & Availability và Live Shelf Audit đã có các luồng giao dịch/kiểm kê chính. Smart Discovery có metadata lookup và tìm kiếm từ vựng, chưa có semantic search. Demand-to-Acquisition Intelligence có phép tính, lưu đề xuất và quyết định nội bộ; E2E xuyên dịch vụ đã chạy. Hệ thống chưa có quy trình đặt mua sách.
 
 ## Glossary
 
