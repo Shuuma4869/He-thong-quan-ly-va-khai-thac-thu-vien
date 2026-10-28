@@ -1,0 +1,30 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam packageStyle rectangle
+skinparam actorStyle stickman
+actor "Thủ thư" as Staff
+actor "Quản trị viên" as Admin
+rectangle "LAMS" {
+  usecase "Biên mục tác phẩm\nvà bản sách" as UCCatalog
+  usecase "Duyệt nguồn ảnh" as UCMedia
+  usecase "Mượn / trả / gia hạn" as UCLoan
+  usecase "Kiểm kê bản sách" as UCInventory
+  usecase "Xem báo cáo và\nđề xuất bổ sung" as UCReport
+  usecase "Quản trị tài khoản" as UCAdmin
+  usecase "Xử lý báo cáo\nđánh giá" as UCModeration
+}
+Staff -- UCCatalog
+Staff -- UCMedia
+Staff -- UCLoan
+Staff -- UCInventory
+Staff -- UCReport
+Admin -- UCAdmin
+Admin -- UCModeration
+note bottom of UCReport
+  Điểm đề xuất hỗ trợ quyết định;
+  nhân viên vẫn phê duyệt thủ công.
+end note
+@enduml

@@ -1,6 +1,6 @@
 # LAMS — Hệ thống quản lí và khai thác thư viện
 
-Bản nguồn nội dung báo cáo học phần. Chưa có mẫu chính thức của trường để xác nhận định dạng. Tên pháp lý, mã sinh viên, lớp, giảng viên, học kỳ và ngày nộp do thành viên bổ sung theo hồ sơ thật; không tự điền từ alias Git.
+Bản nguồn nội dung báo cáo học phần. Chưa có mẫu chính thức của trường để xác nhận định dạng. Lớp học phần, họ tên và mã sinh viên lấy từ README LAMS; tên trường/khoa, giảng viên, logo, địa điểm và ngày nộp còn chờ nhóm xác nhận. Không suy thông tin của LAMS từ bìa báo cáo dự án tham khảo hoặc alias Git.
 
 ## 1. Mục tiêu và phạm vi
 

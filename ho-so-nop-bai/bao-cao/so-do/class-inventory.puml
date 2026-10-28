@@ -1,0 +1,50 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam classAttributeIconSize 0
+class InventorySession <<Java record>> {
+  +id: UUID
+  +branchId: UUID
+  +shelfId: UUID
+  +status: String
+  +version: long
+  +snapshotCount: int
+  +scanCount: int
+}
+class "InventoryEvidence.Copy" as Copy <<nested record>> {
+  +id: UUID
+  +barcode: String
+  +branchId: UUID
+  +shelfId: UUID
+  +version: long
+}
+class "InventoryEvidence.Scan" as Scan <<nested record>> {
+  +id: UUID
+  +barcode: String
+  +scannedAt: Instant
+  +actorId: UUID
+}
+class "InventoryEvidence.Anomaly" as Anomaly <<nested record>> {
+  +id: UUID
+  +kind: Kind
+  +sessionId: UUID
+  +copyId: UUID
+}
+class InventoryResolution <<Java record>> {
+  +id: UUID
+  +anomalyId: UUID
+  +action: String
+  +reason: String
+  +copyVersionSeen: Long
+}
+InventorySession "1" ..> "0..*" Anomaly : sessionId
+Anomaly o-- "0..1" Copy : snapshot
+Anomaly o-- "0..1" Copy : current
+Anomaly o-- "0..1" Scan : scan
+Anomaly "1" ..> "0..1" InventoryResolution : anomalyId
+note bottom
+  Copy/Scan ở đây là record bằng chứng, không phải bảng book_copies.
+  Resolution là lệnh có xác nhận và kiểm version, không tự sửa từ anomaly.
+end note
+@enduml

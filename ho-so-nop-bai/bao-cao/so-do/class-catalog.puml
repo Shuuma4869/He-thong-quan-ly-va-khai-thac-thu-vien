@@ -1,0 +1,50 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam classAttributeIconSize 0
+class Book <<Java record>> {
+  +id: UUID
+  +title: String
+  +authors: List<RelatedItem>
+  +categories: List<RelatedItem>
+}
+class "Book.RelatedItem" as RelatedItem <<nested record>> {
+  +id: UUID
+  +name: String
+}
+class Author <<Java record>> {
+  +id: UUID
+  +name: String
+}
+class Category <<Java record>> {
+  +id: UUID
+  +name: String
+}
+class Publisher <<Java record>> {
+  +id: UUID
+  +name: String
+}
+class Edition <<Java record>> {
+  +id: UUID
+  +bookId: UUID
+  +publisherId: UUID
+  +isbn13: String
+}
+class BookCopy <<Java record>> {
+  +id: UUID
+  +editionId: UUID
+  +barcode: String
+  +version: long
+}
+Book *-- "0..*" RelatedItem : authors/categories
+Book "1" ..> "0..*" Edition : bookId
+Edition "1" ..> "0..*" BookCopy : editionId
+Publisher "0..1" ..> "0..*" Edition : publisherId
+RelatedItem ..> Author : có thể biểu diễn
+RelatedItem ..> Category : có thể biểu diễn
+note bottom
+  RelatedItem là bản chiếu id/name trong Book; không chứa Author/Category object.
+  Quan hệ nhiều-nhiều vật lý nằm ở book_authors và book_categories.
+end note
+@enduml

@@ -1,0 +1,478 @@
+{
+  "sha": "23b90bae4c14e8b0046b33d60f8a0a102d4aa39e",
+  "capturedAt": "2026-10-28T17:47:00.036Z",
+  "environment": "Windows 11; Chrome headless; local Core 8080, Insight 3000, Vite 5173; PostgreSQL demo",
+  "approvedBookId": "3e9bdc7b-b46b-5d74-859a-f405e764e14e",
+  "fallbackBookId": "45a47ce6-a3dd-58c2-b537-cf2527ee90ee",
+  "captures": [
+    {
+      "file": "landing-390.png",
+      "route": "/",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Cuốn sách tiếp theođang chờ bạn khám phá.",
+      "alerts": []
+    },
+    {
+      "file": "landing-1440.png",
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Cuốn sách tiếp theođang chờ bạn khám phá.",
+      "alerts": []
+    },
+    {
+      "file": "catalog-390.png",
+      "route": "/sach",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Khám phá sách",
+      "alerts": []
+    },
+    {
+      "file": "catalog-1440.png",
+      "route": "/sach",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Khám phá sách",
+      "alerts": []
+    },
+    {
+      "file": "authors-390.png",
+      "route": "/tac-gia",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Tác giả",
+      "alerts": []
+    },
+    {
+      "file": "authors-1440.png",
+      "route": "/tac-gia",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Tác giả",
+      "alerts": []
+    },
+    {
+      "file": "categories-390.png",
+      "route": "/the-loai",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Thể loại",
+      "alerts": []
+    },
+    {
+      "file": "categories-1440.png",
+      "route": "/the-loai",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Thể loại",
+      "alerts": []
+    },
+    {
+      "file": "author-detail-390.png",
+      "route": "/tac-gia/14805f6a-83a5-58f1-8efe-9228515b5555",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "1253?-1325 Amir Khusraw Dihlavi",
+      "alerts": []
+    },
+    {
+      "file": "author-detail-1440.png",
+      "route": "/tac-gia/14805f6a-83a5-58f1-8efe-9228515b5555",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "1253?-1325 Amir Khusraw Dihlavi",
+      "alerts": []
+    },
+    {
+      "file": "category-detail-390.png",
+      "route": "/the-loai/05d08138-3101-5d58-86bc-9753efe4e43d",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "6 Best Loved Spanish Literary Classics",
+      "alerts": []
+    },
+    {
+      "file": "category-detail-1440.png",
+      "route": "/the-loai/05d08138-3101-5d58-86bc-9753efe4e43d",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "6 Best Loved Spanish Literary Classics",
+      "alerts": []
+    },
+    {
+      "file": "book-approved-390.png",
+      "route": "/sach/3e9bdc7b-b46b-5d74-859a-f405e764e14e",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Pride and Prejudice",
+      "alerts": []
+    },
+    {
+      "file": "book-approved-1440.png",
+      "route": "/sach/3e9bdc7b-b46b-5d74-859a-f405e764e14e",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Pride and Prejudice",
+      "alerts": []
+    },
+    {
+      "file": "book-fallback-390.png",
+      "route": "/sach/45a47ce6-a3dd-58c2-b537-cf2527ee90ee",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "A Tale of Two Cities",
+      "alerts": []
+    },
+    {
+      "file": "book-fallback-1440.png",
+      "route": "/sach/45a47ce6-a3dd-58c2-b537-cf2527ee90ee",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "A Tale of Two Cities",
+      "alerts": []
+    },
+    {
+      "file": "login-390.png",
+      "route": "/dang-nhap",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn.",
+      "alerts": []
+    },
+    {
+      "file": "login-1440.png",
+      "route": "/dang-nhap",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn.",
+      "alerts": []
+    },
+    {
+      "file": "register-390.png",
+      "route": "/dang-ky",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn.",
+      "alerts": []
+    },
+    {
+      "file": "register-1440.png",
+      "route": "/dang-ky",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn.",
+      "alerts": []
+    },
+    {
+      "file": "appearance-guest-390.png",
+      "route": "/cai-dat/giao-dien",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Tùy chỉnh giao diện",
+      "alerts": []
+    },
+    {
+      "file": "appearance-guest-1440.png",
+      "route": "/cai-dat/giao-dien",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Tùy chỉnh giao diện",
+      "alerts": []
+    },
+    {
+      "file": "my-library-390.png",
+      "route": "/thu-vien-cua-toi",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Thư viện của tôi",
+      "alerts": []
+    },
+    {
+      "file": "my-library-1440.png",
+      "route": "/thu-vien-cua-toi",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Thư viện của tôi",
+      "alerts": []
+    },
+    {
+      "file": "loans-holds-390.png",
+      "route": "/muon-va-giu-cho",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Mượn và giữ chỗ",
+      "alerts": []
+    },
+    {
+      "file": "loans-holds-1440.png",
+      "route": "/muon-va-giu-cho",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Mượn và giữ chỗ",
+      "alerts": []
+    },
+    {
+      "file": "notifications-390.png",
+      "route": "/thong-bao",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Thông báo",
+      "alerts": []
+    },
+    {
+      "file": "notifications-1440.png",
+      "route": "/thong-bao",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Thông báo",
+      "alerts": []
+    },
+    {
+      "file": "profile-390.png",
+      "route": "/ho-so",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Hồ sơ của tôi",
+      "alerts": []
+    },
+    {
+      "file": "profile-1440.png",
+      "route": "/ho-so",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Hồ sơ của tôi",
+      "alerts": []
+    },
+    {
+      "file": "appearance-reader-390.png",
+      "route": "/cai-dat/giao-dien",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Tùy chỉnh giao diện",
+      "alerts": []
+    },
+    {
+      "file": "appearance-reader-1440.png",
+      "route": "/cai-dat/giao-dien",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Tùy chỉnh giao diện",
+      "alerts": []
+    },
+    {
+      "file": "staff-dashboard-390.png",
+      "route": "/nhan-vien/bang-dieu-khien",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Bảng điều khiển",
+      "alerts": []
+    },
+    {
+      "file": "staff-dashboard-1440.png",
+      "route": "/nhan-vien/bang-dieu-khien",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Bảng điều khiển",
+      "alerts": []
+    },
+    {
+      "file": "members-390.png",
+      "route": "/nhan-vien/thanh-vien",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Thành viên",
+      "alerts": []
+    },
+    {
+      "file": "members-1440.png",
+      "route": "/nhan-vien/thanh-vien",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Thành viên",
+      "alerts": []
+    },
+    {
+      "file": "staff-catalog-390.png",
+      "route": "/nhan-vien/danh-muc",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Danh mục thư viện",
+      "alerts": []
+    },
+    {
+      "file": "staff-catalog-1440.png",
+      "route": "/nhan-vien/danh-muc",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Danh mục thư viện",
+      "alerts": []
+    },
+    {
+      "file": "staff-circulation-390.png",
+      "route": "/nhan-vien/luu-thong",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Quầy lưu thông",
+      "alerts": []
+    },
+    {
+      "file": "staff-circulation-1440.png",
+      "route": "/nhan-vien/luu-thong",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Quầy lưu thông",
+      "alerts": []
+    },
+    {
+      "file": "circulation-report-390.png",
+      "route": "/nhan-vien/bao-cao-luu-thong",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Báo cáo mượn theo chi nhánh",
+      "alerts": []
+    },
+    {
+      "file": "circulation-report-1440.png",
+      "route": "/nhan-vien/bao-cao-luu-thong",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Báo cáo mượn theo chi nhánh",
+      "alerts": []
+    },
+    {
+      "file": "inventory-sessions-390.png",
+      "route": "/nhan-vien/kiem-ke",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Kiểm kê kệ sách",
+      "alerts": []
+    },
+    {
+      "file": "inventory-sessions-1440.png",
+      "route": "/nhan-vien/kiem-ke",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Kiểm kê kệ sách",
+      "alerts": []
+    },
+    {
+      "file": "acquisition-390.png",
+      "route": "/nhan-vien/de-xuat-bo-sung",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Đề xuất bổ sung sách",
+      "alerts": []
+    },
+    {
+      "file": "acquisition-1440.png",
+      "route": "/nhan-vien/de-xuat-bo-sung",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Đề xuất bổ sung sách",
+      "alerts": []
+    },
+    {
+      "file": "admin-accounts-390.png",
+      "route": "/nhan-vien/tai-khoan",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Tài khoản và phân quyền",
+      "alerts": []
+    },
+    {
+      "file": "admin-accounts-1440.png",
+      "route": "/nhan-vien/tai-khoan",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Tài khoản và phân quyền",
+      "alerts": []
+    },
+    {
+      "file": "review-moderation-390.png",
+      "route": "/nhan-vien/bao-cao-danh-gia",
+      "width": 390,
+      "height": 900,
+      "status": 200,
+      "h1": "Báo cáo đánh giá",
+      "alerts": []
+    },
+    {
+      "file": "review-moderation-1440.png",
+      "route": "/nhan-vien/bao-cao-danh-gia",
+      "width": 1440,
+      "height": 900,
+      "status": 200,
+      "h1": "Báo cáo đánh giá",
+      "alerts": []
+    },
+    {
+      "width": 1440,
+      "file": "book-approved-viewport-1440.png",
+      "route": "/sach/3e9bdc7b-b46b-5d74-859a-f405e764e14e",
+      "capturedAt": "2026-10-28T17:49:57.5027573Z",
+      "status": 200,
+      "kind": "viewport",
+      "height": 900
+    },
+    {
+      "width": 390,
+      "file": "book-fallback-viewport-390.png",
+      "route": "/sach/45a47ce6-a3dd-58c2-b537-cf2527ee90ee",
+      "capturedAt": "2026-10-28T17:49:59.3242564Z",
+      "status": 200,
+      "kind": "viewport",
+      "height": 900
+    }
+  ],
+  "failures": []
+}

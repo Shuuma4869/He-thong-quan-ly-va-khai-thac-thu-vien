@@ -1,0 +1,26 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam packageStyle rectangle
+skinparam actorStyle stickman
+actor "Khách" as Guest
+actor "Người đọc" as Reader
+rectangle "LAMS" {
+  usecase "Tra cứu sách" as UCSearch
+  usecase "Xem ấn bản\nvà tình trạng" as UCDetail
+  usecase "Đăng ký / đăng nhập" as UCAuth
+  usecase "Lưu sách / đánh giá" as UCReview
+  usecase "Giữ chỗ" as UCHold
+  usecase "Theo dõi mượn\nvà thông báo" as UCReader
+}
+Guest -- UCSearch
+Guest -- UCDetail
+Guest -- UCAuth
+Reader -- UCSearch
+Reader -- UCDetail
+Reader -- UCReview
+Reader -- UCHold
+Reader -- UCReader
+@enduml
