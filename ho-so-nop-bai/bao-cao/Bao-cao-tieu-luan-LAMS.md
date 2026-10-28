@@ -349,6 +349,8 @@ Bảng 11. Bằng chứng kiểm thử tại mốc `0ef4007ac95fc4704e56527569fb
 
 Nguồn của T05–T09 là [CI run 40690841710](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40690841710). T09 không thay T10. Hai mốc trước `46c1916` và `504499b` có CI riêng trong mô tả PR #31; chúng là lịch sử, không là bằng chứng cho thay đổi UI và report sau đó. Khi tài liệu này được commit, CI phải chạy lại tại head mới; kết quả bảng trên vẫn được ghi đúng mốc nguồn.
 
+Sau khi thêm ba ảnh thể loại và sửa fallback, commit mã nguồn `5c3a898` đạt 5/5 job trong [CI run 40701157891](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40701157891). Local chạy 3/3 test liên quan, lint và build với Node 22 đều đạt. Ảnh chụp ở Chương 5 vẫn thuộc `0ef4007`, không được gán cho commit này; commit tài liệu tiếp theo cần kiểm CI riêng tại PR head.
+
 ## 7.2. Bảng ca kiểm thử nghiệp vụ và cạnh tranh
 
 Bảng 12. Ca kiểm thử theo tính chất lỗi, quyền và giao dịch.
@@ -469,12 +471,12 @@ Bảng 14. Các nhóm bảng Core có trong Flyway tại mốc khảo sát.
 
 ## Phụ lục B. Cách chạy và tái lập kiểm thử
 
-Theo `tai-lieu/08-van-hanh/chay-local.md`, máy Windows cần PowerShell 7, Java 21, Node 22 và Docker Desktop. Từ root chạy `pwsh -NoProfile -File .\scripts\setup-desktop.ps1`, `bootstrap-local.ps1`, sau đó mở ba terminal cho `start-core.ps1`, `start-insight.ps1`, `start-desktop.ps1`. Dữ liệu demo chỉ được tạo khi xác nhận đúng database local. Chạy `smoke-test.ps1` và `check-quality.ps1` trước khi demo. Vite web là cổng 5173, Core 8080, Insight 3000; Windows desktop mở cửa sổ riêng nhưng dùng cùng API. Bộ cài/build theo `tai-lieu/08-van-hanh/desktop-windows.md`. Không chép secret `.env` vào báo cáo.
+Theo `tai-lieu/08-van-hanh/chay-local.md`, máy Windows cần PowerShell 7, Java 21, Node 22 và Docker Desktop. Từ root chạy `scripts/setup-desktop.ps1`, `bootstrap-local.ps1`, rồi mở ba terminal chạy `start-core.ps1`, `start-insight.ps1`, `start-desktop.ps1`. Xác nhận database local trước khi nạp demo; chạy `smoke-test.ps1` và `check-quality.ps1`. Web dùng cổng 5173, Core 8080, Insight 3000. Bộ cài Windows xem `tai-lieu/08-van-hanh/desktop-windows.md`; backend vẫn phải chạy riêng.
 
 ## Phụ lục C. Ảnh và nguồn sơ đồ
 
-Ảnh gốc CI và ảnh local của mốc khảo sát ở `ho-so-nop-bai/minh-chung-giao-dien/pr31/`; README của thư mục ghi SHA, run và điều có thể kết luận. Sơ đồ được tạo từ `scripts/report_figures.py`, đối chiếu với route, migration và service được nêu tại từng chương. Wireframe là thiết kế, ảnh UI là runtime. Khi sửa code hoặc thay ảnh, phải tạo lại cả hình và chú thích nguồn.
+Ảnh CI và local ở `ho-so-nop-bai/minh-chung-giao-dien/pr31/`; README ghi rõ SHA và nguồn. `scripts/report_figures.py` tạo sơ đồ từ route, migration và service đã đối chiếu. Wireframe là thiết kế; ảnh UI là runtime.
 
 ## Phụ lục D. Đóng góp và điều kiện bàn giao
 
-Đối chiếu đóng góp theo `ho-so-nop-bai/bao-cao-nguon.md` và lịch sử PR; chủ tài khoản cần xác nhận alias. Tên, mã sinh viên, lớp, giảng viên và tỷ lệ đóng góp còn chờ nhóm điền. Khi nộp, bổ sung SHA cuối, CI, commit merge nếu có, video demo, quyền ảnh và ngày kiểm chứng.
+Đối chiếu đóng góp theo `ho-so-nop-bai/bao-cao-nguon.md` và lịch sử PR; nhóm xác nhận alias, tên, mã sinh viên, lớp, giảng viên và tỷ lệ đóng góp. Khi nộp, bổ sung SHA/CI cuối, video demo, quyền ảnh và ngày kiểm chứng.

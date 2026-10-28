@@ -50,7 +50,7 @@ for name, size, bold in [('Normal', 13, False), ('Title', 22, True), ('Heading 1
     style.font.size = Pt(size)
     style.font.bold = bold
     style.font.color.rgb = RGBColor(30, 30, 30)
-    style.paragraph_format.space_after = Pt(5 if name == 'Normal' else 9)
+    style.paragraph_format.space_after = Pt(3 if name == 'Normal' else 8)
     if name == 'Normal': style.paragraph_format.line_spacing = 1.3
     else: style.paragraph_format.keep_with_next = True
 
@@ -83,7 +83,8 @@ def table_from_lines(rows: list[str]):
     data = [row for row in data if not all(re.fullmatch(r':?-{3,}:?', c) for c in row)]
     table = doc.add_table(rows=0, cols=len(data[0]))
     table.autofit = False
-    if len(data[0]) == 3 and data[0][0] == 'Mã': widths = [2.0, 8.0, 6.2]
+    if data[0] == ['Nhóm', 'Bảng đang có trong migration', 'Vai trò']: widths = [3.1, 8.7, 4.4]
+    elif len(data[0]) == 3 and data[0][0] == 'Mã': widths = [2.0, 8.0, 6.2]
     elif len(data[0]) == 3: widths = [4.5, 6.5, 5.2]
     else: widths = [16.2 / len(data[0])] * len(data[0])
     for j, width in enumerate(widths): table.columns[j].width = Cm(width)
