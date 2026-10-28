@@ -33,8 +33,9 @@ function BookDetail({ id }: { id: string }) {
     <Link to="/sach">← Khám phá sách</Link><span aria-hidden="true">/</span><span>Chi tiết tác phẩm</span></nav>
     {book.isPending ? <p role="status" className="py-8">Đang tải tác phẩm…</p> : book.isError ? <CatalogError error={book.error} retry={() => void book.refetch()} /> : <>
       <div className="book-detail-hero">
-        <div className="book-detail-cover-area"><div className="book-detail-cover"><BookCover title={book.data.title} author={book.data.authors[0]?.name} cover={book.data.cover}/></div>
-          <p>{book.data.cover ? 'Ảnh đã được thư viện duyệt' : 'Bìa chữ thay thế · chưa có ảnh được duyệt'}</p></div>
+        <div className="book-detail-cover-area"><div className="book-detail-cover-stage">
+          <div className="book-detail-cover"><BookCover title={book.data.title} author={book.data.authors[0]?.name} cover={book.data.cover}/></div>
+        </div><p>{book.data.cover ? 'Nguồn bìa đã được thư viện duyệt; ảnh lỗi sẽ chuyển sang bìa chữ.' : 'Bìa chữ thay thế · chưa có ảnh được duyệt'}</p></div>
         <div className="book-detail-content">
           <p className="eyebrow">{book.data.catalogSource ? 'Tác phẩm tham khảo' : 'Tác phẩm trong thư viện'}</p><h1 className="book-detail-title">{book.data.title}</h1>
           <p className="book-detail-authors">{book.data.authors.length ? book.data.authors.map((author,i) =>
