@@ -72,27 +72,58 @@ for i,(who,items) in enumerate([
     arrow(d,(450,y+80),(680,y+80))
 save(im,"use-cases.png")
 
-im,d=canvas("Cấu trúc lớp rút gọn", "Record miền và lớp điều phối; Core dùng JDBC, không dùng JPA entity")
-for xy,name,attrs in [
-    ((80,205,520,400),"Book",["id, title", "authors, categories"]),
-    ((735,205,1175,400),"Edition",["id, bookId", "isbn13"]),
-    ((1390,205,1830,400),"BookCopy",["id, editionId", "barcode, status, version"]),
-    ((80,585,610,880),"BookRepository",["JdbcTemplate", "list/search(...)"]),
-    ((695,585,1225,880),"HoldAllocationService",["allocateBook(...) ", "transaction + queue"]),
-    ((1310,585,1840,880),"InventorySessionService",["start/scan/close", "snapshot + resolution"])]: box(d,xy,name,attrs)
-arrow(d,(520,300),(735,300),"1 → n"); arrow(d,(1175,300),(1390,300),"1 → n")
-arrow(d,(940,400),(940,585),"dùng Book / Copy")
+im,d=canvas("Cấu trúc lớp miền Core", "Các record có thật; khóa tham chiếu được ghi trong thuộc tính")
+classes=[
+    ("IdentityUser",["id, email", "status, roles"]),
+    ("Book",["id, title", "authors, categories"]),
+    ("Edition",["id, bookId", "isbn13"]),
+    ("BookCopy",["id, editionId", "barcode, version"]),
+    ("Author",["id, name"]),
+    ("Category",["id, name"]),
+    ("Loan",["readerId, copyId", "active(), overdueAt()"]),
+    ("Hold",["readerId, bookId", "active(), status"]),
+    ("Branch",["id, name"]),
+    ("Shelf",["id, branchId"]),
+    ("InventorySession",["id, branchId", "status"]),
+    ("InventoryEvidence.Anomaly",["snapshot, scan", "current Copy"]),
+]
+for i,(name,attrs) in enumerate(classes):
+    x=70+(i%4)*460; y=190+(i//4)*275
+    box(d,(x,y,x+390,y+205),name,attrs,size=19 if len(name)>23 else 27)
+arrow(d,(920,290),(990,290),"1:n")
+arrow(d,(1380,290),(1450,290),"1:n")
+arrow(d,(460,840),(530,840),"1:n")
+arrow(d,(1380,840),(1450,840),"1:n")
 save(im,"class-diagram.png")
 
-im,d=canvas("ERD Core rút gọn", "Các đường chỉ quan hệ chính; xem migration V1–V31 cho khóa và constraint")
-for xy,title,attrs in [
-    ((80,200,490,405),"books",["id (PK)","title"]),
-    ((750,200,1160,405),"editions",["id (PK)","book_id (FK)"]),
-    ((1420,200,1830,405),"book_copies",["id (PK)","edition_id (FK)","version"]),
-    ((80,650,490,855),"users",["id (PK)","role"]),
-    ((750,650,1160,855),"holds / loans",["user_id (FK)","copy / edition"]),
-    ((1420,650,1830,855),"inventory",["session, snapshot", "scan, anomaly"])]: box(d,xy,title,attrs)
-for a,b in [((490,300),(750,300)),((1160,300),(1420,300)),((490,750),(750,750)),((1160,750),(1420,750)),((1620,405),(1620,650))]: arrow(d,a,b)
+im,d=canvas("ERD Core: quan hệ phục vụ nghiệp vụ", "Mỗi ô là bảng SQL thật; chỉ vẽ một phần khóa để giữ sơ đồ đọc được")
+entities=[
+    ("books",["id PK", "title"]),
+    ("editions",["id PK", "book_id FK"]),
+    ("book_copies",["id PK", "edition_id FK"]),
+    ("catalog_media_references",["edition / author", "approval"]),
+    ("authors",["id PK", "name"]),
+    ("book_authors",["book_id FK", "author_id FK"]),
+    ("categories",["id PK", "name"]),
+    ("book_categories",["book_id FK", "category_id FK"]),
+    ("users",["id PK", "status"]),
+    ("loans",["reader_id FK", "copy_id FK"]),
+    ("holds",["reader_id FK", "book_id FK"]),
+    ("user_ui_preferences",["user_id FK", "revision"]),
+    ("branches",["id PK", "name"]),
+    ("shelves",["branch_id FK", "code"]),
+    ("inventory_sessions",["branch_id FK", "status"]),
+    ("inventory_scans",["session_id FK", "barcode"]),
+]
+for i,(name,attrs) in enumerate(entities):
+    x=70+(i%4)*460; y=175+(i//4)*218
+    box(d,(x,y,x+390,y+175),name,attrs,size=24)
+for a,b in [
+    ((460,260),(530,260)), ((920,260),(990,260)),
+    ((460,480),(530,480)), ((1380,480),(1450,480)),
+    ((460,700),(530,700)),
+    ((460,920),(530,920)), ((1380,920),(1450,920))]:
+    arrow(d,a,b)
 save(im,"erd-core.png")
 
 im,d=canvas("Insight: dữ liệu và tham chiếu", "UUID từ Core là tham chiếu logic, không phải FK xuyên database")

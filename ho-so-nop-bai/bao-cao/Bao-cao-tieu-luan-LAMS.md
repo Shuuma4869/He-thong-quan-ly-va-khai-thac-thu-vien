@@ -154,13 +154,13 @@ Bảng 5. Ma trận truy vết nhu cầu, mã, dữ liệu và kiểm thử.
 
 ## 3.2. Cấu trúc lớp UML
 
-[Hình 3](#fig-3) mô tả record miền và lớp điều phối có thật, gồm `BookRepository.list/search`, `HoldAllocationService.allocateBook` và `InventorySessionService.start/scan/close`. Core dùng `JdbcTemplate` ánh xạ dòng vào record/DTO; repository này không phải JPA entity. Insight dùng Prisma model và Client. Sơ đồ không gán phương thức service vào bảng dữ liệu. Phân biệt này giúp nhìn ra điểm chịu trách nhiệm giữ bất biến: DTO kiểm biên HTTP, service quyết định nghiệp vụ, repository thực hiện SQL trong transaction.
+[Hình 3](#fig-3) mô tả 12 kiểu miền có thật: danh tính, Catalog, Loan, Hold, địa điểm và bằng chứng kiểm kê. Các đường nối chỉ các quan hệ chính; thuộc tính `readerId`, `bookId`, `editionId` và `branchId` cho biết những tham chiếu còn lại. `BookRepository.list/search`, `HoldAllocationService.allocateBook` và `InventorySessionService.start/scan/close` là lớp xử lý bên ngoài hình này, không phải bảng dữ liệu. Core dùng `JdbcTemplate` ánh xạ dòng vào record/DTO, không dùng JPA entity; Insight dùng Prisma model và Client. DTO kiểm biên HTTP, service giữ bất biến, repository thực hiện SQL trong transaction.
 
 ![Hình 3. Cấu trúc lớp và quan hệ miền chính](hinh/class-diagram.png)
 
 ## 3.3. ERD và vòng đời schema
 
-Flyway Core có V1–V31; V31 tạo `user_ui_preferences` với khóa người dùng, revision và JSONB preset. Prisma Insight có migration độc lập cho `metadata_lookups`, `acquisition_recommendations`/`acquisition_decisions`, notices và Inbox. [Hình 4](#fig-4) vẽ các quan hệ cốt lõi từ migration, không đưa bảng dự kiến `search_documents`, `media_assets` hay `system_policies` vào ERD thực thi. [Hình 5](#fig-5) tách bảng Insight và ghi rõ UUID Book/Branch/User không có FK tới Core.
+Flyway Core có V1–V31; V31 tạo `user_ui_preferences` với khóa người dùng, revision và JSONB preset. Prisma Insight có migration độc lập cho `metadata_lookups`, `acquisition_recommendations`/`acquisition_decisions`, notices và Inbox. [Hình 4](#fig-4) vẽ 16 bảng Core tiêu biểu từ migration; nó không thay thế danh sách bảng và constraint đầy đủ ở phụ lục/data dictionary. Các bảng dự kiến `search_documents`, `media_assets` hay `system_policies` không có trong ERD thực thi. [Hình 5](#fig-5) tách bảng Insight và ghi rõ UUID Book/Branch/User không có FK tới Core.
 
 ![Hình 4. ERD rút gọn của Core theo migration](hinh/erd-core.png)
 
@@ -456,6 +456,16 @@ Thiết kế tách tác phẩm, ấn bản và bản vật lý cho phép Catalog
 ## Phụ lục A. Hợp đồng và migration
 
 Đường hợp đồng: `contracts/openapi/core-api.yaml`, `contracts/openapi/insight-api.yaml`. Core migration: `backend/core-service/src/main/resources/db/migration/V1__foundation.sql` đến `V31__ui_preferences.sql`; Insight Prisma: `backend/insight-service/prisma/schema.prisma` và thư mục `migrations/`. Sơ đồ trong Chương 3 chỉ chọn quan hệ phục vụ phân tích; các cột/constraint chính xác xem migration và data dictionary. Không dùng SQL trong báo cáo để thay schema thực.
+
+Bảng 14. Các nhóm bảng Core có trong Flyway tại mốc khảo sát.
+
+| Nhóm | Bảng đang có trong migration | Vai trò |
+|---|---|---|
+| Hạ tầng và danh tính | `system_metadata`, `outbox_events`, `users`, `roles`, `user_roles`, `refresh_tokens`, `account_admin_audit`, `user_ui_preferences` | Version, sự kiện, phiên, quyền, quyết định quản trị và preset giao diện. |
+| Catalog | `authors`, `categories`, `publishers`, `books`, `book_authors`, `book_categories`, `editions`, `catalog_media_references`, `category_aliases`, `catalog_external_sources` | Tác phẩm, phân loại, ấn bản, nguồn và media đã duyệt. |
+| Địa điểm, bản sách và kiểm kê | `branches`, `shelves`, `book_copies`, `inventory_sessions`, `inventory_snapshots`, `inventory_scans`, `inventory_anomalies`, `inventory_resolutions` | Vị trí Copy, snapshot, lượt quét và quyết định xử lý. |
+| Lưu thông và giữ chỗ | `loans`, `circulation_requests`, `copy_state_changes`, `holds`, `hold_changes`, `loan_extensions`, `hold_no_show_decisions` | Giao dịch mượn/trả, hàng chờ và dấu vết quyết định. |
+| Tương tác người đọc | `favorites`, `reviews`, `review_reports`, `review_moderation_audit` | Sách yêu thích, đánh giá và kiểm duyệt. |
 
 ## Phụ lục B. Cách chạy và tái lập kiểm thử
 

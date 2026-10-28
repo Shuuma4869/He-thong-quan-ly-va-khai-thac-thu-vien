@@ -5,7 +5,7 @@
 | [Slide PowerPoint](slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx) | 15 slide 16:9 về bài toán, kiến trúc, nghiệp vụ, kiểm thử local và giới hạn. Slide 12 ghi CI 5/5 tại `1580bf6` và E2E Web/EXE 18 bài mỗi loại. |
 | [Phụ lục kiểm tra phát hành](slide/Phu_luc_kiem_thu_phat_hanh_2026-10-28.pptx) | 3 slide bổ sung kết quả thử local, cài/gỡ Windows và các điều kiện còn chờ; dùng cùng bộ slide chính khi báo cáo. |
 | [Báo cáo nguồn](bao-cao-nguon.md) | Liên kết yêu cầu, UML, wireframe, API, ORM, bảo mật và demo. |
-| [Báo cáo tiểu luận](bao-cao/Bao-cao-tieu-luan-LAMS.pdf) | Bản PDF 37 trang; [DOCX](bao-cao/Bao-cao-tieu-luan-LAMS.docx) để sửa và [Markdown](bao-cao/Bao-cao-tieu-luan-LAMS.md) làm nguồn. Có 29 User Stories (22 yêu cầu gốc, 7 story tổng hợp từ chức năng đã có), 19 hình, 13 bảng, UML, thuật toán, wireframe, ORM/API, kiểm thử, bảo mật và giới hạn. |
+| [Báo cáo tiểu luận](bao-cao/Bao-cao-tieu-luan-LAMS.pdf) | Bản PDF 38 trang; [DOCX](bao-cao/Bao-cao-tieu-luan-LAMS.docx) để sửa và [Markdown](bao-cao/Bao-cao-tieu-luan-LAMS.md) làm nguồn. Có 29 User Stories (22 yêu cầu gốc, 7 story tổng hợp từ chức năng đã có), 19 hình, 14 bảng, UML, thuật toán, wireframe, ORM/API, kiểm thử, bảo mật và giới hạn. |
 | [Đối chiếu rubric](doi-chieu-rubric.md) | Bằng chứng và các điều kiện học thuật còn cần xác nhận. |
 | [Minh chứng giao diện](minh-chung-giao-dien/README.md) | Ảnh web và EXE/WebView2 có nguồn và SHA kiểm chứng. |
 | [Ảnh giao diện PR #31](minh-chung-giao-dien/pr31/README.md) | 13 ảnh gốc từ artifact Web E2E tại `0ef4007` và 2 ảnh trang tĩnh chụp local; không coi là bằng chứng EXE/WebView2. |
