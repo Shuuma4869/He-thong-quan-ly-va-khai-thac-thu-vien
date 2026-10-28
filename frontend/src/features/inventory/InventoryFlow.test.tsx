@@ -107,6 +107,8 @@ it('mã lưu tạm khi mất mạng khóa chốt và retry cùng clientScanId sa
   });
   app(); await screen.findByText(/1 bản trong snapshot/);
   fireEvent.change(screen.getByLabelText('Mã vạch'), { target: { value: 'BC1' } });
+  expect(screen.getByRole('button', { name: 'Ghi nhận scan' })).toBeDisabled();
+  expect(screen.getByText(/Đang offline\. Lưu mã tạm thời/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Lưu mã tạm thời' }));
   expect(await screen.findByText(/1 mã đang chờ/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Chốt phiên' })).toBeDisabled();

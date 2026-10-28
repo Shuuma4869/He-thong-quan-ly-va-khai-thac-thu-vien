@@ -20,7 +20,7 @@ flowchart LR
 
 Core có API mở/đọc phiên, đọc snapshot/scan, nhận scan, finalize/cancel, đọc bất thường và ghi nhận quyết định rà soát. `InventorySessionService` dùng `InventorySessionRepository`, `InventoryQueryService` và detector thuần `AnomalyDetector`. V20 tạo `inventory_sessions`, `inventory_snapshots`, `inventory_scans`, `inventory_anomalies`; V21 thêm `inventory_resolutions`. Không đổi migration cũ và không suy tạo phiên từ dữ liệu đã có.
 
-Giao diện nhân viên tại `/nhan-vien/kiem-ke` dùng API Core để mở phiên, chọn kệ, nhập/quét mã vạch bằng thiết bị hoạt động như bàn phím, chốt/hủy và xem bằng chứng. Camera/PWA và hàng đợi offline chưa có; cần mạng khi quét. Không dùng màn hình này như bằng chứng đã có quét camera hoặc đồng bộ offline.
+Giao diện nhân viên tại `/nhan-vien/kiem-ke` dùng API Core để mở phiên, chọn kệ, nhập mã vạch hoặc nhận mã từ máy quét dạng bàn phím/camera, chốt hoặc hủy phiên và xem bằng chứng. Khi mất mạng, nút gửi trực tiếp bị khóa; nhân viên có thể lưu mã tạm trong bộ nhớ trang rồi chủ động đồng bộ sau khi kết nối trở lại. Chưa có PWA hay lưu hàng đợi bền vững qua lần tải lại trang.
 
 ## Mở phiên và snapshot
 

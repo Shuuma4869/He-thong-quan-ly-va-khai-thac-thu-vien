@@ -65,7 +65,8 @@ function ScanForm({ owner, session, blocked, onPendingChange }: {
   }, []);
   useEffect(() => { if (last && !busy && !uncertain) barcodeInput.current?.focus(); }, [last, busy, uncertain]);
   const submit = async () => {
-    if (blocked || offlineQueue.length || sending.current || (!pending.current && (!barcode.trim() || !shelfId))) return;
+    if (blocked || offlineQueue.length || sending.current || !online
+        || (!pending.current && (!barcode.trim() || !shelfId))) return;
     sending.current = true; onPendingChange(true); setBusy(true); setError(null);
     if (!pending.current) pending.current = { id: crypto.randomUUID(), barcode: barcode.trim(), shelfId };
     try {
@@ -124,8 +125,10 @@ function ScanForm({ owner, session, blocked, onPendingChange }: {
     <form className="flex flex-wrap items-end gap-3 my-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="field grow">Mã vạch<input ref={barcodeInput} autoComplete="off" autoFocus required maxLength={100} value={barcode}
         disabled={blocked || busy || uncertain || syncing} onChange={event => setBarcode(event.target.value)}/></label>
-      <button className="button-primary" type="submit" disabled={blocked || busy || offlineQueue.length > 0 || (!uncertain && (!barcode.trim() || !shelfId))}>
+      <button className="button-primary" type="submit" disabled={blocked || busy || !online || offlineQueue.length > 0
+        || (!uncertain && (!barcode.trim() || !shelfId))}>
         {busy ? 'Đang ghi scan…' : uncertain ? 'Thử lại scan đang chờ' : 'Ghi nhận scan'}</button></form>
+    {!online && !uncertain && <p className="text-sm my-2">Đang offline. Lưu mã tạm thời, rồi kiểm tra và đồng bộ khi có mạng.</p>}
     <div className="flex flex-wrap gap-2">
       <button type="button" className="button-secondary" disabled={blocked || busy || uncertain || syncing || !barcode.trim() || !shelfId || offlineQueue.length >= 20}
         onClick={queueScan}>Lưu mã tạm thời</button>
