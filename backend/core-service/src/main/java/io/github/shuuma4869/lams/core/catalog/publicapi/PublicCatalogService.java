@@ -94,6 +94,7 @@ public class PublicCatalogService {
         if (term.length() < 3 || term.length() > 150) {
             throw invalid("Từ khóa gợi ý phải dài từ 3 đến 150 ký tự.");
         }
+        jdbc.queryForObject("SELECT public.similarity('abc','abc')", Float.class);
         jdbc.queryForObject("SELECT set_config('pg_trgm.similarity_threshold','0.20',true)", String.class);
         return jdbc.query("""
                 WITH q AS (SELECT lower(public.unaccent(?::text)) AS term)

@@ -271,6 +271,7 @@ class PublicCatalogIntegrationTest {
 
     @Test void titleSuggestionsArePublicBoundedAndRejectInvalidTerms() throws Exception {
         UUID target = UUID.randomUUID();
+        jdbc.queryForObject("SELECT public.similarity('abc','abc')", Float.class);
         String originalThreshold = jdbc.queryForObject("SELECT current_setting('pg_trgm.similarity_threshold')", String.class);
         jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Vườn gió mùa thiếc','vườn gió mùa thiếc')", target);
         String path = "/api/v1/public/catalog/books/suggestions";
@@ -283,6 +284,7 @@ class PublicCatalogIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         mvc.perform(get(path).param("query", "ab")).andExpect(status().isUnprocessableEntity());
         mvc.perform(get(path).param("query", "x".repeat(151))).andExpect(status().isUnprocessableEntity());
+        jdbc.queryForObject("SELECT public.similarity('abc','abc')", Float.class);
         assertThat(jdbc.queryForObject("SELECT current_setting('pg_trgm.similarity_threshold')", String.class))
                 .isEqualTo(originalThreshold);
     }
