@@ -233,6 +233,6 @@ for line in lines:
         add_rich(p, stripped)
 flush_table()
 doc.core_properties.title = 'Báo cáo bài tập lớn Hệ thống quản lí và khai thác thư viện LAMS'
-doc.core_properties.subject = 'Bản làm việc tại commit 52606cc'
+doc.core_properties.subject = 'Bản làm việc của PR #31; đối chiếu CI theo SHA trong báo cáo'
 doc.save(OUT)
 print(OUT)

@@ -50,6 +50,24 @@ it('ô tìm nhanh giữ bộ lọc hiện có và đưa từ khóa vào truy v�
       && target.searchParams.get('categoryTerm')==='Kinh dien' && target.searchParams.get('sort')==='relevance';
   })).toBe(true));
 });
+it('khi tìm rỗng, gợi ý nhan đề và cho tìm lại bằng nhan đề đó', async () => {
+  fetchMock.mockImplementation((url:string) => {
+    const target=new URL(url);
+    if (target.pathname.endsWith('/books/suggestions')) return Promise.resolve(Response.json([{id,title:'Vườn gió mùa thiếc'}]));
+    if (target.pathname.endsWith('/public/catalog/books')) {
+      return Promise.resolve(Response.json(target.searchParams.get('query')==='Vườn gió mùa thiếc'?page([book]):page([])));
+    }
+    return Promise.resolve(Response.json(response(url)));
+  });
+  app('/sach?query=Vuon%20gio%20mua%20thiec');
+  expect(await screen.findByText('Chưa có sách phù hợp')).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button',{name:'Vườn gió mùa thiếc'}));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => {
+    const target=new URL(String(url));
+    return target.pathname.endsWith('/public/catalog/books')
+      && target.searchParams.get('query')==='Vườn gió mùa thiếc';
+  })).toBe(true));
+});
 it('Reader lọc bằng tên bí danh, giữ URL và xóa bộ lọc', async () => {
   app(); await screen.findByRole('link',{name:book.title});
   fireEvent.change(screen.getByLabelText('Tên thể loại hoặc bí danh'),{target:{value:'  Truyện trinh thám  '}});

@@ -59,6 +59,13 @@ export function resourcePath(resource: Resource, bookId?: string) {
 export async function getBooks(value: CatalogQuery, signal?: AbortSignal) {
   return z.object({ items: z.array(bookSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books?${catalogParams(value)}`, true, signal));
 }
+export async function getSearchSuggestions(query: string, signal?: AbortSignal) {
+  const term = query.trim();
+  if (term.length < 3 || term.length > 150) throw new Error('Từ khóa gợi ý phải dài từ 3 đến 150 ký tự.');
+  const params = new URLSearchParams({ query: term });
+  return z.array(z.object({ id: z.string().uuid(), title: z.string() })).max(5).parse(
+    await coreApi.get<unknown>(`/public/catalog/books/suggestions?${params}`, true, signal));
+}
 export async function getRecentBooks(signal?: AbortSignal) {
   return z.object({ items: z.array(bookSchema), page: pageSchema }).parse(await coreApi.get<unknown>('/public/catalog/books?sort=updated&size=8', true, signal));
 }

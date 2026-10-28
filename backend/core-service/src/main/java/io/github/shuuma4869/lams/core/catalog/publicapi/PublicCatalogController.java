@@ -27,6 +27,10 @@ public class PublicCatalogController {
             @RequestParam(defaultValue = "title") String sort) {
         return catalog.books(page, size, query, authorId, categoryId, categoryTerm, sort);
     }
+    @GetMapping("/books/suggestions")
+    public List<PublicCatalogService.SearchSuggestion> searchSuggestions(@RequestParam String query) {
+        return catalog.searchSuggestions(query);
+    }
     @GetMapping("/books/batch")
     public List<PublicCatalogService.BookCard> cards(@RequestParam("bookId") List<UUID> bookIds) {
         return catalog.cards(bookIds);

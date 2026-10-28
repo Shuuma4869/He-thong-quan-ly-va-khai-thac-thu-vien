@@ -49,6 +49,34 @@ paths:
         '422': { description: Bộ lọc không hợp lệ }
         '409': { description: Tên Category hoặc Alias nhập nhằng }
         '429': { description: 'Vượt giới hạn tra cứu theo IP, xem Retry-After' }
+  /public/catalog/books/suggestions:
+    get:
+      operationId: suggestPublicBookTitles
+      tags: [PublicCatalog]
+      summary: Gợi ý tối đa năm tựa sách gần với từ khóa
+      description: >-
+        Dùng khi truy vấn không có kết quả và không áp dụng bộ lọc khác. Gợi ý dựa trên
+        độ giống chữ của nhan đề, không phải kết quả tìm kiếm ngữ nghĩa; có thể trả danh sách rỗng.
+        Giới hạn 300 request/phút/IP được dùng chung với Catalog.
+      security: []
+      parameters:
+        - { in: query, name: query, required: true, schema: { type: string, minLength: 3, maxLength: 150 } }
+      responses:
+        '200':
+          description: Tựa sách gần đúng, theo độ giống giảm dần
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 5
+                items:
+                  type: object
+                  required: [id, title]
+                  properties:
+                    id: { type: string, format: uuid }
+                    title: { type: string }
+        '422': { description: Từ khóa gợi ý không hợp lệ }
+        '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/books/batch:
     get:
       operationId: getPublicBookCards

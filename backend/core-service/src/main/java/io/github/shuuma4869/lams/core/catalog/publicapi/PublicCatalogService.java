@@ -27,6 +27,7 @@ public class PublicCatalogService {
     public record Page(int number, int size, long totalElements, long totalPages) {}
     public record Result<T>(List<T> items, Page page) {}
     public record Named(UUID id, String name) {}
+    public record SearchSuggestion(UUID id, String title) {}
     public record Cover(UUID editionId, String imageUrl, String source, String sourceUrl,
                         String license, String licenseUrl, String attribution, Instant approvedAt) {}
     public record DirectoryImage(UUID subjectId, String imageUrl, String source, String sourceUrl,
@@ -85,6 +86,21 @@ public class PublicCatalogService {
     public BookCard book(UUID id) {
         Book book = books.findById(id).orElseThrow(() -> new AuthFailure(404, "Không tìm thấy sách."));
         return card(book, covers(List.of(id)).get(id), ratings(List.of(id)).get(id), sources(List.of(id)).get(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SearchSuggestion> searchSuggestions(String query) {
+        String term = CatalogText.key(query);
+        if (term.length() < 3 || term.length() > 150) {
+            throw invalid("Từ khóa gợi ý phải dài từ 3 đến 150 ký tự.");
+        }
+        jdbc.queryForObject("SELECT set_config('pg_trgm.similarity_threshold','0.20',true)", String.class);
+        return jdbc.query("""
+                WITH q AS (SELECT lower(public.unaccent(?::text)) AS term)
+                SELECT b.id,b.title FROM books b CROSS JOIN q
+                WHERE b.search_title % q.term
+                ORDER BY similarity(b.search_title,q.term) DESC,b.normalized_title,b.id LIMIT 5
+                """, (rs, row) -> new SearchSuggestion(rs.getObject("id", UUID.class), rs.getString("title")), term);
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)

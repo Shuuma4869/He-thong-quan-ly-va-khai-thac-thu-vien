@@ -2,7 +2,7 @@
 
 ## Báo cáo bài tập lớn
 
-**Học phần:** Lập trình hướng đối tượng. **Nhóm:** hai thành viên. Tên, mã sinh viên, lớp, giảng viên và học kỳ cần điền theo hồ sơ học phần đã được xác nhận. Bản này phản ánh mã nguồn trên nhánh `Tuan/core-platform` đến commit `52606cc` ngày 28/10/2026; đây là bản làm việc của PR #31, chưa phải kết quả nghiệm thu trên `main`.
+**Học phần:** Lập trình hướng đối tượng. **Nhóm:** hai thành viên. Tên, mã sinh viên, lớp, giảng viên và học kỳ cần điền theo hồ sơ học phần đã được xác nhận. Bản này mô tả mã nguồn trên nhánh `Tuan/core-platform` ngày 28/10/2026; đây là bản làm việc của PR #31, chưa phải kết quả nghiệm thu trên `main`. Bằng chứng CI có SHA riêng ở Chương 5 và không tự áp dụng cho thay đổi sau SHA đó.
 
 ## Tóm tắt
 
@@ -136,7 +136,7 @@ Web hoặc Tauri gọi API `/api/v1` bằng access JWT trong bộ nhớ phiên. 
 
 Insight dùng Prisma: controller nhận request, guard lấy UUID actor, service gọi repository, repository gọi Prisma Client. Ví dụ lịch sử ISBN sử dụng `create` để ghi `ownerId`, ISBN13, status/provider và thời gian; `findFirst`/`deleteMany` luôn có điều kiện `ownerId`. Danh sách chạy `count` và `findMany` trong transaction `RepeatableRead`, sắp xếp theo `createdAt` rồi `id`. Provider HTTP được gọi ngoài transaction để không giữ khóa database trong thời gian chờ mạng. Replay dùng ISBN cũ để tra nguồn hiện tại, không tự ghi thành Book/Edition.
 
-Core dùng Spring JDBC thay cho ORM entity. Truy vấn Catalog dùng SQL có bind parameter cho từ khóa/UUID và tập sort nằm trong allowlist; count và page của một request dùng `REPEATABLE READ`. Chỉ mục GIN phục vụ full-text/trigram; kết quả xếp theo ISBN đúng, tựa đúng/tiền tố, full-text, tác giả, phần tên và tên gần đúng. Hai request ở hai trang khác thời điểm không mặc nhiên cùng snapshot. Query kiểm kê đọc snapshot đã lưu, không ghép các trang Copy sống rồi coi đó là một ảnh chụp thống nhất.
+Core dùng Spring JDBC thay cho ORM entity. Truy vấn Catalog dùng SQL có bind parameter cho từ khóa/UUID và tập sort nằm trong allowlist; count và page của một request dùng `REPEATABLE READ`. Chỉ mục GIN phục vụ full-text/trigram; kết quả xếp theo ISBN đúng, tựa đúng/tiền tố, full-text, tác giả, phần tên và tên gần đúng. Khi không có kết quả và không kèm bộ lọc, giao diện có thể hiển thị tối đa năm nhan đề gần đúng để người đọc tự chọn tìm lại; đây là so khớp chữ, không phải hiểu ngữ nghĩa. Hai request ở hai trang khác thời điểm không mặc nhiên cùng snapshot. Query kiểm kê đọc snapshot đã lưu, không ghép các trang Copy sống rồi coi đó là một ảnh chụp thống nhất.
 
 Một ví dụ giản lược của phép đọc trang trong Core là `SELECT id FROM matches ORDER BY score DESC, id LIMIT ? OFFSET ?`. `matches` được tạo từ truy vấn tìm kiếm có điều kiện và các giá trị `?` là tham số JDBC; mã không nối trực tiếp từ khóa người dùng vào SQL. Dữ liệu thẻ sách được lấy tiếp theo tập ID của trang, gồm ảnh đã duyệt, điểm trung bình của review hiển thị và nguồn Catalog. Tên cột sort được chọn từ ba giá trị cố định `title`, `updated`, `relevance`, không lấy một chuỗi tùy ý từ request. Cách này vẫn cần đo tải trên dữ liệu lớn, vì kết hợp nhiều bảng và phép xếp hạng có thể tăng thời gian đọc.
 

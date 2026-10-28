@@ -269,6 +269,24 @@ class PublicCatalogIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(exact.toString()));
     }
 
+    @Test void titleSuggestionsArePublicBoundedAndRejectInvalidTerms() throws Exception {
+        UUID target = UUID.randomUUID();
+        String originalThreshold = jdbc.queryForObject("SELECT current_setting('pg_trgm.similarity_threshold')", String.class);
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Vườn gió mùa thiếc','vườn gió mùa thiếc')", target);
+        String path = "/api/v1/public/catalog/books/suggestions";
+        mvc.perform(get(path).param("query", "Vuon gio mua thiec"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(target.toString()))
+                .andExpect(jsonPath("$[0].title").value("Vườn gió mùa thiếc"))
+                .andExpect(jsonPath("$[5]").doesNotExist());
+        mvc.perform(get(path).param("query", "zzzzkhongcosachnay2026"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get(path).param("query", "ab")).andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(path).param("query", "x".repeat(151))).andExpect(status().isUnprocessableEntity());
+        assertThat(jdbc.queryForObject("SELECT current_setting('pg_trgm.similarity_threshold')", String.class))
+                .isEqualTo(originalThreshold);
+    }
+
     @Test void categoryAliasFilterUsesOneCanonicalCategoryAndRejectsAmbiguity() throws Exception {
         UUID science = UUID.randomUUID(), literature = UUID.randomUUID();
         UUID scienceBook = UUID.randomUUID(), literatureBook = UUID.randomUUID();

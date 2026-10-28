@@ -1,0 +1,30 @@
+{
+  "snapshotSha256": "3c0acb2e27ba954f5065beb3ea22d679912f9f7d2e2ad60089912a2527c07d53",
+  "cases": [
+    { "name": "Alice: tên đầy đủ", "query": "Alice's Adventures in Wonderland", "sourceId": "11", "targetTitle": "Alice's Adventures in Wonderland" },
+    { "name": "Alice: tiền tố", "query": "Alice's Adventures", "sourceId": "11", "targetTitle": "Alice's Adventures in Wonderland" },
+    { "name": "Alice: gõ gần đúng", "query": "Alices Adventurs", "sourceId": "11", "targetTitle": "Alice's Adventures in Wonderland" },
+    { "name": "Les Misérables: không dấu", "query": "Les Miserables", "sourceId": "135", "targetTitle": "Les Misérables" },
+    { "name": "Les Misérables: có dấu", "query": "Les Misérables", "sourceId": "135", "targetTitle": "Les Misérables" },
+    { "name": "Dracula: tác giả", "query": "Bram Stoker", "sourceId": "345", "targetTitle": "Dracula" },
+    { "name": "Dracula: tên đầy đủ", "query": "Dracula", "sourceId": "345", "targetTitle": "Dracula" },
+    { "name": "Moby-Dick: tên rút gọn", "query": "Moby Dick", "sourceId": "15", "targetTitle": "Moby-Dick; or, The Whale" },
+    { "name": "Pride and Prejudice: tên đầy đủ", "query": "Pride and Prejudice", "sourceId": "1342", "targetTitle": "Pride and Prejudice" },
+    { "name": "Frankenstein: tên rút gọn", "query": "Frankenstein", "sourceId": "84", "targetTitle": "Frankenstein; or, The modern Prometheus" },
+    { "name": "War and Peace: tên đầy đủ", "query": "War and Peace", "sourceId": "2600", "targetTitle": "War and Peace" },
+    { "name": "Treasure Island: tên đầy đủ", "query": "Treasure Island", "sourceId": "120", "targetTitle": "Treasure Island" },
+    { "name": "Oliver Twist: tên đầy đủ", "query": "Oliver Twist", "sourceId": "730", "targetTitle": "Oliver Twist" },
+    { "name": "Wuthering Heights: tên đầy đủ", "query": "Wuthering Heights", "sourceId": "768", "targetTitle": "Wuthering Heights" },
+    { "name": "Wuthering Heights: gõ gần đúng", "query": "Wuthering Hights", "sourceId": "768", "targetTitle": "Wuthering Heights" },
+    { "name": "Crime and Punishment: tên đầy đủ", "query": "Crime and Punishment", "sourceId": "2554", "targetTitle": "Crime and Punishment" },
+    { "name": "Don Quixote: tên đầy đủ", "query": "Don Quixote", "sourceId": "996", "targetTitle": "Don Quixote" },
+    { "name": "The Time Machine: tên đầy đủ", "query": "The Time Machine", "sourceId": "35", "targetTitle": "The Time Machine" },
+    { "name": "Huckleberry Finn: tên rút gọn", "query": "Huckleberry Finn", "sourceId": "76", "targetTitle": "Adventures of Huckleberry Finn" },
+    { "name": "Heart of Darkness: tên đầy đủ", "query": "Heart of Darkness", "sourceId": "219", "targetTitle": "Heart of Darkness" },
+    { "name": "Great Expectations: tên đầy đủ", "query": "Great Expectations", "sourceId": "1400", "targetTitle": "Great Expectations" },
+    { "name": "The Scarlet Letter: tên đầy đủ", "query": "The Scarlet Letter", "sourceId": "33", "targetTitle": "The Scarlet Letter" },
+    { "name": "The Picture of Dorian Gray: tên rút gọn", "query": "Dorian Gray", "sourceId": "174", "targetTitle": "The Picture of Dorian Gray" },
+    { "name": "The war of the worlds: tên đầy đủ", "query": "The war of the worlds", "sourceId": "36", "targetTitle": "The war of the worlds" },
+    { "name": "Jane Eyre: tên rút gọn", "query": "Jane Eyre", "sourceId": "1260", "targetTitle": "Jane Eyre: An Autobiography" }
+  ]
+}

@@ -9,7 +9,7 @@ if (Test-Path -LiteralPath $envPath) {
 
 Push-Location $projectRoot
 try {
-    Invoke-LamsNative 'node' @('--test', '.\scripts\demo-catalog.test.mjs', '.\scripts\gutenberg-csv.test.mjs') 'Kiểm thử dữ liệu demo thất bại'
+    Invoke-LamsNative 'node' @('--test', '.\scripts\demo-catalog.test.mjs', '.\scripts\gutenberg-csv.test.mjs', '.\scripts\catalog-relevance-fixture.test.mjs', '.\scripts\catalog-relevance-metrics.test.mjs') 'Kiểm thử dữ liệu demo thất bại'
 } finally { Pop-Location }
 
 Push-Location "$projectRoot/backend/core-service"
