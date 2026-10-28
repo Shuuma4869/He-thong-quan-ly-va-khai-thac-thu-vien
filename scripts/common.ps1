@@ -98,7 +98,7 @@ function Invoke-LamsNative {
 
 function Test-LamsTcpPort {
     param(
-        [string]$HostName = 'localhost',
+        [string]$HostName = '127.0.0.1',
         [Parameter(Mandatory = $true)][int]$Port,
         [int]$TimeoutMilliseconds = 500
     )
