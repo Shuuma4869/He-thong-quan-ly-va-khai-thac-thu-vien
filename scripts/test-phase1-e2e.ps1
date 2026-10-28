@@ -67,7 +67,7 @@ try {
     }
     Invoke-LamsNative 'docker' @('run', '-d', '--name', $container, '--label', "lams.phase1-e2e=$runId",
         '-e', 'POSTGRES_USER=lams', '-e', 'POSTGRES_PASSWORD', '-e', 'POSTGRES_DB=lams_core',
-        '-p', '127.0.0.1::5432', 'postgres:17.6-alpine') 'Không tạo được database kiểm thử'
+        '-p', '127.0.0.1::5432', 'postgres:17.11-alpine') 'Không tạo được database kiểm thử'
     $created = $true
     $binding = & docker port $container 5432/tcp
     if ($LASTEXITCODE -ne 0 -or $binding -notmatch '^127\.0\.0\.1:(\d+)$') { throw 'Port database không đúng loopback.' }

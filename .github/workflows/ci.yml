@@ -58,10 +58,17 @@ jobs:
         working-directory: frontend/src-tauri
       - run: npm run desktop:build
         working-directory: frontend
+      - name: Ghi SHA-256 của bộ cài Windows
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -LiteralPath 'frontend/src-tauri/target/release/bundle/nsis' -Filter '*-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Không tìm thấy bộ cài NSIS.' }
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content -LiteralPath "$($installer.FullName).sha256" -Encoding Ascii
       - uses: actions/upload-artifact@v4
         with:
           name: lams-windows-x64
-          path: frontend/src-tauri/target/release/bundle/nsis/*-setup.exe
+          path: frontend/src-tauri/target/release/bundle/nsis/*-setup.exe*
           if-no-files-found: error
           retention-days: 14
   core:

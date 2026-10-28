@@ -39,13 +39,36 @@ const percentile = (sorted, fraction) => sorted[Math.ceil(sorted.length * fracti
 for (const [label, paths] of cases) {
   await sample(paths);
   const durations = [];
+  let measuredMs = 0;
   let totals;
   for (let attempt = 0; attempt < 20; attempt++) {
     const result = await sample(paths);
     durations.push(result.ms);
+    measuredMs += result.ms;
     totals = result.totals;
   }
   durations.sort((a, b) => a - b);
   process.stdout.write(`${label}: total=${totals.join('/')} p50=${percentile(durations, .5).toFixed(1)} ms `
-    + `p95=${percentile(durations, .95).toFixed(1)} ms max=${durations.at(-1).toFixed(1)} ms\n`);
+    + `p95=${percentile(durations, .95).toFixed(1)} ms max=${durations.at(-1).toFixed(1)} ms `
+    + `rps=${(20 * paths.length * 1000 / measuredMs).toFixed(1)} errors=0\n`);
 }
+
+const firstPage = await fetch(base + books({ sort: 'title', size: '1' }), { signal: AbortSignal.timeout(20_000) });
+if (!firstPage.ok) throw new Error(`Không chọn được Book detail: HTTP ${firstPage.status}`);
+const bookId = (await firstPage.json()).items[0]?.id;
+if (!bookId) throw new Error('Catalog không có Book để đo detail.');
+const detailTimes = [];
+const detailPath = `/api/v1/public/catalog/books/${encodeURIComponent(bookId)}`;
+async function detail() {
+  const started = performance.now();
+  const response = await fetch(base + detailPath, { signal: AbortSignal.timeout(20_000) });
+  if (!response.ok || (await response.json()).id !== bookId) throw new Error('Book detail không khớp.');
+  return performance.now() - started;
+}
+await detail();
+for (let attempt = 0; attempt < 20; attempt++) detailTimes.push(await detail());
+const detailTotalMs = detailTimes.reduce((sum, value) => sum + value, 0);
+detailTimes.sort((a, b) => a - b);
+process.stdout.write(`Book detail: p50=${percentile(detailTimes, .5).toFixed(1)} ms `
+  + `p95=${percentile(detailTimes, .95).toFixed(1)} ms `
+  + `rps=${(20 * 1000 / detailTotalMs).toFixed(1)} errors=0\n`);

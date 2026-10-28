@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks';
 const url = 'http://127.0.0.1:8080/api/v1/public/catalog/books?query=adventures&sort=relevance&size=20';
 const times = [];
 const waves = [];
+const wallStart = performance.now();
 for (let wave = 0; wave < 20; wave++) {
   const start = performance.now();
   const results = await Promise.all(Array.from({ length: 4 }, async () => {
@@ -19,4 +20,4 @@ for (let wave = 0; wave < 20; wave++) {
 const percentile = (values, fraction) => values.sort((a, b) => a - b)[Math.ceil(values.length * fraction) - 1].toFixed(1);
 process.stdout.write(`4 request song song × 20 lượt: request p50=${percentile(times, .5)} ms, `
   + `p95=${percentile(times, .95)} ms; lượt p50=${percentile(waves, .5)} ms, `
-  + `p95=${percentile(waves, .95)} ms\n`);
+  + `p95=${percentile(waves, .95)} ms; rps=${(times.length * 1000 / (performance.now() - wallStart)).toFixed(1)} errors=0\n`);

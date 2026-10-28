@@ -648,7 +648,7 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn m
   const categoryShelf = page.getByRole('region', { name: 'Sách theo thể loại' });
   await categoryShelf.getByRole('button', { name: category.name, exact: true }).click();
   await expect(categoryShelf.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
-  for (const width of [390, 768, 1024, 1440]) {
+  for (const width of [390, 768, 1024, 1366, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -659,7 +659,7 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn m
   await expect(page).toHaveURL(new RegExp(`/sach\\?query=${suffix}`));
   await expect(page.getByRole('heading', { name: 'Khám phá sách' })).toBeVisible();
   await expect(page.getByRole('link', { name: `Xem sách ${book.title}` })).toBeVisible();
-  for (const width of [390, 768, 1024, 1440]) {
+  for (const width of [390, 768, 1024, 1366, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

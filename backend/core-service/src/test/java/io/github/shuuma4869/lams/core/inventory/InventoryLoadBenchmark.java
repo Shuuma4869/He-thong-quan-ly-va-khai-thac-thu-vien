@@ -1,7 +1,9 @@
 package io.github.shuuma4869.lams.core.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import io.github.shuuma4869.lams.core.inventory.audit.api.InventoryRequests;
 import io.github.shuuma4869.lams.core.inventory.audit.application.InventorySessionService;
 import java.util.Arrays;
@@ -24,7 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 class InventoryLoadBenchmark {
-    @Container static final PostgreSQLContainer<?> DB = new PostgreSQLContainer<>("postgres:17.6-alpine");
+    @Container static final PostgreSQLContainer<?> DB = new PostgreSQLContainer<>("postgres:17.11-alpine");
 
     @DynamicPropertySource static void database(DynamicPropertyRegistry properties) {
         properties.add("spring.datasource.url", DB::getJdbcUrl);
@@ -90,6 +92,57 @@ class InventoryLoadBenchmark {
             openMs, scanTotalNs / 1_000_000.0, scanMs[49] / 1_000_000.0, scanMs[94] / 1_000_000.0,
             replayMs, finalizeMs, missing, heapBefore / 1_048_576.0, heapAfter / 1_048_576.0,
             sampledHeapMax / 1_048_576.0);
+    }
+
+    @Test void oneThousandCopiesWithMoreScansAndOverLimitBoundary() {
+        UUID actor = UUID.randomUUID(), branch = UUID.randomUUID(), shelf = UUID.randomUUID();
+        UUID book = UUID.randomUUID(), edition = UUID.randomUUID();
+        String code = actor.toString().substring(0, 20);
+        String prefix = UUID.randomUUID() + "-";
+        jdbc.update("INSERT INTO users(id,member_code,email,email_normalized,full_name,password_hash,status,created_at,updated_at) VALUES (?,?,?,?,'Người kiểm thử','test-only','ACTIVE',now(),now())",
+            actor, code, actor + "@test.local", actor + "@test.local");
+        jdbc.update("INSERT INTO user_roles VALUES (?,'LIBRARIAN')", actor);
+        jdbc.update("INSERT INTO branches(id,code,name) VALUES (?,?,'Chi nhánh thử tải')", branch, code);
+        jdbc.update("INSERT INTO shelves(id,branch_id,code,label) VALUES (?,?,?,'Kệ thử tải')", shelf, branch, code);
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Sách thử tải','sach thu tai')", book);
+        jdbc.update("INSERT INTO editions(id,book_id) VALUES (?,?)", edition, book);
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status) SELECT gen_random_uuid(),?,?||g,?,'AVAILABLE' FROM generate_series(1,1000) g",
+            edition, prefix, shelf);
+
+        long started = System.nanoTime();
+        var session = service.start(actor, new InventoryRequests.Start(UUID.randomUUID(), branch, shelf));
+        long openMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        assertThat(session.snapshotCount()).isEqualTo(1_000);
+        long[] scanMs = new long[250];
+        for (int i = 0; i < scanMs.length; i++) {
+            var scan = new InventoryRequests.Scan(UUID.randomUUID(), prefix + (i + 1), shelf, null);
+            started = System.nanoTime();
+            service.scan(actor, session.id(), scan);
+            scanMs[i] = System.nanoTime() - started;
+        }
+        started = System.nanoTime();
+        var closed = service.close(actor, session.id(), new InventoryRequests.Close(UUID.randomUUID(), 250L, null), false);
+        long finalizeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        assertThat(closed.status()).isEqualTo("FINALIZED");
+        int missing = jdbc.queryForObject("SELECT count(*) FROM inventory_anomalies WHERE session_id=? AND kind='EXPECTED_BUT_MISSING'",
+            Integer.class, session.id());
+        assertThat(missing).isEqualTo(750);
+        Arrays.sort(scanMs);
+        System.out.printf(Locale.ROOT, "INVENTORY_LOAD copies=1000 scans=250 open_ms=%d "
+                + "scan_p50_ms=%.1f scan_p95_ms=%.1f finalize_ms=%d missing=%d%n",
+            openMs, scanMs[124] / 1_000_000.0, scanMs[237] / 1_000_000.0, finalizeMs, missing);
+
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status) SELECT gen_random_uuid(),?,?||g,?,'AVAILABLE' FROM generate_series(1001,5001) g",
+            edition, prefix, shelf);
+        var overLimit = new InventoryRequests.Start(UUID.randomUUID(), branch, shelf);
+        started = System.nanoTime();
+        assertThatThrownBy(() -> service.start(actor, overLimit)).isInstanceOf(AuthFailure.class)
+            .satisfies(error -> assertThat(((AuthFailure) error).status()).isEqualTo(422));
+        long rejectMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM inventory_sessions WHERE branch_id=?", Integer.class, branch)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM circulation_requests WHERE actor_id=? AND request_id=?", Integer.class,
+            actor, overLimit.requestId())).isZero();
+        System.out.printf(Locale.ROOT, "INVENTORY_LIMIT copies=5001 reject_ms=%d status=422 no_partial_session=true%n", rejectMs);
     }
 
     private long heapUsed() {

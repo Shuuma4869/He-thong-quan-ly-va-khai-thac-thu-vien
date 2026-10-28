@@ -93,6 +93,10 @@ python .\scripts\validate-openapi.py
 
 `check-quality.ps1` chạy Core `clean verify`, Prisma, Insight test/integration/build, frontend typecheck/lint/test/build và kiểm Compose. OpenAPI validator, E2E web/desktop và kiểm thử bảo mật được chạy riêng theo [pre-push gate](tai-lieu/08-van-hanh/pre-push-gate.md). Kết quả kiểm thử cần gắn với đúng commit; build thành công không thay bài E2E trên EXE.
 
+[Runbook sao lưu và khôi phục](tai-lieu/08-van-hanh/sao-luu-khoi-phuc.md) mô tả cả hai database, diễn tập restore cô lập và giới hạn nhất quán xuyên dịch vụ.
+[Vòng đời dữ liệu](tai-lieu/03-du-lieu/quan-tri-vong-doi-du-lieu.md) ghi dữ liệu nào cần đối soát và những quyết định lưu giữ còn chờ đơn vị vận hành.
+[Số liệu hiệu năng](tai-lieu/07-kiem-thu/hieu-nang.md) tách phép đo local khỏi SLA triển khai.
+
 ## Ứng dụng Windows và bộ cài
 
 ```powershell
@@ -105,6 +109,7 @@ Lệnh build tạo EXE và gói cài trong `frontend/src-tauri/target/release/`.
 ## Demo và hồ sơ học phần
 
 [Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
+[Phụ lục kiểm tra phát hành](ho-so-nop-bai/slide/Phu_luc_kiem_thu_phat_hanh_2026-10-28.pptx) bổ sung số liệu local và điều kiện còn chờ, không thay SHA đã ghi trên slide chính.
 
 ## Giới hạn hiện tại
 
