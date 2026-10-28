@@ -47,7 +47,7 @@ Luồng chính: **giao diện → Core/Insight → PostgreSQL**. Insight không 
 | `contracts/` | OpenAPI và AsyncAPI |
 | `infra/`, `scripts/` | Hạ tầng và lệnh cài/chạy/kiểm tra |
 | `tai-lieu/` | Yêu cầu, kiến trúc, nghiệp vụ và vận hành |
-| `ho-so-nop-bai/` | Báo cáo nguồn, rubric và slide |
+| `ho-so-nop-bai/` | Báo cáo tiểu luận DOCX/PDF, báo cáo nguồn, rubric và slide |
 
 ## Chạy trên Windows
 
@@ -111,7 +111,7 @@ Lệnh build tạo EXE và gói cài trong `frontend/src-tauri/target/release/`.
 
 ## Demo và hồ sơ học phần
 
-[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
+[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo tiểu luận](ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.pdf), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
 [Phụ lục kiểm tra phát hành](ho-so-nop-bai/slide/Phu_luc_kiem_thu_phat_hanh_2026-10-28.pptx) bổ sung số liệu local và điều kiện còn chờ, không thay SHA đã ghi trên slide chính.
 
 ## Giới hạn hiện tại
