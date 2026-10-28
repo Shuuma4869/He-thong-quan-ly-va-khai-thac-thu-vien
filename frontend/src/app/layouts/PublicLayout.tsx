@@ -34,8 +34,9 @@ export function PublicLayout() {
         </nav>
         <div className="landing-actions">
           {user ? <><Link className="landing-user-name" to="/ho-so">{user.fullName} · {user.memberCode}</Link>
+            <Link className="landing-sign-in" to="/cai-dat/giao-dien">Giao diện</Link>
             <button type="button" className="landing-sign-in" onClick={() => void signOut()}>Đăng xuất</button></>
-            : <><Link className="landing-sign-in" to="/dang-nhap">Đăng nhập</Link>
+            : <><Link className="landing-sign-in" to="/cai-dat/giao-dien">Giao diện</Link><Link className="landing-sign-in" to="/dang-nhap">Đăng nhập</Link>
               <Link className="button-primary" to="/dang-ky">Đăng ký <ArrowRight size={16}/></Link></>}
         </div>
         <button ref={menuButton} type="button" className="landing-menu-toggle" aria-label={open ? 'Đóng menu' : 'Mở menu'}
@@ -46,6 +47,7 @@ export function PublicLayout() {
       {open && <nav id="landing-mobile-menu" className="landing-mobile-menu" aria-label="Điều hướng di động">
         <NavLink to="/" end>Trang chủ</NavLink><NavLink to="/sach">Khám phá sách</NavLink>
         <Link to="/#the-loai">Thể loại</Link>
+        <Link to="/cai-dat/giao-dien">Giao diện</Link>
         {user ? <><Link to="/thu-vien-cua-toi">Thư viện của tôi</Link><Link to="/ho-so">Hồ sơ của tôi</Link>
           <button type="button" onClick={() => void signOut()}>Đăng xuất</button></>
           : <><Link to="/dang-nhap">Đăng nhập</Link><Link to="/dang-ky">Đăng ký</Link></>}

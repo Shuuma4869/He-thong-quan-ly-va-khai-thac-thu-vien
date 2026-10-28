@@ -10,6 +10,7 @@ import { ReaderHomePage } from '../../features/discovery/ReaderHomePage';
 import { StaffDashboardPage } from '../../features/analytics/StaffDashboardPage';
 import { NotFoundPage } from '../../shared/components/NotFoundPage';
 import { ProfilePage } from '../../features/profile/ProfilePage';
+import { AppearancePage } from '../../features/appearance/AppearancePage';
 import { CatalogPage } from '../../features/catalog/CatalogPage';
 import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
@@ -40,6 +41,7 @@ export function AppRouter() {
         <Route index element={<ReaderHomePage />} />
       </Route>
       <Route element={<ReaderLayout />}>
+        <Route path="cai-dat/giao-dien" element={<AppearancePage />} />
         <Route path="sach" element={<CatalogPage />} />
         <Route path="sach/:bookId" element={<BookDetailPage />} />
         <Route path="tac-gia" element={<DirectoryPage kind="authors" />} />

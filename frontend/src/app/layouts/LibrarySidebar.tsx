@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { BarChart3, BookCopy, BookOpen, ChevronLeft, ChevronRight, ClipboardList, Heart, House, LibraryBig, Lightbulb,
+import { useEffect, useRef } from 'react';
+import { BarChart3, BookCopy, BookOpen, ChevronLeft, ChevronRight, ClipboardList, Heart, House, LibraryBig, Lightbulb, SlidersHorizontal,
   LogIn, Star, Bell, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
+import { useAppearance } from '../../features/appearance/appearance-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
 import { sidebarItemActive } from './sidebarItemActive';
 
@@ -31,17 +32,14 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
   mode: 'reader' | 'staff'; open: boolean; onClose: () => void; trigger: React.RefObject<HTMLButtonElement | null>;
 }) {
   const { user } = useAuth();
+  const appearance = useAppearance();
   const location = useLocation();
   const panel = useRef<HTMLElement>(null);
   const previousLocation = useRef(location.pathname + location.hash);
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return window.localStorage.getItem('lams-sidebar-collapsed') === 'true'; } catch { return false; }
-  });
-  const toggle = () => setCollapsed(value => {
-    try { window.localStorage.setItem('lams-sidebar-collapsed', String(!value)); } catch { /* Private storage may be unavailable. */ }
-    return !value;
-  });
-  const groups = mode === 'staff' ? (user?.roles.includes('ADMIN') ? staffGroups.map(group =>
+  const collapsed = appearance.values.sidebarState === 'collapsed';
+  const toggle = () => void appearance.save({ ...appearance.values,
+    sidebarState: collapsed ? 'expanded' : 'collapsed' }).catch(() => {});
+  const baseGroups = mode === 'staff' ? (user?.roles.includes('ADMIN') ? staffGroups.map(group =>
     group.title === 'Danh mục & tài khoản' ? { ...group, items: [...group.items,
       { label: 'Quản trị tài khoản', to: '/nhan-vien/tai-khoan', icon: Users },
       { label: 'Báo cáo đánh giá', to: '/nhan-vien/bao-cao-danh-gia', icon: Star }] } : group) : staffGroups) : [
@@ -78,6 +76,7 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); prior?.focus(); };
   }, [open, onClose, trigger]);
+  const groups = [...baseGroups, { title: 'Tùy chỉnh', items: [{ label: 'Giao diện', to: '/cai-dat/giao-dien', icon: SlidersHorizontal }] }];
   const contents = (compact: boolean) => <>
     <div className="library-sidebar-brand"><Link to="/" aria-label="LAMS — Trang chủ"><BrandLogo variant="compact"/></Link>
       <button type="button" className="library-sidebar-close" onClick={onClose} aria-label="Đóng menu"><X size={20}/></button></div>

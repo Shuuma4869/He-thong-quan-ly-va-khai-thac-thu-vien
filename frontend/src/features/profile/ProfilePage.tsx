@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, KeyRound, Mail, ShieldCheck, Star, UserRound } from 'lucide-react';
+import { BookOpen, Heart, KeyRound, Mail, ShieldCheck, SlidersHorizontal, Star, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/auth-context';
 import { MemberRequestError } from '../members/MemberRequestError';
 import { statusLabels } from '../members/member-api';
@@ -96,7 +96,8 @@ export function ProfilePage() {
             {reliability.isSuccess && <p className="account-help">Giữ chỗ hết hạn trong {Math.round((new Date(reliability.data.to).getTime() - new Date(reliability.data.from).getTime()) / 86_400_000)} ngày: {reliability.data.unreviewed} lần chưa rà soát, {reliability.data.confirmed} lần đã xác nhận, {reliability.data.excused} lần được miễn trừ. Chính sách hiện không tự hạn chế tài khoản.</p>}
             <div className="account-shortcuts"><Link to="/thu-vien-cua-toi#sach-yeu-thich"><Heart size={19}/> Sách yêu thích →</Link>
               <Link to="/thu-vien-cua-toi#danh-gia"><Star size={19}/> Đánh giá của tôi →</Link>
-              <Link to="/muon-va-giu-cho"><BookOpen size={19}/> Mượn và giữ chỗ →</Link></div>
+              <Link to="/muon-va-giu-cho"><BookOpen size={19}/> Mượn và giữ chỗ →</Link>
+              <Link to="/cai-dat/giao-dien"><SlidersHorizontal size={19}/> Cài đặt giao diện →</Link></div>
           </section>
         </div>}
   </section>;

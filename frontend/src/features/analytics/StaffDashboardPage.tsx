@@ -3,11 +3,13 @@ import { BookOpen, Boxes, ClipboardList, ArrowUpRight, CircleCheck, Search } fro
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../auth/auth-context';
+import { useAppearance } from '../appearance/appearance-context';
 import { getCatalogPage } from '../catalog/catalog-api';
 import { listSessions } from '../inventory/inventory-api';
 
 export function StaffDashboardPage() {
   const { user } = useAuth();
+  const { values } = useAppearance();
   const owner = user?.id;
   const books = useQuery({ queryKey: ['staff-dashboard', owner, 'books'],
     queryFn: ({ signal }) => getCatalogPage('books', 0, signal), enabled: !!owner, retry: false });
@@ -20,16 +22,16 @@ export function StaffDashboardPage() {
       <h1 className="page-title">Bảng điều khiển</h1>
       <p>Số liệu lấy trực tiếp từ danh mục và phiên kiểm kê hiện tại. Tải lại trang để xem thay đổi mới nhất.</p></div>
       <BookOpen size={95} strokeWidth={1} aria-hidden="true"/></header>
-    <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    {values.widgets.includes('overview') && <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <Metric title="Tác phẩm trong danh mục" href="/nhan-vien/danh-muc" icon={<BookOpen aria-hidden="true" />}
         value={books.data?.page.totalElements} pending={books.isPending} error={books.isError} retry={() => void books.refetch()} />
       <Metric title="Bản sách đã đăng ký" href="/nhan-vien/danh-muc" icon={<Boxes aria-hidden="true" />}
         value={copies.data?.page.totalElements} pending={copies.isPending} error={copies.isError} retry={() => void copies.refetch()} />
       <Metric title="Phiên kiểm kê đang mở" href="/nhan-vien/kiem-ke" icon={<ClipboardList aria-hidden="true" />}
         value={sessions.data?.page.totalElements} pending={sessions.isPending} error={sessions.isError} retry={() => void sessions.refetch()} />
-    </div>
+    </div>}
     <div className="staff-dashboard-panels">
-      <section className="editorial-card" aria-labelledby="staff-open-sessions">
+      {values.widgets.includes('inventory') && <section className="editorial-card" aria-labelledby="staff-open-sessions">
         <div className="staff-panel-heading"><div><p className="eyebrow">Theo dõi hôm nay</p><h2 id="staff-open-sessions" className="section-title">Phiên kiểm kê đang mở</h2></div>
           <Link className="text-link" to="/nhan-vien/kiem-ke">Xem tất cả <ArrowUpRight size={16}/></Link></div>
         {sessions.isPending ? <p role="status" className="mt-5">Đang tải phiên kiểm kê…</p>
@@ -39,16 +41,22 @@ export function StaffDashboardPage() {
                 <small>{item.scanCount.toLocaleString('vi-VN')}/{item.snapshotCount.toLocaleString('vi-VN')} lượt quét · Mở {new Date(item.openedAt).toLocaleDateString('vi-VN')}</small></div>
                 <Link to={`/nhan-vien/kiem-ke/${item.id}`} aria-label={`Mở phiên ${item.id.slice(0, 8)}`}><ArrowUpRight size={19}/></Link></li>)}</ul>
               : <div className="staff-empty-session"><CircleCheck size={23}/><p>Hiện không có phiên kiểm kê nào đang mở.</p></div>}
-      </section>
-      <section className="editorial-card" aria-labelledby="staff-quick-actions">
+      </section>}
+      {values.widgets.includes('circulation') && <section className="editorial-card" aria-labelledby="staff-quick-actions">
         <div className="staff-panel-heading"><div><p className="eyebrow">Đi nhanh tới công việc</p><h2 id="staff-quick-actions" className="section-title">Việc thường dùng</h2></div></div>
         <div className="staff-quick-links">
           <Link to="/nhan-vien/danh-muc"><BookOpen size={19}/> Quản lý danh mục <ArrowUpRight size={16}/></Link>
           <Link to="/nhan-vien/luu-thong"><Search size={19}/> Mượn và trả sách <ArrowUpRight size={16}/></Link>
-          <Link to="/nhan-vien/kiem-ke"><ClipboardList size={19}/> Kiểm kê <ArrowUpRight size={16}/></Link>
           <Link to="/nhan-vien/bao-cao-luu-thong"><Boxes size={19}/> Báo cáo lưu thông <ArrowUpRight size={16}/></Link>
         </div>
-      </section>
+      </section>}
+      {values.widgets.includes('acquisition') && <section className="editorial-card" aria-labelledby="staff-acquisition">
+        <div className="staff-panel-heading"><div><p className="eyebrow">Phát triển bộ sưu tập</p>
+          <h2 id="staff-acquisition" className="section-title">Bổ sung sách</h2></div></div>
+        <p className="account-help mt-4">Xem tín hiệu từ dữ liệu danh mục và lập đề xuất có nhân viên xét duyệt.</p>
+        <div className="staff-quick-links mt-4"><Link to="/nhan-vien/de-xuat-bo-sung"><BookOpen size={19}/>
+          Mở đề xuất bổ sung <ArrowUpRight size={16}/></Link></div>
+      </section>}
     </div>
   </section>;
 }

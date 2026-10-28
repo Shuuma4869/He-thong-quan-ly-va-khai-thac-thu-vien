@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, BookOpenText, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { BookList } from './BookList';
@@ -8,6 +8,7 @@ import { BookFilters } from './BookFilters';
 import { CatalogError, Pagination } from './CatalogStates';
 import { catalogParams, getBooks, getSearchSuggestions, parseCatalogQuery, type CatalogQuery } from './catalog-api';
 import { BookGridSkeleton } from './BookGridSkeleton';
+import booksPhoto from '../../assets/img/editorial/books-table.jpg';
 
 export function CatalogPage() {
   const [params, setParams] = useSearchParams(); const parsed = parseCatalogQuery(params);
@@ -17,8 +18,7 @@ export function CatalogPage() {
       <p>Tìm tác phẩm theo câu chuyện, tác giả hoặc chủ đề bạn quan tâm. Thông tin nguồn và ấn bản luôn được phân biệt rõ để bạn chọn đúng sách.</p>
       <div className="catalog-intro-links"><Link to="/tac-gia">Khám phá tác giả <ArrowRight size={16}/></Link>
         <Link to="/the-loai">Duyệt thể loại <ArrowRight size={16}/></Link></div>
-    </div><div className="catalog-intro-art" aria-hidden="true"><div className="catalog-intro-book one"/><div className="catalog-intro-book two"/>
-      <div className="catalog-intro-book three"/><BookOpenText size={84} strokeWidth={1}/></div></header>
+    </div><div className="catalog-intro-art" aria-hidden="true"><img src={booksPhoto} alt="" loading="eager" decoding="async"/></div></header>
     {parsed.success ? <CatalogResults value={parsed.data} onNavigate={setParams} /> : <div role="alert" className="editorial-card my-5"><p>Bộ lọc trong đường dẫn không hợp lệ.</p><button className="button-secondary mt-3" onClick={() => setParams({})}>Đặt lại bộ lọc</button></div>}
   </section>;
 }

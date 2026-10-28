@@ -2,7 +2,7 @@
 
 ## Báo cáo bài tập lớn
 
-**Học phần:** Lập trình hướng đối tượng. **Nhóm:** hai thành viên. Tên, mã sinh viên, lớp, giảng viên và học kỳ cần điền theo hồ sơ học phần đã được xác nhận. Bản này mô tả mã nguồn trên nhánh `Tuan/core-platform` ngày 28/10/2026; đây là bản làm việc của PR #31, chưa phải kết quả nghiệm thu trên `main`. Bằng chứng CI có SHA riêng ở Chương 5 và không tự áp dụng cho thay đổi sau SHA đó.
+**Học phần:** Lập trình hướng đối tượng. **Nhóm:** hai thành viên. Tên, mã sinh viên, lớp, giảng viên và học kỳ cần điền theo hồ sơ học phần đã được xác nhận. Bản này mô tả mã nguồn trên nhánh `Tuan/core-platform` ngày 28/10/2026; đây là bản làm việc của PR #31, chưa phải kết quả nghiệm thu trên `main`. Bằng chứng CI có SHA riêng ở mục 4.2 và không tự áp dụng cho thay đổi sau SHA đó.
 
 ## Tóm tắt
 
@@ -169,6 +169,14 @@ Baseline `main` là `c05b593` trước PR #31. Commit `46c1916` của nhánh là
 
 Các lớp kiểm thử gồm unit (thuật toán, validation), PostgreSQL/Testcontainers (migration, transaction, quyền, race), contract OpenAPI, frontend component và E2E Web. Build EXE chỉ xác nhận đóng gói; E2E trong WebView2 cần chạy độc lập cho phiên bản nộp bài. Với thao tác kiểm kê, test bao phủ snapshot, sáu anomaly, version, retry và xác nhận trước khi sửa; vẫn cần diễn tập thực địa với mạng không ổn định và camera/thiết bị thật.
 
+## 4.3. Giao diện và nguồn ảnh
+
+Nhánh làm việc sau SHA `504499b` bổ sung bố cục sáng với sidebar tách khỏi vùng làm việc, các bề mặt có độ trong vừa phải và trang `/cai-dat/giao-dien`. Người dùng chọn màu nhấn, blur, độ bo góc, mật độ, cỡ chữ, chuyển động, kiểu hiển thị sách và trạng thái sidebar rồi xem trước trước khi lưu. Khách lưu trong trình duyệt; người đăng nhập lưu preset theo tài khoản qua Core. API chỉ nhận các giá trị trong danh sách cho phép, có phiên bản schema và revision để tránh ghi đè khi hai thiết bị cùng sửa. Các khối trên bảng điều khiển nhân viên có thể được ẩn hoặc hiện; số liệu vẫn đọc từ API thật.
+
+Ảnh thư viện ở trang chủ và đăng nhập là ảnh nhóm đã cung cấp. Ba ảnh Pexels mới được lưu cục bộ cho đầu trang Catalog, trang tác giả/thể loại và khối giới thiệu hành trình đọc. Bảng nguồn ảnh nằm trong `tai-lieu/06-giao-dien/nguon-anh.md`. Ảnh minh họa không được gán thành chân dung tác giả hoặc bìa sách. Khi chưa có media đã duyệt, card dùng thiết kế chữ và nhãn đúng trạng thái. URL media Catalog đã duyệt vẫn được tải trực tiếp từ nguồn; việc sao chép toàn bộ ảnh này về máy chủ chưa nằm trong thay đổi giao diện.
+
+Ở lượt kiểm tra local ngày 28/10/2026, frontend đạt 187/187 test và chụp trang cài đặt ở 390, 768, 1440 px không có cuộn ngang; trang chủ 1440 px cũng không tràn. Core biên dịch được mã nguồn và mã test, nhưng Docker Engine chưa chạy nên test PostgreSQL của migration và API mới chưa có kết quả local. CI và E2E Web/EXE của commit bàn giao mới phải được ghi riêng sau khi chạy; bằng chứng ở mục 4.2 không áp dụng cho thay đổi này.
+
 # Chương 5. An ninh, pháp luật và đạo đức
 
 Auth giữ access JWT trong memory, refresh token trong cookie HttpOnly; role/owner được server xác định thay vì tin body. Query SQL dùng tham số; Prisma không ghép raw SQL từ request. Validation giới hạn độ dài, phân trang và ISBN; media ngoài được duyệt thủ công trước khi hiển thị. Hệ thống có test 401/403/404/409/422/429/503, nhưng CI và quét dependency không thể chứng minh tuyệt đối rằng không còn lỗ hổng. Bản pilot có dữ liệu thật cần kiểm HTTPS, secret, backup, retention, bảo vệ ingress và rate limit dùng chung nhiều replica.
@@ -179,7 +187,7 @@ Nhóm cần rà nghĩa vụ theo [Luật Bảo vệ dữ liệu cá nhân 91/202
 
 # Chương 6. Kết luận và việc còn lại
 
-LAMS đã có các luồng thư viện chính trên hai dịch vụ và giao diện Windows, với kiểm thử tự động theo nhiều lớp. Kết quả phù hợp để trình diễn trên môi trường phát triển; PR #31 đã sẵn sàng review nhưng chưa được merge. Phần chưa hoàn tất của mục tiêu mở rộng gồm embedding/semantic search, hybrid ranking, cá nhân hóa có kiểm soát, zero-result analytics, dữ liệu nhu cầu theo thời gian cho Acquisition, ngân sách/đề xuất mua nội bộ, chính sách retention có phê duyệt và nghiệm thu pilot HTTPS. Các nội dung này không được trình bày như chức năng đã chạy.
+LAMS đã có các luồng thư viện chính trên hai dịch vụ và giao diện Windows, với kiểm thử tự động theo nhiều lớp. Kết quả phù hợp để trình diễn trên môi trường phát triển; PR #31 vẫn là bản làm việc chưa được merge. Phần chưa hoàn tất của mục tiêu mở rộng gồm embedding/semantic search, hybrid ranking, cá nhân hóa gợi ý sách, zero-result analytics, dữ liệu nhu cầu theo thời gian cho Acquisition, ngân sách/đề xuất mua nội bộ, chính sách retention có phê duyệt và nghiệm thu pilot HTTPS. Các nội dung này không được trình bày như chức năng đã chạy. Tùy chỉnh giao diện ở mục 4.3 là thiết lập trình bày, không phải thuật toán gợi ý sách.
 
 Trước buổi bảo vệ, nhóm cần chốt SHA và CI của bản nộp, chạy lại E2E Web/EXE, xác nhận tên/mã sinh viên và phân công, quay video demo, rà quyền ảnh và áp dụng mẫu của giảng viên. Bản báo cáo này sẽ được cập nhật theo các bằng chứng đó.
 

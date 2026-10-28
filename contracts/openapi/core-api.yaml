@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LAMS Core API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     Core health, Identity/Auth, Member, Catalog, Inventory, Circulation/Hold và Reader contribution API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
@@ -584,6 +584,32 @@ paths:
         '200': { description: Tài khoản sau khi lưu, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
         '409': { description: Số điện thoại đã được sử dụng }
         '422': { description: Dữ liệu không hợp lệ }
+  /me/ui-preferences:
+    get:
+      operationId: getMyUiPreferences
+      tags: [Member]
+      summary: Đọc thiết lập giao diện của chính tài khoản
+      description: Trả revision 0 và values rỗng khi chưa lưu. Khách chưa đăng nhập lưu ở localStorage của trình duyệt.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Thiết lập hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/UiPreferences' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveMyUiPreferences
+      tags: [Member]
+      summary: Lưu preset giao diện đã kiểm tra theo revision
+      description: Chỉ nhận giá trị trong allowlist; revision cũ trả 409. Không nhận CSS hay URL tùy ý.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UiPreferences' }
+      responses:
+        '200': { description: Thiết lập và revision mới, content: { application/json: { schema: { $ref: '#/components/schemas/UiPreferences' } } } }
+        '409': { description: Revision đã thay đổi trên thiết bị khác }
+        '422': { description: Phiên bản schema hoặc preset không hợp lệ }
   /me/account/password:
     post:
       operationId: changeMyPassword
@@ -2310,6 +2336,31 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/ProblemDetail' }
   schemas:
+    UiPreferences:
+      type: object
+      required: [schemaVersion, revision, values]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        revision: { type: integer, minimum: 0 }
+        values:
+          type: object
+          additionalProperties: false
+          properties:
+            accent: { type: string, enum: [blue, teal, sky, emerald, sand] }
+            glass: { type: string, enum: [subtle, standard, strong] }
+            blur: { type: string, enum: ['on', 'off'] }
+            sidebarStyle: { type: string, enum: [floating, classic] }
+            sidebarState: { type: string, enum: [expanded, collapsed] }
+            density: { type: string, enum: [comfortable, compact] }
+            radius: { type: string, enum: [medium, soft, large] }
+            fontSize: { type: string, enum: [standard, large] }
+            motion: { type: string, enum: [normal, reduced, 'off'] }
+            bookView: { type: string, enum: [grid, list] }
+            widgets:
+              type: array
+              uniqueItems: true
+              maxItems: 4
+              items: { type: string, enum: [overview, circulation, inventory, acquisition] }
     AcquisitionFacts:
       type: object
       required: [contractVersion, sourceRevision, bookId, branchId, window, copiesOwned,
