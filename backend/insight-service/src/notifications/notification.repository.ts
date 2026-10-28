@@ -33,6 +33,12 @@ export class NotificationRepository {
             readerId: event.readerId, occurredAt: new Date(event.occurredAt), receivedAt: new Date(),
             dueAt: event.dueAt ? new Date(event.dueAt) : null, expiresAt: event.expiresAt ? new Date(event.expiresAt) : null };
           await tx.circulationNotice.upsert({ where, create: data, update: data });
+          if (event.eventType === 'HOLD_READY' || event.eventType === 'HOLD_EXPIRED') {
+            await tx.readerNotification.create({ data: { id: event.eventId, readerId: event.readerId,
+              aggregateType: event.aggregateType, aggregateId: event.aggregateId, aggregateVersion: version,
+              eventType: event.eventType, occurredAt: new Date(event.occurredAt),
+              expiresAt: event.expiresAt ? new Date(event.expiresAt) : null } });
+          }
           return 'APPLIED';
         }, { maxWait: 3000, timeout: 5000 });
       } catch (error) {
@@ -41,5 +47,30 @@ export class NotificationRepository {
         throw error;
       }
     }
+  }
+
+  async list(readerId: string, page: number, size: number) {
+    const [items, totalElements] = await this.db.$transaction([
+      this.db.readerNotification.findMany({ where: { readerId }, orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
+        skip: page * size, take: size }),
+      this.db.readerNotification.count({ where: { readerId } }),
+    ]);
+    return { items: items.map(item => ({ id: item.id, holdId: item.aggregateId, eventType: item.eventType,
+      occurredAt: item.occurredAt, receivedAt: item.receivedAt, expiresAt: item.expiresAt,
+      readAt: item.readAt })), page, size, totalElements };
+  }
+
+  async unreadCount(readerId: string) {
+    return { count: await this.db.readerNotification.count({ where: { readerId, readAt: null } }) };
+  }
+
+  async markRead(readerId: string, id: string) {
+    const result = await this.db.readerNotification.updateMany({ where: { id, readerId, readAt: null },
+      data: { readAt: new Date() } });
+    if (result.count === 0) {
+      const found = await this.db.readerNotification.findFirst({ where: { id, readerId }, select: { id: true } });
+      return found ? 'ALREADY_READ' as const : 'NOT_FOUND' as const;
+    }
+    return 'UPDATED' as const;
   }
 }

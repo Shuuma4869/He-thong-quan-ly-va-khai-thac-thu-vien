@@ -13,10 +13,11 @@ Phân công được ghi trong [hướng dẫn thành viên](tai-lieu/00-bat-dau
 
 ## Chức năng
 
-- **Người đọc:** đăng ký, đăng nhập, cập nhật tên/số điện thoại, đổi mật khẩu, duyệt tác giả/thể loại, tìm và lọc sách, xem ấn bản, lưu yêu thích, viết đánh giá, đặt giữ chỗ và theo dõi lượt mượn. Yêu cầu đổi email được lưu ở trạng thái chờ; bản local chưa gửi thư xác minh nên email đăng nhập chưa thay đổi.
-- **Thủ thư, quản trị viên:** quản lý danh mục và bản sách, tra cứu thành viên, mượn/trả/gia hạn, xử lý giữ chỗ, xem báo cáo lưu thông, mở phiên kiểm kê, quét mã vạch và xác nhận xử lý sai lệch. Dashboard hiển thị các số đếm lấy từ API; chưa có feed hoạt động vì backend chưa cung cấp.
+- **Người đọc:** đăng ký, đăng nhập, cập nhật tên/số điện thoại, đổi mật khẩu, duyệt tác giả/thể loại, tìm và lọc sách, xem ấn bản và số bản sẵn có theo chi nhánh, lưu yêu thích, viết và báo cáo đánh giá, đặt giữ chỗ, theo dõi lượt mượn và xem hộp thông báo giữ chỗ. Đổi email có mã xác minh gửi tới địa chỉ mới khi người vận hành bật SMTP; mặc định tính năng gửi thư tắt. Hộp thông báo chỉ nhận sự kiện mới khi Core outbox và Insight consumer đã được bật cùng Kafka.
+- **Thủ thư, quản trị viên:** quản lý danh mục và bản sách, tra cứu thành viên, mượn/trả/gia hạn, xử lý giữ chỗ, xem báo cáo lưu thông, mở phiên kiểm kê, quét mã vạch và xác nhận xử lý sai lệch. Nhân viên xem các lần giữ chỗ hết hạn có căn cứ; ADMIN có thể xác nhận hoặc miễn trừ kèm lý do. Chính sách này chỉ để rà soát, chưa tự hạn chế người đọc. ADMIN còn có trang khóa/mở tài khoản, cấp/thu hồi vai trò và xem lịch sử thay đổi. Dashboard hiển thị các số đếm lấy từ API; chưa có feed hoạt động vì backend chưa cung cấp.
 - **Tìm kiếm:** PostgreSQL full-text search và trigram; có thể lọc bằng tên thể loại chuẩn hoặc bí danh đã lưu. Thanh tìm kiếm chung gợi ý sách, tác giả và thể loại bằng các truy vấn giới hạn trên server. Metadata ISBN và ảnh bìa dùng quy trình duyệt thủ công; mục chưa có ảnh được duyệt dùng hình thay thế.
 - **Đề xuất bổ sung sách:** nhân viên chọn sách, chi nhánh và khoảng thời gian; Core đọc số liệu thật trong một snapshot, Insight tính điểm, lưu bằng chứng và quyết định nội bộ. Có CSV xuất đề xuất đã lưu. Lượt thêm Favorite đã bị bỏ chưa có lịch sử nên tín hiệu này được ghi là thiếu, không điền 0.
+- **Giao diện cá nhân:** trang `/cai-dat/giao-dien` cho đổi preset màu, bề mặt, sidebar, mật độ, cỡ chữ, chuyển động và kiểu thẻ sách. Khách lưu trên thiết bị; người đăng nhập lưu theo tài khoản qua Core. Đây là tùy chỉnh cách trình bày, không phải gợi ý sách theo hành vi.
 
 Truy vấn snapshot kiểm kê của Toàn đã vào `main` qua [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25), merge commit `e525d34`, giữ nguyên lịch sử tác giả. Search, quản trị Alias, Acquisition và đợt giao diện đã vào `main` qua [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27), merge commit `41c4c89`. Bài E2E Web và EXE tại máy phát triển đạt 18/18 mỗi loại trên database cô lập; [CI PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40544635046) đạt 5/5 tại head `63d1508`.
 
@@ -32,7 +33,10 @@ Truy vấn snapshot kiểm kê của Toàn đã vào `main` qua [PR #25](https:/
 
 Luồng chính: **giao diện → Core/Insight → PostgreSQL**. Insight không đọc trực tiếp database của Core. [Sơ đồ container](tai-lieu/02-kien-truc/container-diagram.md), [ERD](tai-lieu/03-du-lieu/erd.md) và [hợp đồng API](contracts/openapi/) mô tả chi tiết. MinIO là dịch vụ Compose tùy chọn và mặc định tắt; ảnh Catalog hiện là URL tham chiếu đã duyệt.
 
-[Hệ thống giao diện](tai-lieu/06-giao-dien/design-system.md) ghi màu, font, bố cục và cách xử lý ảnh thiếu; [bản đồ chức năng](tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) nối từng màn với API và trạng thái thực tế.
+[Hệ thống giao diện](tai-lieu/06-giao-dien/design-system.md) ghi màu, font, bố cục và cách xử lý ảnh thiếu; [nguồn ảnh](tai-lieu/06-giao-dien/nguon-anh.md) ghi giấy phép và nơi sử dụng; [bản đồ chức năng](tai-lieu/06-giao-dien/ban-do-chuc-nang-frontend.md) nối từng màn với API và trạng thái thực tế.
+
+[Quản trị tài khoản](tai-lieu/02-kien-truc/quan-tri-tai-khoan.md) mô tả quyền, chống xung đột và audit. Muốn thử đổi email trên local, bật Mailpit theo [hướng dẫn chạy](tai-lieu/08-van-hanh/chay-local.md); mặc định không gửi thư.
+[Tình trạng bản sách](tai-lieu/04-nghiep-vu/kha-dung-sach.md) giải thích cách đọc số bản sẵn có tại một thời điểm và giới hạn khi người đọc đặt giữ chỗ.
 
 ## Cấu trúc repository
 
@@ -44,7 +48,7 @@ Luồng chính: **giao diện → Core/Insight → PostgreSQL**. Insight không 
 | `contracts/` | OpenAPI và AsyncAPI |
 | `infra/`, `scripts/` | Hạ tầng và lệnh cài/chạy/kiểm tra |
 | `tai-lieu/` | Yêu cầu, kiến trúc, nghiệp vụ và vận hành |
-| `ho-so-nop-bai/` | Báo cáo nguồn, rubric và slide |
+| `ho-so-nop-bai/` | Báo cáo tiểu luận DOCX/PDF, báo cáo nguồn, rubric và slide |
 
 ## Chạy trên Windows
 
@@ -108,7 +112,7 @@ Lệnh build tạo EXE và gói cài trong `frontend/src-tauri/target/release/`.
 
 ## Demo và hồ sơ học phần
 
-[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
+[Kịch bản demo](tai-lieu/09-demo/kich-ban-demo.md) ghi các bước trình diễn và điều kiện dữ liệu. [Hồ sơ nộp bài](ho-so-nop-bai/README.md) gồm [slide PowerPoint](ho-so-nop-bai/slide/Bao_cao_LAMS_2026-10-27_phase5-7.pptx), [báo cáo tiểu luận](ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.pdf), [báo cáo nguồn](ho-so-nop-bai/bao-cao-nguon.md), [đối chiếu rubric](ho-so-nop-bai/doi-chieu-rubric.md) và minh chứng giao diện có mốc commit.
 [Phụ lục kiểm tra phát hành](ho-so-nop-bai/slide/Phu_luc_kiem_thu_phat_hanh_2026-10-28.pptx) bổ sung số liệu local và điều kiện còn chờ, không thay SHA đã ghi trên slide chính.
 
 ## Giới hạn hiện tại

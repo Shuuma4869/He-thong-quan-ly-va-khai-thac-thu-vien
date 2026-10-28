@@ -19,7 +19,9 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | Book (`books`, V6/V22) | Tác phẩm logic | UUID `id`; title, normalized title, description; V22 thêm `search_title`, `search_description`, `search_vector` để tra cứu, cập nhật qua trigger; quan hệ nhiều-nhiều với Author/Category; không chứa barcode hoặc số lượng availability | Core/Catalog |
 | CatalogExternalSource (`catalog_external_sources`, V25) | Định danh thư mục ngoài của Book | Khóa `(source_code, source_record_id)`; `book_id` FK RESTRICT; URL nguồn, SHA-256 ảnh chụp metadata, title/author gốc, ngày phát hành ebook nếu có và thời điểm nhập. Không chứa ISBN hoặc tồn kho suy đoán | Core/Catalog |
 | Favorite (`favorites`, V14) | Liên kết sách yêu thích của user | FK `user_id`/`book_id`; unique ghép `(user_id, book_id)`; `created_at` UTC; xóa User hoặc Book sẽ cascade liên kết | Core/Reader contributions |
-| Review (`reviews`, V15) | Review và rating công khai của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `created_at`/`updated_at`; chưa có workflow moderation | Core/Reader contributions |
+| Review (`reviews`, V15/V29) | Review và rating của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `moderation_status` VISIBLE/HIDDEN; `created_at`/`updated_at` | Core/Reader contributions |
+| ReviewReport (`review_reports`, V29) | Báo cáo nội dung đánh giá | UUID `id`; review/book/reporter/owner ID; ảnh chụp body/rating và lý do; unique `(reporter_id, review_id)`; OPEN/RESOLVED; có FK Book/User, không có FK Review để giữ bằng chứng khi tác giả xóa review | Core/Review moderation |
+| ReviewModerationAudit (`review_moderation_audit`, V29) | Lý do quyết định của quản trị viên | UUID `id`; FK report/actor; HIDE/DISMISS, before/after status, timestamp; không xóa cùng review | Core/Review moderation |
 | Edition (`editions`, V7) | Ấn bản của Book | UUID `id`; Book FK bắt buộc; Publisher tùy chọn; ISBN-13 tùy chọn, chưa unique; năm và ngôn ngữ tùy chọn | Core/Catalog |
 | Branch (`branches`, V8) | Chi nhánh thư viện | UUID `id`; `code` duy nhất; `name` bắt buộc; trạng thái ACTIVE/DISABLED | Core/Inventory |
 | Shelf (`shelves`, V9) | Kệ thuộc chi nhánh | UUID `id`; Branch FK; mã duy nhất trong Branch; label; thứ tự; không xóa khi còn Copy tham chiếu | Core/Inventory |
@@ -38,12 +40,14 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | InventoryResolution (`inventory_resolutions`, V21) | Quyết định rà soát của nhân viên | duy nhất theo anomaly; REVIEWED hoặc MOVE_TO_SCANNED_SHELF, reason, version Copy, actor và thời điểm | Core/Inventory |
 | AcquisitionRecommendation (`acquisition_recommendations`, Insight Prisma) | Đề xuất bổ sung sách nội bộ | Book/branch UUID, cửa sổ và thời điểm snapshot, phiên bản nguồn/công thức, điểm/confidence, evidence JSONB; trạng thái DRAFT/APPROVED/REJECTED, version và thông tin người duyệt; unique snapshot/phạm vi/phiên bản | Insight/Acquisition |
 | AcquisitionDecision (`acquisition_decisions`, Insight Prisma) | Lịch sử quyết định đề xuất | FK recommendation, action, actor, lý do, version; unique recommendation/version; không phải đơn đặt mua | Insight/Acquisition |
+| ReaderNotification (`reader_notifications`, Insight Prisma) | Mục hộp thư từ Hold READY/EXPIRED | UUID `id` là eventId; reader/hold UUID, event/version, occurred/received/expires/read time; index owner/time và owner/unread; không lưu email/tên sách | Insight/Notifications |
+| HoldNoShowDecision (`hold_no_show_decisions`, V30) | Lịch sử quản trị xác nhận hoặc miễn trừ một Hold hết hạn | hold/version unique, quyết định, lý do, actor, policy version và thời điểm; không xóa/sửa bản cũ | Core/Hold |
 | SearchEvent (thiết kế, chưa có bảng) | Tín hiệu tìm kiếm dự kiến | Chưa ghi query, kết quả rỗng hoặc session hash; không được dùng làm dữ liệu báo cáo hiện tại | Insight/Analytics |
 | DemandSignal (thiết kế, chưa có bảng) | Tín hiệu nhu cầu quy chuẩn dự kiến | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
 
 V13 cấp version media bằng `catalog_media_revision_seq` cho mỗi lần tạo/thay ảnh, bắt đầu trên version lớn nhất khi nâng cấp. Không reset khi gỡ ảnh; request cũ không được áp dụng lên tham chiếu tạo lại. Sequence có thể có khoảng trống; không dùng làm số lượng ảnh hoặc số lần chỉnh sửa.
 
-V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book. V15 tạo Reviews, unique một review/user/book; xóa User/Book bị restrict khi còn review. Rating thuộc Review; average/count được tính từ các review hiện hành, không lưu aggregate riêng. Review công khai ngay, chưa có API hoặc trạng thái moderation.
+V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book. V15 tạo Reviews, unique một review/user/book; xóa User/Book bị restrict khi còn review. V29 thêm trạng thái và bảng báo cáo/kiểm duyệt. Rating thuộc Review; average/count chỉ tính review VISIBLE, không lưu aggregate riêng. Review công khai ngay lúc tạo và có thể bị ẩn sau quyết định của ADMIN.
 
 ## Các nhóm còn lại
 
@@ -54,7 +58,7 @@ V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, khô
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; phiên/snapshot/scan/anomaly ở V20 và resolution ở V21. `copy_location_history` chuyên biệt chưa có; quyết định chuyển kệ từ kiểm kê được truy qua resolution và version Copy.
 - Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
 - Discovery: `search_documents` chưa có migration; tra cứu từ vựng dùng cột và chỉ mục trên `books`. Core có endpoint read facts cho Copy/Hold/Loan; Insight có migration lưu `acquisition_recommendations` và `acquisition_decisions`, adapter đọc Core và API nội bộ tạo/duyệt đề xuất. Web và EXE E2E đã đi qua hai dịch vụ trên PostgreSQL tạm và kiểm bản ghi quyết định thật.
-- System dự kiến: `notifications`, `system_policies`, `audit_logs`, `media_assets` là tên trong mô hình mục tiêu, chưa phải bảng đang có. `outbox_events` được tạo từ V1 và bổ sung cơ chế giao nhận ở V19; thông báo người dùng hiện lưu trong bảng `circulation_notices` của Insight.
+- System dự kiến: `system_policies`, `audit_logs`, `media_assets` là tên trong mô hình mục tiêu, chưa phải bảng đang có. `outbox_events` được tạo từ V1 và bổ sung cơ chế giao nhận ở V19; Insight giữ projection trạng thái mới nhất trong `circulation_notices` và mục hộp thư người đọc trong `reader_notifications`. Chưa có lịch dọn retention hoặc FK xuyên database tới User của Core.
 
 ## Media asset
 

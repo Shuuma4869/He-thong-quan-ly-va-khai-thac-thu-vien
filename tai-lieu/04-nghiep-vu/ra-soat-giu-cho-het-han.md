@@ -1,0 +1,9 @@
+# Rà soát giữ chỗ hết hạn
+
+Một yêu cầu chỉ xuất hiện trong mục rà soát khi Core đã chuyển Hold từ READY sang EXPIRED và ghi `HOLD_EXPIRED` vào `hold_changes` trong cùng giao dịch. Thời điểm hết hạn phải không sau thời điểm đóng. Hủy yêu cầu, không được phân bổ sách hoặc lỗi giao hàng thông báo không được tự coi là no-show.
+
+Mặc định mỗi lần hết hạn có trạng thái **chưa rà soát**. Thủ thư và quản trị viên thấy căn cứ, thời điểm và quyết định gần nhất trong màn Thành viên. Người đọc thấy tổng hợp của chính mình trong Hồ sơ qua `GET /me/hold-reliability`. Chỉ quản trị viên đang còn quyền mới được xác nhận hoặc miễn trừ, bắt buộc ghi lý do. API yêu cầu `expectedVersion`; mọi lần đổi quyết định được thêm vào `hold_no_show_decisions`, không ghi đè lịch sử. Quyết định cũ có thể được sửa bằng quyết định mới sau khi kiểm tra lại.
+
+Chính sách `advisory-v1` xem 90 ngày gần nhất. Hai lần được xác nhận cho mức WATCH, ba lần cho mức REVIEW. Đây là **mức tham khảo để nhân viên trao đổi**, không phải điểm tín nhiệm công khai hay cơ chế xử phạt. `restrictionsEnabled=false`; không thay FIFO, quota, quyền đặt giữ chỗ hoặc trạng thái tài khoản. Chỉ những quyết định CONFIRMED còn hiệu lực mới được tính. EXCUSED và UNREVIEWED không làm tăng mức. Có thể cấu hình cửa sổ và ngưỡng qua `LAMS_NO_SHOW_*`, nhưng khi thay đổi quy tắc phải đổi `LAMS_NO_SHOW_POLICY_VERSION` và kiểm thử lại. Trước khi áp dụng hạn chế thật cần chính sách được thư viện duyệt, cách thông báo/kháng nghị cho người đọc và phân tích ảnh hưởng công bằng.
+
+Core giữ lịch sử Hold và quyết định theo khóa ngoại RESTRICT; chưa có thời hạn lưu, lịch ẩn danh hóa hoặc quy trình xóa dữ liệu production đã phê duyệt. API chỉ trả tối đa 50 lần gần nhất trong cửa sổ cho phần chi tiết, còn các số đếm phản ánh toàn bộ cửa sổ. Phải chốt retention và xử lý tài khoản ngừng sử dụng trước pilot. Không dùng dữ liệu này để suy đoán lý do cá nhân vắng mặt.

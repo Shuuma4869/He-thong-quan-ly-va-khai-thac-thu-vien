@@ -12,11 +12,11 @@ LAMS hợp nhất việc tra cứu, lưu thông và quản lý tồn kho thư vi
 
 ## Scope
 
-Repository dùng Tauri/WebView2 + React, Spring Core, NestJS Insight và PostgreSQL. Auth, Member/Profile chỉ đọc, Catalog/Edition/Copy, Favorites/Reviews/Rating, mượn/trả/gia hạn, giữ chỗ, lịch sử và báo cáo lưu thông, duyệt ảnh, lịch sử ISBN và kiểm kê kệ đã có luồng nghiệp vụ và test. Catalog có tìm kiếm từ vựng được xếp hạng và lọc theo bí danh thể loại. Redis, Kafka và MinIO có cấu hình hoặc vai trò kiến trúc riêng, không được coi là điều kiện để các luồng trên hoạt động. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
+Repository dùng Tauri/WebView2 + React, Spring Core, NestJS Insight và PostgreSQL. Auth, hồ sơ cá nhân, Member List chỉ đọc, Catalog/Edition/Copy, Favorites/Reviews/Rating, mượn/trả/gia hạn, giữ chỗ, lịch sử và báo cáo lưu thông, duyệt ảnh, lịch sử ISBN và kiểm kê kệ đã có luồng nghiệp vụ và test. Catalog có tìm kiếm từ vựng được xếp hạng và lọc theo bí danh thể loại. Redis, Kafka và MinIO có cấu hình hoặc vai trò kiến trúc riêng, không được coi là điều kiện để các luồng trên hoạt động. Xem [phân công và đầu ra](huong-dan-thanh-vien.md).
 
 ## Ngoài phạm vi hiện tại
 
-Chưa có tìm kiếm ngữ nghĩa/vector, đề xuất bổ sung sách được duyệt thành quy trình mua, dữ liệu zero-result search, tích hợp email ngoài hoặc triển khai production đã nghiệm thu. Metadata tra cứu từ nhà cung cấp vẫn cần nhân viên xác nhận trước khi ghi vào Catalog; Google Books đang tắt.
+Chưa có tìm kiếm ngữ nghĩa/vector, đề xuất bổ sung sách được duyệt thành quy trình mua, dữ liệu zero-result search hoặc triển khai production đã nghiệm thu. Đổi email cần SMTP do người vận hành bật; cấu hình mặc định không gửi thư. Metadata tra cứu từ nhà cung cấp vẫn cần nhân viên xác nhận trước khi ghi vào Catalog; Google Books đang tắt.
 
 ## Flagship features định hướng
 

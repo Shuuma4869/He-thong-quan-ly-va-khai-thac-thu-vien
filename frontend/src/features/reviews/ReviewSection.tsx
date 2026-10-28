@@ -5,6 +5,7 @@ import { Pagination } from '../catalog/CatalogStates';
 import { LibraryError } from '../my-library/LibraryError';
 import { createReview, deleteReview, listReviews, myReviews, ratingSummary, updateReview, type Review, type ReviewInput } from '../my-library/library-api';
 import { RatingInput } from './RatingInput';
+import { reportReview } from './moderation-api';
 
 export function ReviewSection({ bookId }: { bookId: string }) {
   const { user } = useAuth();
@@ -40,8 +41,27 @@ function Reviews({ book, owner }: { book: string; owner: string }) {
           <p className="font-semibold">{review.mine ? 'Đánh giá của bạn' : 'Bạn đọc'} · {review.rating}/5</p>
           <p className="my-3 whitespace-pre-wrap break-words">{review.body}</p>
           <time className="text-sm text-muted" dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleString('vi-VN')}</time>
+          {!review.mine && <ReportReview book={book} reviewId={review.reviewId}/>}
         </li>)}</ul><Pagination page={list.data.page} onChange={setPage}/></>}
   </section>;
+}
+function ReportReview({ book, reviewId }: { book: string; reviewId: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const send = useMutation({ mutationFn: () => reportReview(book, reviewId, reason.trim()) });
+  const valid = [...reason.trim()].length >= 10 && [...reason.trim()].length <= 500;
+  return <div className="mt-3">
+    {!open && !send.isSuccess && <button type="button" className="text-link" onClick={() => setOpen(true)}>Báo cáo đánh giá</button>}
+    {send.isSuccess && <p role="status">Đã gửi báo cáo. Quản trị viên sẽ xem xét.</p>}
+    {open && !send.isSuccess && <form onSubmit={event => { event.preventDefault(); if (valid) send.mutate(); }}>
+      <label className="field">Lý do báo cáo<textarea rows={2} value={reason} maxLength={500}
+        onChange={event => setReason(event.target.value)} disabled={send.isPending} required/></label>
+      <p className="text-sm text-muted">Nêu lý do cụ thể, 10–500 ký tự.</p>
+      <div className="mt-2 flex gap-2"><button type="submit" className="button-primary" disabled={!valid || send.isPending}>Gửi báo cáo</button>
+        <button type="button" className="button-secondary" disabled={send.isPending} onClick={() => { setOpen(false); send.reset(); }}>Hủy</button></div>
+      {send.isError && <LibraryError error={send.error} retry={() => send.reset()}/>}
+    </form>}
+  </div>;
 }
 function ReviewEditor({ book, review, refresh, onNotice }: { book: string; review?: Review; refresh: () => Promise<void>; onNotice: (message: string) => void }) {
   const [body, setBody] = useState(review?.body ?? '');
@@ -75,6 +95,7 @@ function ReviewEditor({ book, review, refresh, onNotice }: { book: string; revie
   };
   return <div className="editorial-card my-5" aria-label="Đánh giá của tôi">
     <h3 className="font-semibold">{review ? 'Quản lý đánh giá của bạn' : 'Viết đánh giá'}</h3>
+    {review?.moderationStatus === 'HIDDEN' && <p role="status" className="my-2">Đánh giá này đã bị ẩn sau khi kiểm duyệt. Chỉnh sửa không tự đưa đánh giá lên lại.</p>}
     <p className="text-sm text-muted my-2">Nội dung hiển thị cho bạn đọc đã đăng nhập. Không đưa thông tin cá nhân vào đánh giá.</p>
     {editing ? <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="field">Nội dung đánh giá<textarea rows={4} value={body} disabled={busy} required

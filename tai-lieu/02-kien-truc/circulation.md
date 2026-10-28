@@ -2,7 +2,7 @@
 
 ## Phạm vi hiện có
 
-V16 bổ sung `loans` và policy; V17 bổ sung biên nhận lệnh và lịch sử trạng thái Copy; V18 bổ sung `holds`, `hold_changes`, `loan_extensions`. Core có lệnh mượn/trả/gia hạn, tạo/hủy/nhận giữ chỗ, phân bổ và hết hạn; có query Loan/Hold, báo cáo mượn theo ngày và xuất CSV. Giao diện lưu thông và Kafka delivery chưa hoàn thành ở mốc này. Không dùng API bảo trì để giả lập mượn/trả.
+V16 bổ sung `loans` và policy; V17 bổ sung biên nhận lệnh và lịch sử trạng thái Copy; V18 bổ sung `holds`, `hold_changes`, `loan_extensions`. Core có lệnh mượn/trả/gia hạn, tạo/hủy/nhận giữ chỗ, phân bổ và hết hạn; có query Loan/Hold, báo cáo mượn theo ngày và xuất CSV. Giao diện lưu thông đã gọi các API này. Kafka delivery chỉ hoạt động khi bật Core outbox và Insight consumer cùng với broker đã cấu hình. Không dùng API bảo trì để giả lập mượn/trả.
 
 Phân công ban đầu: Tuan phụ trách command/transaction/policy/Hold/outbox/giao diện; Toan phụ trách query/history/filter/report/CSV P4-D2-01..05. Từ ngày 24/10/2026, phần còn thiếu của cả hai nhóm task Phase 4–6 được tiếp tục tích hợp trên nhánh Tuan theo quyết định của nhóm; giữ nguyên nhánh và lịch sử commit Toan. Insight không đọc/ghi trực tiếp bảng Loan.
 
@@ -16,7 +16,7 @@ Borrow nhận Copy AVAILABLE khi không có hàng chờ phù hợp đủ điều
 
 API bảo trì chỉ cho IN_PROCESS → AVAILABLE/WITHDRAWN, AVAILABLE → LOST/DAMAGED, DAMAGED → IN_PROCESS/WITHDRAWN, LOST → IN_PROCESS. Bắt buộc lý do/version, kiểm quyền hiện hành và không còn Loan mở. Mỗi thay đổi tăng Copy version, ghi trạng thái trước/sau, actor và thời điểm. WITHDRAWN không có đường khôi phục thông thường. Trường version mới chỉ nhận số nguyên JSON int64, không tự cắt phần thập phân.
 
-COPY_BORROWED/COPY_RETURNED/LOAN_RENEWED và HOLD_CREATED/READY/FULFILLED/CANCELLED/EXPIRED nằm trong `outbox_events` sau commit. Publisher tùy chọn chuyển các fact này sang Kafka; Insight consumer lưu trạng thái thông báo nội bộ và receipt dedupe, chưa có hộp thông báo UI. `version=1` là phiên bản envelope; `aggregateVersion` là version Loan/Hold để consumer xử lý sự kiện đến sai thứ tự. Giao dịch mượn/trả không gọi Kafka; publisher dùng transaction riêng. Xem [outbox](../05-api-va-event/outbox-delivery.md) và [consumer](../05-api-va-event/circulation-notifications.md).
+COPY_BORROWED/COPY_RETURNED/LOAN_RENEWED và HOLD_CREATED/READY/FULFILLED/CANCELLED/EXPIRED nằm trong `outbox_events` sau commit. Publisher tùy chọn chuyển các fact này sang Kafka; Insight consumer lưu projection và receipt dedupe. HOLD_READY/EXPIRED còn tạo mục hộp thông báo cho người đọc khi consumer được bật. `version=1` là phiên bản envelope; `aggregateVersion` là version Loan/Hold để consumer xử lý sự kiện đến sai thứ tự. Giao dịch mượn/trả không gọi Kafka; publisher dùng transaction riêng. Xem [outbox](../05-api-va-event/outbox-delivery.md), [consumer](../05-api-va-event/circulation-notifications.md) và [hộp thông báo](hop-thong-bao.md).
 
 ## Loan và tính toàn vẹn
 

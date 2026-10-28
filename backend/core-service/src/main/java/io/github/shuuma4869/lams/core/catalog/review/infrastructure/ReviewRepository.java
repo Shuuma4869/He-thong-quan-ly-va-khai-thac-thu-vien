@@ -40,23 +40,23 @@ public class ReviewRepository {
     }
 
     public Optional<Review> find(UUID bookId, UUID reviewId) {
-        return jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at "
+        return jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at,moderation_status "
                         + "FROM reviews WHERE book_id=? AND id=?",
                 (rs, row) -> map(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class),
                         rs.getObject("book_id", UUID.class), rs.getString("body"), rs.getInt("rating"),
-                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at")), bookId, reviewId)
+                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at"), rs.getString("moderation_status")), bookId, reviewId)
                 .stream().findFirst();
     }
 
     public ReviewPage list(UUID bookId, int page, int size, boolean ascending) {
-        long total = jdbc.queryForObject("SELECT count(*) FROM reviews WHERE book_id=?", Long.class, bookId);
+        long total = jdbc.queryForObject("SELECT count(*) FROM reviews WHERE book_id=? AND moderation_status='VISIBLE'", Long.class, bookId);
         String direction = ascending ? "ASC" : "DESC";
-        var items = jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at "
-                        + "FROM reviews WHERE book_id=? ORDER BY created_at " + direction
+        var items = jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at,moderation_status "
+                        + "FROM reviews WHERE book_id=? AND moderation_status='VISIBLE' ORDER BY created_at " + direction
                         + ",id ASC LIMIT ? OFFSET ?",
                 (rs, row) -> map(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class),
                         rs.getObject("book_id", UUID.class), rs.getString("body"), rs.getInt("rating"),
-                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at")),
+                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at"), rs.getString("moderation_status")),
                 bookId, size, (long) page * size);
         return new ReviewPage(items, total);
     }
@@ -75,11 +75,11 @@ public class ReviewRepository {
         if (book != null) parameters.add(book);
         long total = jdbc.queryForObject("SELECT count(*) FROM reviews WHERE " + condition, Long.class, parameters.toArray());
         parameters.add(size); parameters.add((long) page * size);
-        var items = jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at FROM reviews WHERE "
+        var items = jdbc.query("SELECT id,user_id,book_id,body,rating,created_at,updated_at,moderation_status FROM reviews WHERE "
                         + condition + " ORDER BY created_at DESC,id ASC LIMIT ? OFFSET ?",
                 (rs, row) -> map(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class),
                         rs.getObject("book_id", UUID.class), rs.getString("body"), rs.getInt("rating"),
-                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at")), parameters.toArray());
+                        rs.getTimestamp("created_at"), rs.getTimestamp("updated_at"), rs.getString("moderation_status")), parameters.toArray());
         return new ReviewPage(items, total);
     }
 
@@ -90,12 +90,12 @@ public class ReviewRepository {
 
     public RatingAggregate ratingAggregate(UUID bookId) {
         return jdbc.queryForObject("SELECT AVG(rating)::numeric AS average,COUNT(*) AS count "
-                        + "FROM reviews WHERE book_id=?",
+                        + "FROM reviews WHERE book_id=? AND moderation_status='VISIBLE'",
                 (rs, row) -> new RatingAggregate(rs.getBigDecimal("average"), rs.getLong("count")), bookId);
     }
 
     private static Review map(UUID id, UUID userId, UUID bookId, String body, int rating,
-                              Timestamp createdAt, Timestamp updatedAt) {
-        return new Review(id, userId, bookId, body, rating, createdAt.toInstant(), updatedAt.toInstant());
+                              Timestamp createdAt, Timestamp updatedAt, String moderationStatus) {
+        return new Review(id, userId, bookId, body, rating, createdAt.toInstant(), updatedAt.toInstant(), moderationStatus);
     }
 }

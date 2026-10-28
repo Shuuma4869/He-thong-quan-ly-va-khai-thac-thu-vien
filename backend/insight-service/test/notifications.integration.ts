@@ -55,12 +55,23 @@ test('receipt và thông báo bền vững qua kết nối mới, event lặp kh
   expect(await repository.accept(event)).toBe('DUPLICATE');
   expect(await db.circulationNotice.count({ where: { eventId: event.eventId } })).toBe(1);
   expect(await db.consumedCirculationEvent.count({ where: { eventId: event.eventId } })).toBe(1);
+  expect(await db.readerNotification.count({ where: { id: event.eventId } })).toBe(1);
+  expect(await repository.unreadCount(event.readerId)).toEqual({ count: 1 });
+  expect((await repository.list(event.readerId, 0, 20)).items[0]).toMatchObject({ id: event.eventId,
+    holdId: event.aggregateId, eventType: 'HOLD_READY', readAt: null });
+  expect((await repository.list(randomUUID(), 0, 20)).items).toHaveLength(0);
+  expect(await repository.markRead(randomUUID(), event.eventId)).toBe('NOT_FOUND');
+  expect(await repository.markRead(event.readerId, event.eventId)).toBe('UPDATED');
+  expect(await repository.markRead(event.readerId, event.eventId)).toBe('ALREADY_READ');
+  expect(await repository.unreadCount(event.readerId)).toEqual({ count: 0 });
 });
 test('sự kiện cũ không thay trạng thái kết thúc bằng lời nhắc đến nhận', async () => {
   const ready = fact(); const ended: CirculationEvent = { ...ready, eventId: randomUUID(), eventType: 'HOLD_EXPIRED', aggregateVersion: 2, expiresAt: null };
   expect(await repository.accept(ended)).toBe('APPLIED'); expect(await repository.accept(ready)).toBe('OLDER');
   expect(await db.circulationNotice.findUnique({ where: where(ready) })).toMatchObject({ eventType: 'HOLD_EXPIRED', expiresAt: null, aggregateVersion: 2n });
   expect(await repository.accept(ready)).toBe('DUPLICATE');
+  expect(await db.readerNotification.count({ where: { id: ready.eventId } })).toBe(0);
+  expect(await db.readerNotification.count({ where: { id: ended.eventId } })).toBe(1);
 });
 test('consumer cạnh tranh giữ một trạng thái mới nhất và một receipt mỗi eventId', async () => {
   const original = fact();
@@ -164,6 +175,8 @@ test('Kafka thật: nhận fact, restart consumer/broker, gửi lặp và DLQ c�
   await send({ ...raw, eventId: endedId, aggregateVersion: 2, eventType: 'HOLD_EXPIRED', data: { ...raw.data, status: 'EXPIRED', version: 2 } });
   await until(async () => (await db.circulationNotice.findUnique({ where: where(ready) }))?.eventId === endedId);
   expect(await db.consumedCirculationEvent.count({ where: { eventId: ready.eventId } })).toBe(1);
+  expect(await db.readerNotification.count({ where: { id: ready.eventId } })).toBe(1);
+  expect(await db.readerNotification.count({ where: { id: endedId } })).toBe(1);
   await send({ ...raw, version: 99, secret: 'must-not-copy-to-dlq' });
   await until(async () => letters.length > 0);
   expect(letters[0]).toMatchObject({ reason: 'UNSUPPORTED_VERSION', event: null, source: { topic: 'lams.hold.events.v1' } });

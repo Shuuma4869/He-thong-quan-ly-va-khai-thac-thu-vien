@@ -128,4 +128,4 @@ flowchart TD
   R -->|Có| T[Đọc hoặc xóa; replay gọi provider lại]
 ```
 
-Các lưu đồ này mô tả implementation; không thay thế bằng chứng runtime. Mượn/trả/outbox vẫn planned.
+Các lưu đồ này mô tả những đường đi được vẽ ở đây, không thay thế bằng chứng runtime. Mượn/trả và outbox đã có implementation riêng; xem tài liệu lưu thông và event để biết trạng thái cùng giới hạn của các luồng đó.

@@ -10,6 +10,7 @@ import { ReaderHomePage } from '../../features/discovery/ReaderHomePage';
 import { StaffDashboardPage } from '../../features/analytics/StaffDashboardPage';
 import { NotFoundPage } from '../../shared/components/NotFoundPage';
 import { ProfilePage } from '../../features/profile/ProfilePage';
+import { AppearancePage } from '../../features/appearance/AppearancePage';
 import { CatalogPage } from '../../features/catalog/CatalogPage';
 import { BookDetailPage } from '../../features/catalog/BookDetailPage';
 import { AuthorDetailPage } from '../../features/catalog/AuthorDetailPage';
@@ -25,6 +26,9 @@ const CirculationReportPage = lazy(() => import('../../features/circulation/Circ
 const InventorySessionsPage = lazy(() => import('../../features/inventory/InventorySessionsPage').then(value => ({ default: value.InventorySessionsPage })));
 const InventorySessionPage = lazy(() => import('../../features/inventory/InventorySessionPage').then(value => ({ default: value.InventorySessionPage })));
 const AcquisitionPage = lazy(() => import('../../features/acquisition/AcquisitionPage').then(value => ({ default: value.AcquisitionPage })));
+const AdminAccountsPage = lazy(() => import('../../features/admin/AdminAccountsPage').then(value => ({ default: value.AdminAccountsPage })));
+const ReviewReportsPage = lazy(() => import('../../features/admin/ReviewReportsPage').then(value => ({ default: value.ReviewReportsPage })));
+const NotificationsPage = lazy(() => import('../../features/notifications/NotificationsPage').then(value => ({ default: value.NotificationsPage })));
 
 function Deferred({ children }: { children: ReactNode }) {
   return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
@@ -37,6 +41,7 @@ export function AppRouter() {
         <Route index element={<ReaderHomePage />} />
       </Route>
       <Route element={<ReaderLayout />}>
+        <Route path="cai-dat/giao-dien" element={<AppearancePage />} />
         <Route path="sach" element={<CatalogPage />} />
         <Route path="sach/:bookId" element={<BookDetailPage />} />
         <Route path="tac-gia" element={<DirectoryPage kind="authors" />} />
@@ -47,6 +52,7 @@ export function AppRouter() {
           <Route path="ho-so" element={<ProfilePage />} />
           <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
           <Route path="muon-va-giu-cho" element={<Deferred><ReaderLoansPage /></Deferred>} />
+          <Route path="thong-bao" element={<Deferred><NotificationsPage /></Deferred>} />
           <Route path="giu-cho/:bookId/:editionId" element={<HoldCreatePage />} />
         </Route>
       </Route>
@@ -65,6 +71,10 @@ export function AppRouter() {
         <Route path="kiem-ke" element={<Deferred><InventorySessionsPage /></Deferred>} />
         <Route path="kiem-ke/:sessionId" element={<Deferred><InventorySessionPage /></Deferred>} />
         <Route path="de-xuat-bo-sung" element={<Deferred><AcquisitionPage /></Deferred>} />
+        <Route element={<RoleGuard allowed={['ADMIN']} />}>
+          <Route path="tai-khoan" element={<Deferred><AdminAccountsPage /></Deferred>} />
+          <Route path="bao-cao-danh-gia" element={<Deferred><ReviewReportsPage /></Deferred>} />
+        </Route>
       </Route>
       </Route></Route>
       <Route path="*" element={<NotFoundPage />} />

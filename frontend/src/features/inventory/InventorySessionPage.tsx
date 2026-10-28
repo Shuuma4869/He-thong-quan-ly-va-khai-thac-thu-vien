@@ -12,6 +12,7 @@ import { addScan, closeSession, getSession, listAnomalies, listScans, listSnapsh
 import { ShelfPicker } from './ShelfPicker';
 import { useInventoryCommand } from './use-inventory-command';
 import { InventoryLocation, ShelfName } from './InventoryLocation';
+import { CameraBarcodeScanner } from './CameraBarcodeScanner';
 
 export function InventorySessionPage() {
   const { user } = useAuth();
@@ -48,13 +49,24 @@ function ScanForm({ owner, session, blocked, onPendingChange }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [last, setLast] = useState('');
+  const [offlineQueue, setOfflineQueue] = useState<{ id: string; barcode: string; shelfId: string; versionSeen: number }[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [versionConflict, setVersionConflict] = useState(false);
+  const [confirmedVersion, setConfirmedVersion] = useState(false);
+  const [queueMessage, setQueueMessage] = useState('');
+  const [online, setOnline] = useState(() => navigator.onLine);
   const pending = useRef<{ id: string; barcode: string; shelfId: string } | null>(null);
   const sending = useRef(false);
   const barcodeInput = useRef<HTMLInputElement>(null);
   const uncertain = !!error && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500);
+  useEffect(() => { const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update); window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
   useEffect(() => { if (last && !busy && !uncertain) barcodeInput.current?.focus(); }, [last, busy, uncertain]);
   const submit = async () => {
-    if (blocked || sending.current || (!pending.current && (!barcode.trim() || !shelfId))) return;
+    if (blocked || offlineQueue.length || sending.current || !online
+        || (!pending.current && (!barcode.trim() || !shelfId))) return;
     sending.current = true; onPendingChange(true); setBusy(true); setError(null);
     if (!pending.current) pending.current = { id: crypto.randomUUID(), barcode: barcode.trim(), shelfId };
     try {
@@ -72,15 +84,69 @@ function ScanForm({ owner, session, blocked, onPendingChange }: {
       }
     } finally { sending.current = false; setBusy(false); }
   };
+  const queueScan = () => {
+    const value = barcode.trim();
+    if (blocked || busy || uncertain || !value || !shelfId || offlineQueue.length >= 20) return;
+    setOfflineQueue(items => [...items, { id: crypto.randomUUID(), barcode: value, shelfId, versionSeen: session.version }]);
+    setBarcode(''); setQueueMessage('Mã chỉ lưu tạm trong cửa sổ này. Kiểm tra và đồng bộ khi có mạng trước khi chốt phiên.');
+    onPendingChange(true);
+  };
+  const syncQueue = async () => {
+    if (!online || !offlineQueue.length || blocked || sending.current || syncing || uncertain) return;
+    sending.current = true; setSyncing(true); setQueueMessage('');
+    try {
+      const latest = await getSession(session.id);
+      if (latest.status !== 'OPEN' || latest.branchId !== session.branchId) {
+        setQueueMessage('Phiên đã đóng hoặc đổi phạm vi. Không gửi các mã đang chờ; liên hệ người phụ trách kiểm kê.'); return;
+      }
+      if (latest.version !== offlineQueue[0].versionSeen && !confirmedVersion) {
+        setVersionConflict(true);
+        setQueueMessage('Phiên đã có thay đổi từ lúc lưu mã. Đọc lại lượt quét, sau đó xác nhận trước khi đồng bộ.'); return;
+      }
+      setVersionConflict(false); setConfirmedVersion(false);
+      for (const item of offlineQueue) {
+        await addScan(session.id, item.barcode, item.shelfId, item.id);
+        setOfflineQueue(items => items.filter(row => row.id !== item.id));
+      }
+      setQueueMessage('Đã đồng bộ hết các mã đang chờ.');
+      onPendingChange(false);
+      await client.invalidateQueries({ queryKey: ['inventory', owner] });
+    } catch (failure) {
+      setQueueMessage(failure instanceof ApiError && failure.status === 409
+        ? 'Có xung đột với phiên hoặc kệ. Không tự ghi đè; kiểm tra lại phiên và từng mã trước khi thử tiếp.'
+        : 'Chưa nhận được biên nhận cho mã đầu hàng đợi. Thử lại giữ nguyên mã yêu cầu, không chốt phiên.');
+    } finally { sending.current = false; setSyncing(false); }
+  };
   return <section className="editorial-card my-6" aria-label="Quét mã vạch"><h2 className="section-title">Quét bản sách</h2>
     <p className="text-sm text-muted my-2">Mỗi lần quét tạo một biên nhận. Khi chưa rõ máy chủ đã ghi nhận hay chưa, thử lại cùng yêu cầu đang chờ.</p>
     {blocked && <p className="text-sm my-2">Đang xác minh lệnh đóng phiên; chưa nhận scan mới.</p>}
+    <CameraBarcodeScanner disabled={blocked || busy || uncertain || syncing} onDetected={setBarcode}/>
     {!session.shelfId && <ShelfPicker owner={owner} branchId={session.branchId} value={shelfId} onChange={setShelfId} disabled={blocked || busy || uncertain}/>}
     <form className="flex flex-wrap items-end gap-3 my-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="field grow">Mã vạch<input ref={barcodeInput} autoComplete="off" autoFocus required maxLength={100} value={barcode}
-        disabled={blocked || busy || uncertain} onChange={event => setBarcode(event.target.value)}/></label>
-      <button className="button-primary" type="submit" disabled={blocked || busy || (!uncertain && (!barcode.trim() || !shelfId))}>
+        disabled={blocked || busy || uncertain || syncing} onChange={event => setBarcode(event.target.value)}/></label>
+      <button className="button-primary" type="submit" disabled={blocked || busy || !online || offlineQueue.length > 0
+        || (!uncertain && (!barcode.trim() || !shelfId))}>
         {busy ? 'Đang ghi scan…' : uncertain ? 'Thử lại scan đang chờ' : 'Ghi nhận scan'}</button></form>
+    {!online && !uncertain && <p className="text-sm my-2">Đang offline. Lưu mã tạm thời, rồi kiểm tra và đồng bộ khi có mạng.</p>}
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className="button-secondary" disabled={blocked || busy || uncertain || syncing || !barcode.trim() || !shelfId || offlineQueue.length >= 20}
+        onClick={queueScan}>Lưu mã tạm thời</button>
+      {offlineQueue.length > 0 && <button type="button" className="button-secondary" disabled={!online || syncing || uncertain}
+        onClick={() => void syncQueue()}>{syncing ? 'Đang đồng bộ…' : 'Kiểm tra và đồng bộ'}</button>}
+    </div>
+    {offlineQueue.length > 0 && <section aria-label="Mã chờ đồng bộ" className="mt-4">
+      <p>{offlineQueue.length} mã đang chờ trong cửa sổ này. {online ? 'Đã có mạng.' : 'Đang offline.'} Không thể chốt phiên trước khi xử lý hết.</p>
+      {versionConflict && <label className="flex items-start gap-2 my-2"><input type="checkbox" checked={confirmedVersion}
+        onChange={event => setConfirmedVersion(event.target.checked)}/>
+        <span>Tôi đã xem lại phiên và các lượt quét mới; tiếp tục gửi các mã đang chờ.</span></label>}
+      <ul className="mt-2 space-y-2">{offlineQueue.map(item => <li key={item.id} className="flex flex-wrap items-center gap-2">
+        <span>{item.barcode}</span><button type="button" className="text-link" disabled={syncing}
+          onClick={() => { setOfflineQueue(items => items.filter(row => row.id !== item.id));
+            if (offlineQueue.length === 1) { onPendingChange(false); setVersionConflict(false); } }}>Bỏ mã</button>
+      </li>)}</ul>
+    </section>}
+    {queueMessage && <p role="status" className="mt-3 text-sm">{queueMessage}</p>}
     {last && <p role="status">Đã nhận: {last}</p>}
     {error && <InventoryError error={error} reload={() => void client.invalidateQueries({ queryKey: ['inventory', owner] })}/>}
   </section>;

@@ -10,7 +10,7 @@ const session = { accessToken: 'test-access', accessTokenExpiresAt: '2030-01-01T
 const row = { userId: id, memberCode: 'TV-1234', fullName: 'Nguyễn An', status: 'ACTIVE' };
 const profile = { ...row, email: user.email, profile: null };
 const account = { userId: id, memberCode: user.memberCode, fullName: user.fullName, email: user.email,
-  status: 'ACTIVE', phone: null, pendingEmail: null, pendingEmailRequestedAt: null };
+  status: 'ACTIVE', phone: null, pendingEmail: null, pendingEmailRequestedAt: null, emailVerificationEnabled: true };
 const page = (items: typeof row[] = [row], number = 0, total = 21) => ({
   items, page: { number, size: 20, totalElements: total, totalPages: Math.ceil(total / 20) },
 });
@@ -25,6 +25,52 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
 });
 afterEach(() => { vi.unstubAllGlobals(); });
+
+it('thủ thư xem căn cứ no-show nhưng không có quyền xác nhận', async () => {
+  const holdId = 'a4b701a8-7d74-45b8-b346-1800770d6b34';
+  fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? session : url.includes('/members?') ? page([row], 0, 1)
+      : url.includes('/hold-reliability') ? { policyVersion: 'advisory-v1', from: '2026-08-01T00:00:00Z',
+        to: '2026-10-30T00:00:00Z', confirmed: 0, unreviewed: 1, excused: 0,
+        advisoryLevel: 'CLEAR', restrictionsEnabled: false, recentIncidents: [{ holdId,
+          readyAt: '2026-10-20T00:00:00Z', expiresAt: '2026-10-22T00:00:00Z',
+          closedAt: '2026-10-22T00:00:00Z', decision: 'UNREVIEWED', decisionVersion: 0,
+          reason: null, decidedAt: null, decisionPolicyVersion: null }] } : profile)));
+  app('/nhan-vien/thanh-vien');
+  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }));
+  const panel = await screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' });
+  expect(await within(panel).findByText(/1 chưa rà soát/)).toBeInTheDocument();
+  expect(within(panel).getByText(/Không áp dụng giảm ưu tiên/)).toBeInTheDocument();
+  expect(within(panel).queryByRole('button', { name: 'Xác nhận' })).not.toBeInTheDocument();
+});
+
+it('quản trị viên gửi quyết định no-show kèm phiên bản và lý do', async () => {
+  const holdId = 'a4b701a8-7d74-45b8-b346-1800770d6b34';
+  const record = { holdId, readyAt: '2026-10-20T00:00:00Z', expiresAt: '2026-10-22T00:00:00Z',
+    closedAt: '2026-10-22T00:00:00Z', decision: 'UNREVIEWED', decisionVersion: 0,
+    reason: null, decidedAt: null, decisionPolicyVersion: null };
+  const summary = { policyVersion: 'advisory-v1', from: '2026-08-01T00:00:00Z',
+    to: '2026-10-30T00:00:00Z', confirmed: 0, unreviewed: 1, excused: 0,
+    advisoryLevel: 'CLEAR', restrictionsEnabled: false, recentIncidents: [record] };
+  fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? { ...session, user: { ...user, roles: ['ADMIN'] } }
+      : url.includes('/members?') ? page([row], 0, 1)
+        : url.includes('/no-show') ? { ...summary, confirmed: 1, unreviewed: 0,
+          recentIncidents: [{ ...record, decision: 'CONFIRMED', decisionVersion: 1,
+            reason: 'Đã đối chiếu tại quầy', decidedAt: '2026-10-28T00:00:00Z', decisionPolicyVersion: 'advisory-v1' }] }
+          : url.includes('/hold-reliability') ? summary : profile)));
+  app('/nhan-vien/thanh-vien');
+  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }));
+  const panel = await screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' });
+  fireEvent.change(await within(panel).findByLabelText('Lý do quyết định'),
+    { target: { value: 'Đã đối chiếu tại quầy' } });
+  fireEvent.click(within(panel).getByRole('button', { name: 'Xác nhận' }));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+    String(url).endsWith(`/admin/holds/${holdId}/no-show`) && init.method === 'PATCH'
+    && JSON.parse(String(init.body)).expectedVersion === 0
+    && JSON.parse(String(init.body)).reason === 'Đã đối chiếu tại quầy')).toBe(true));
+  expect(await within(panel).findByText('Đã lưu quyết định và lý do.')).toBeInTheDocument();
+});
 
 it.each(['READER', 'LIBRARIAN', 'ADMIN'])('hồ sơ %s cho phép sửa thông tin của chính mình', async role => {
   fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
@@ -72,11 +118,31 @@ it('đổi email chỉ ở trạng thái chờ xác minh và có thể hủy', a
   const section = await screen.findByRole('region', { name: 'Địa chỉ email' });
   fireEvent.change(within(section).getByLabelText('Email mới'), { target: { value: 'new@example.test' } });
   fireEvent.change(within(section).getByLabelText('Mật khẩu hiện tại'), { target: { value: 'CurrentPassword123' } });
-  fireEvent.click(within(section).getByRole('button', { name: 'Ghi nhận email mới' }));
+  fireEvent.click(within(section).getByRole('button', { name: 'Gửi mã xác minh' }));
   expect(await within(section).findByText(/Đang chờ xác minh:/)).toBeInTheDocument();
   expect(within(section).getByText('an@example.test')).toBeInTheDocument();
   fireEvent.click(within(section).getByRole('button', { name: 'Hủy yêu cầu' }));
   await waitFor(() => expect(within(section).queryByText(/Đang chờ xác minh:/)).not.toBeInTheDocument());
+});
+it('không gợi ý gửi mã khi môi trường chưa bật SMTP', async () => {
+  fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? session : { ...account, emailVerificationEnabled: false })));
+  app();
+  expect(await screen.findByText(/Máy chủ hiện chưa bật gửi mã xác minh/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Gửi mã xác minh' })).not.toBeInTheDocument();
+});
+it('xác minh email gửi mã tới API rồi yêu cầu đăng nhập lại', async () => {
+  const pending = { ...account, pendingEmail: 'new@example.test', pendingEmailRequestedAt: '2026-10-27T00:00:00Z' };
+  fetchMock.mockImplementation((url: string) => Promise.resolve(
+    String(url).endsWith('/me/account/email-confirm') || String(url).endsWith('/auth/logout')
+      ? new Response(null, { status: 204 }) : Response.json(String(url).endsWith('/auth/refresh') ? session : pending)));
+  app();
+  const section = await screen.findByRole('region', { name: 'Địa chỉ email' });
+  fireEvent.change(within(section).getByLabelText('Mã xác minh'), { target: { value: 'abcdefghjklm' } });
+  fireEvent.click(within(section).getByRole('button', { name: 'Xác minh email' }));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+    String(url).endsWith('/me/account/email-confirm') && init.method === 'POST'
+    && JSON.parse(init.body).code === 'ABCDEFGHJKLM')).toBe(true));
 });
 it('đổi mật khẩu thành công đăng xuất khỏi giao diện', async () => {
   fetchMock.mockImplementation((url: string) => Promise.resolve(

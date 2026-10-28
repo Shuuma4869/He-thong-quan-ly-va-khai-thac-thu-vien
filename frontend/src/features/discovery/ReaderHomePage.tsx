@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, BookOpen, LibraryBig, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, Search, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import heroImage from '../../assets/img/auth/auth-cover-library.webp';
+import readingPhoto from '../../assets/img/editorial/reading-corner.jpg';
 import { useAuth } from '../auth/auth-context';
 import { BookList } from '../catalog/BookList';
 import { BookGridSkeleton } from '../catalog/BookGridSkeleton';
@@ -64,7 +65,7 @@ export function ReaderHomePage() {
     </section>
     {categories.data?.items.length ? <CategoryBooks categories={categories.data.items.slice(0, 8)} /> : null}
     <section className="landing-section landing-container landing-story" aria-labelledby="landing-story-title">
-      <div className="landing-story-mark"><LibraryBig size={65} strokeWidth={1.3}/></div>
+      <div className="landing-story-image"><img src={readingPhoto} alt="Sách đặt trên bàn đọc cạnh cửa sổ" loading="lazy" decoding="async"/></div>
       <div><p className="eyebrow">Một hành trình đọc</p><h2 id="landing-story-title">Từ tìm kiếm đến cuốn sách trên tay</h2>
         <p>Khám phá thông tin tác phẩm và ấn bản đã được thư viện biên mục. Khi đăng nhập, bạn có thể lưu sách yêu thích, theo dõi lượt mượn và gửi yêu cầu giữ chỗ.</p>
         <Link className="text-link" to="/sach">Bắt đầu tìm sách <ArrowRight size={17}/></Link></div>

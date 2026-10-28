@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LAMS Core API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     Core health, Identity/Auth, Member, Catalog, Inventory, Circulation/Hold và Reader contribution API. Khi bật profile pilot, tất cả
     POST /auth/* yêu cầu Origin HTTPS nằm trong CORS_ALLOWED_ORIGINS và header
@@ -49,6 +49,34 @@ paths:
         '422': { description: Bộ lọc không hợp lệ }
         '409': { description: Tên Category hoặc Alias nhập nhằng }
         '429': { description: 'Vượt giới hạn tra cứu theo IP, xem Retry-After' }
+  /public/catalog/books/suggestions:
+    get:
+      operationId: suggestPublicBookTitles
+      tags: [PublicCatalog]
+      summary: Gợi ý tối đa năm tựa sách gần với từ khóa
+      description: >-
+        Dùng khi truy vấn không có kết quả và không áp dụng bộ lọc khác. Gợi ý dựa trên
+        độ giống chữ của nhan đề, không phải kết quả tìm kiếm ngữ nghĩa; có thể trả danh sách rỗng.
+        Giới hạn 300 request/phút/IP được dùng chung với Catalog.
+      security: []
+      parameters:
+        - { in: query, name: query, required: true, schema: { type: string, minLength: 3, maxLength: 150 } }
+      responses:
+        '200':
+          description: Tựa sách gần đúng, theo độ giống giảm dần
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 5
+                items:
+                  type: object
+                  required: [id, title]
+                  properties:
+                    id: { type: string, format: uuid }
+                    title: { type: string }
+        '422': { description: Từ khóa gợi ý không hợp lệ }
+        '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/books/batch:
     get:
       operationId: getPublicBookCards
@@ -111,6 +139,24 @@ paths:
                   items: { type: array, items: { $ref: '#/components/schemas/Edition' } }
                   page: { $ref: '#/components/schemas/PageMetadata' }
         '404': { description: Không có tác phẩm }
+        '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/books/{id}/availability:
+    get:
+      operationId: getPublicBookAvailability
+      tags: [PublicCatalog]
+      summary: Tình trạng bản sách theo ấn bản và chi nhánh đang hoạt động
+      description: >-
+        Dữ liệu Copy, Loan và Hold được đọc trong một transaction REPEATABLE READ.
+        availableCopies chỉ đếm Copy AVAILABLE không có Loan đang mở hoặc Hold READY.
+        waitingHolds là số yêu cầu WAITING liên quan; số liệu có thể đổi sau checkedAt.
+        Không trả mã vạch, vị trí kệ hoặc dữ liệu người mượn. Tối đa 200 cặp ấn bản/chi nhánh.
+      security: []
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tình trạng hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/PublicBookAvailability' } } } }
+        '404': { description: Không có tác phẩm }
+        '422': { description: Quá nhiều cặp ấn bản và chi nhánh }
         '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/{kind}:
     get:
@@ -538,6 +584,32 @@ paths:
         '200': { description: Tài khoản sau khi lưu, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
         '409': { description: Số điện thoại đã được sử dụng }
         '422': { description: Dữ liệu không hợp lệ }
+  /me/ui-preferences:
+    get:
+      operationId: getMyUiPreferences
+      tags: [Member]
+      summary: Đọc thiết lập giao diện của chính tài khoản
+      description: Trả revision 0 và values rỗng khi chưa lưu. Khách chưa đăng nhập lưu ở localStorage của trình duyệt.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Thiết lập hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/UiPreferences' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveMyUiPreferences
+      tags: [Member]
+      summary: Lưu preset giao diện đã kiểm tra theo revision
+      description: Chỉ nhận giá trị trong allowlist; revision cũ trả 409. Không nhận CSS hay URL tùy ý.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UiPreferences' }
+      responses:
+        '200': { description: Thiết lập và revision mới, content: { application/json: { schema: { $ref: '#/components/schemas/UiPreferences' } } } }
+        '409': { description: Revision đã thay đổi trên thiết bị khác }
+        '422': { description: Phiên bản schema hoặc preset không hợp lệ }
   /me/account/password:
     post:
       operationId: changeMyPassword
@@ -563,8 +635,8 @@ paths:
     post:
       operationId: requestMyEmailChange
       tags: [Member]
-      summary: Ghi nhận email mới ở trạng thái chờ xác minh
-      description: Pilot chưa có dịch vụ gửi thư; endpoint không đổi email đăng nhập và chưa thể hoàn tất xác minh.
+      summary: Gửi mã xác minh tới email mới
+      description: Chỉ hoạt động khi SMTP được cấu hình và bật. Mã dùng một lần, hiệu lực 15 phút; tối đa 5 lần gửi trong 24 giờ và cách nhau ít nhất 1 phút. Email đăng nhập cũ được giữ cho tới khi xác minh.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -579,7 +651,9 @@ paths:
       responses:
         '200': { description: Email chờ xác minh, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
         '403': { description: Mật khẩu hiện tại sai hoặc tài khoản ngừng hoạt động }
-        '409': { description: Email đã được sử dụng }
+        '409': { description: Không thể sử dụng địa chỉ email này }
+        '429': { description: Gửi lại quá sớm hoặc hết lượt trong 24 giờ }
+        '503': { description: Gửi thư chưa được cấu hình hoặc tạm lỗi }
     delete:
       operationId: cancelMyEmailChange
       tags: [Member]
@@ -587,6 +661,109 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '204': { description: Đã hủy yêu cầu }
+  /me/account/email-confirm:
+    post:
+      operationId: confirmMyEmailChange
+      tags: [Member]
+      summary: Xác minh email mới bằng mã đã gửi
+      description: Tối đa 5 lần nhập sai; mã hết hạn sau 15 phút. Thành công tăng credential_version và thu hồi refresh token để người dùng đăng nhập lại bằng email mới.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, minLength: 12, maxLength: 12 }
+      responses:
+        '204': { description: Email đã đổi; cần đăng nhập lại }
+        '409': { description: Email đã được tài khoản khác sử dụng trước khi xác minh }
+        '422': { description: 'Mã sai, đã dùng hết lượt hoặc hết hạn' }
+  /admin/accounts:
+    get:
+      operationId: listAdminAccounts
+      tags: [IdentityAdmin]
+      summary: Tra cứu tài khoản dành riêng cho quản trị viên
+      description: Kiểm role ADMIN và trạng thái ACTIVE hiện hành trong DB. Tìm theo mã, họ tên hoặc email; ký tự đại diện được escape.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: query, schema: { type: string, maxLength: 150 } }
+        - { in: query, name: status, schema: { type: string, enum: [ACTIVE, LOCKED, DISABLED] } }
+        - { in: query, name: page, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccountPage' } } } }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/accounts/{id}:
+    get:
+      operationId: getAdminAccount
+      tags: [IdentityAdmin]
+      summary: Xem chi tiết tài khoản
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tài khoản, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccount' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/accounts/{id}/status:
+    patch:
+      operationId: changeAdminAccountStatus
+      tags: [IdentityAdmin]
+      summary: Khóa hoặc mở khóa tài khoản
+      description: expectedVersion chống ghi đè cập nhật; thay đổi tăng credential_version, thu hồi phiên và ghi audit. Không cho khóa quản trị viên hoạt động cuối cùng.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, status, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                status: { type: string, enum: [ACTIVE, LOCKED] }
+                reason: { type: string, minLength: 5, maxLength: 250 }
+      responses:
+        '200': { description: Tài khoản sau cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccount' } } } }
+        '409': { description: Xung đột phiên bản hoặc quản trị viên cuối cùng }
+  /admin/accounts/{id}/roles/{role}:
+    patch:
+      operationId: changeAdminAccountRole
+      tags: [IdentityAdmin]
+      summary: Cấp hoặc thu hồi vai trò
+      description: Chỉ ba vai trò hiện có; cần ít nhất một vai trò và một quản trị viên ACTIVE. Mọi thay đổi tăng credential_version, thu hồi phiên và ghi audit.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+        - { in: path, name: role, required: true, schema: { type: string, enum: [READER, LIBRARIAN, ADMIN] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, grant, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                grant: { type: boolean }
+                reason: { type: string, minLength: 5, maxLength: 250 }
+      responses:
+        '200': { description: Tài khoản sau cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccount' } } } }
+        '409': { description: Xung đột phiên bản hoặc quản trị viên cuối cùng }
+  /admin/accounts/{id}/audit:
+    get:
+      operationId: listAdminAccountAudit
+      tags: [IdentityAdmin]
+      summary: Xem tối đa 100 thay đổi quản trị gần nhất của tài khoản
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Lịch sử thay đổi, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AdminAccountAudit' } } } } }
   /me/favorites:
     get:
       operationId: listMyFavorites
@@ -712,7 +889,7 @@ paths:
       operationId: listBookReviews
       tags: [Reviews and ratings]
       summary: Liệt kê Reviews công khai của một sách
-      description: Reviews được công khai ngay sau khi tạo. Response không chứa userId hoặc thông tin định danh người viết; mine chỉ cho biết review có thuộc principal hiện tại không. Sort ổn định theo createdAt rồi reviewId.
+      description: Reviews VISIBLE được công khai ngay sau khi tạo. Review đã ẩn không nằm trong trang này. Response không chứa userId hoặc thông tin định danh người viết; mine chỉ cho biết review có thuộc principal hiện tại không. Sort ổn định theo createdAt rồi reviewId.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -735,7 +912,7 @@ paths:
       operationId: createBookReview
       tags: [Reviews and ratings]
       summary: Tạo review và rating của principal hiện tại cho sách
-      description: Mỗi user chỉ có một review trên mỗi Book. Review được công khai ngay; không có API moderation trong phạm vi này.
+      description: Mỗi user chỉ có một review trên mỗi Book. Review được công khai ngay, nhưng có thể bị quản trị viên ẩn sau khi xem báo cáo.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -763,7 +940,7 @@ paths:
       operationId: getBookRatingSummary
       tags: [Reviews and ratings]
       summary: Lấy rating aggregate được tính từ Reviews hiện hành
-      description: Average được làm tròn 2 chữ số bằng HALF_UP; khi chưa có review, average là null và count bằng 0. Aggregate không lưu thành nguồn dữ liệu độc lập.
+      description: Average chỉ tính review VISIBLE và được làm tròn 2 chữ số bằng HALF_UP; khi chưa có review, average là null và count bằng 0. Aggregate không lưu thành nguồn dữ liệu độc lập.
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Average và số reviews, content: { application/json: { schema: { $ref: '#/components/schemas/RatingSummary' } } } }
@@ -813,7 +990,7 @@ paths:
       operationId: listMyReviews
       tags: [Reviews and ratings]
       summary: Đánh giá của principal hiện tại
-      description: ACTIVE và role hiện hành; không nhận owner từ client. Sort createdAt DESC rồi reviewId ASC. bookId là bộ lọc, sách chưa có review của mình trả trang rỗng. Không trả PII.
+      description: ACTIVE và role hiện hành; không nhận owner từ client. Sort createdAt DESC rồi reviewId ASC. bookId là bộ lọc, sách chưa có review của mình trả trang rỗng. Chủ đánh giá vẫn thấy review đã ẩn với moderationStatus=HIDDEN; chỉnh sửa không tự công khai lại. Không trả PII.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -824,6 +1001,74 @@ paths:
         '400': { $ref: '#/components/responses/Problem' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/reviews/{reviewId}/reports:
+    post:
+      operationId: reportBookReview
+      tags: [Reviews and ratings]
+      summary: Báo cáo đánh giá không phù hợp
+      description: Không thể báo cáo đánh giá của mình, báo cáo trùng hoặc review đã ẩn. Tối đa 20 báo cáo mỗi tài khoản trong 24 giờ. Nội dung review được chụp lại tại thời điểm báo cáo.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: reviewId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '201': { description: Đã nhận báo cáo, content: { application/json: { schema: { type: object, properties: { reportId: { type: string, format: uuid } } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /admin/review-reports:
+    get:
+      operationId: listReviewReports
+      tags: [Reviews and ratings]
+      summary: Danh sách báo cáo dành cho ADMIN hiện hành
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [OPEN, RESOLVED], default: OPEN } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Trang báo cáo và ảnh chụp nội dung lúc gửi }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /admin/review-reports/{reportId}/decisions:
+    post:
+      operationId: decideReviewReport
+      tags: [Reviews and ratings]
+      summary: Ẩn đánh giá hoặc bác báo cáo, ghi audit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, reason]
+              properties:
+                action: { type: string, enum: [HIDE, DISMISS] }
+                reason: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '200': { description: Đã ghi quyết định và audit }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /members:
     get:
@@ -1863,6 +2108,57 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /me/hold-reliability:
+    get:
+      operationId: getMyHoldReliability
+      tags: [Hold]
+      summary: Xem các lần giữ chỗ hết hạn và quyết định rà soát của chính mình
+      description: Chỉ quyết định CONFIRMED mới được tính; mức tham khảo không tự hạn chế quyền giữ chỗ.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Tổng hợp trong cửa sổ chính sách, content: { application/json: { schema: { $ref: '#/components/schemas/HoldReliability' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /staff/readers/{readerId}/hold-reliability:
+    get:
+      operationId: getReaderHoldReliability
+      tags: [Hold]
+      summary: Nhân viên xem căn cứ no-show của người đọc
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: readerId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tổng hợp và tối đa 50 lần gần nhất, content: { application/json: { schema: { $ref: '#/components/schemas/HoldReliability' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/holds/{holdId}/no-show:
+    patch:
+      operationId: decideHoldNoShow
+      tags: [Hold]
+      summary: Quản trị viên xác nhận hoặc miễn trừ một lần hết hạn có bằng chứng
+      description: Ghi lịch sử bất biến và yêu cầu phiên bản hiện hành; không tự phạt hoặc thay đổi hàng chờ.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: holdId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, decision, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                decision: { type: string, enum: [CONFIRMED, EXCUSED] }
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '200': { description: Tổng hợp sau quyết định, content: { application/json: { schema: { $ref: '#/components/schemas/HoldReliability' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /holds/pickup-branches:
     get:
       operationId: listPickupBranches
@@ -2040,6 +2336,31 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/ProblemDetail' }
   schemas:
+    UiPreferences:
+      type: object
+      required: [schemaVersion, revision, values]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        revision: { type: integer, minimum: 0 }
+        values:
+          type: object
+          additionalProperties: false
+          properties:
+            accent: { type: string, enum: [blue, teal, sky, emerald, sand] }
+            glass: { type: string, enum: [subtle, standard, strong] }
+            blur: { type: string, enum: ['on', 'off'] }
+            sidebarStyle: { type: string, enum: [floating, classic] }
+            sidebarState: { type: string, enum: [expanded, collapsed] }
+            density: { type: string, enum: [comfortable, compact] }
+            radius: { type: string, enum: [medium, soft, large] }
+            fontSize: { type: string, enum: [standard, large] }
+            motion: { type: string, enum: [normal, reduced, 'off'] }
+            bookView: { type: string, enum: [grid, list] }
+            widgets:
+              type: array
+              uniqueItems: true
+              maxItems: 4
+              items: { type: string, enum: [overview, circulation, inventory, acquisition] }
     AcquisitionFacts:
       type: object
       required: [contractVersion, sourceRevision, bookId, branchId, window, copiesOwned,
@@ -2239,7 +2560,7 @@ components:
         rating: { type: integer, minimum: 1, maximum: 5 }
     Review:
       type: object
-      required: [reviewId, bookId, body, rating, createdAt, updatedAt, mine]
+      required: [reviewId, bookId, body, rating, createdAt, updatedAt, mine, moderationStatus]
       properties:
         reviewId: { type: string, format: uuid }
         bookId: { type: string, format: uuid }
@@ -2248,6 +2569,7 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         mine: { type: boolean, description: Review có thuộc principal hiện tại hay không; không tiết lộ userId. }
+        moderationStatus: { type: string, enum: [VISIBLE, HIDDEN] }
     ReviewPage:
       type: object
       required: [items, page]
@@ -2400,7 +2722,7 @@ components:
         context: { type: string, enum: [portrait, book-cover] }
     AccountCenter:
       type: object
-      required: [userId, memberCode, fullName, email, status, phone, pendingEmail, pendingEmailRequestedAt]
+      required: [userId, memberCode, fullName, email, status, phone, pendingEmail, pendingEmailRequestedAt, emailVerificationEnabled]
       properties:
         userId: { type: string, format: uuid }
         memberCode: { type: string }
@@ -2410,6 +2732,59 @@ components:
         phone: { type: [string, 'null'] }
         pendingEmail: { type: [string, 'null'], format: email }
         pendingEmailRequestedAt: { type: [string, 'null'], format: date-time }
+        emailVerificationEnabled: { type: boolean, description: SMTP đã được bật cho môi trường này }
+    AdminAccount:
+      type: object
+      required: [id, memberCode, fullName, email, status, roles, version, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        memberCode: { type: string }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [ACTIVE, LOCKED, DISABLED] }
+        roles: { type: array, items: { type: string, enum: [READER, LIBRARIAN, ADMIN] } }
+        version: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+    AdminAccountPage:
+      type: object
+      required: [items, number, size, totalElements]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminAccount' } }
+        number: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, minimum: 0 }
+    AdminAccountAudit:
+      type: object
+      required: [id, actorId, targetId, action, beforeValue, afterValue, reason, targetVersion, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorId: { type: string, format: uuid }
+        targetId: { type: string, format: uuid }
+        action: { type: string, enum: [STATUS, ROLE_GRANT, ROLE_REVOKE] }
+        beforeValue: { type: string }
+        afterValue: { type: string }
+        reason: { type: string }
+        targetVersion: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+    PublicBookAvailability:
+      type: object
+      required: [bookId, checkedAt, branches]
+      properties:
+        bookId: { type: string, format: uuid }
+        checkedAt: { type: string, format: date-time }
+        branches:
+          type: array
+          items:
+            type: object
+            required: [editionId, branchId, branchCode, branchName, catalogedCopies, availableCopies, waitingHolds]
+            properties:
+              editionId: { type: string, format: uuid }
+              branchId: { type: string, format: uuid }
+              branchCode: { type: string }
+              branchName: { type: string }
+              catalogedCopies: { type: integer, minimum: 0 }
+              availableCopies: { type: integer, minimum: 0 }
+              waitingHolds: { type: integer, minimum: 0 }
     PublicBook:
       type: object
       required: [id, title, description, authors, categories, cover, averageRating, ratingCount, catalogSource]
@@ -2573,6 +2948,34 @@ components:
         version: { type: integer, format: int64, minimum: 0 }
         policyVersion: { type: string }
         pickupSeconds: { type: integer, minimum: 1, maximum: 31622400 }
+    HoldReliability:
+      type: object
+      required: [policyVersion, from, to, confirmed, unreviewed, excused, advisoryLevel, restrictionsEnabled, recentIncidents]
+      properties:
+        policyVersion: { type: string }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        confirmed: { type: integer, minimum: 0 }
+        unreviewed: { type: integer, minimum: 0 }
+        excused: { type: integer, minimum: 0 }
+        advisoryLevel: { type: string, enum: [CLEAR, WATCH, REVIEW] }
+        restrictionsEnabled: { type: boolean, const: false }
+        recentIncidents:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [holdId, readyAt, expiresAt, closedAt, decision, decisionVersion, reason, decidedAt, decisionPolicyVersion]
+            properties:
+              holdId: { type: string, format: uuid }
+              readyAt: { type: string, format: date-time }
+              expiresAt: { type: string, format: date-time }
+              closedAt: { type: string, format: date-time }
+              decision: { type: string, enum: [UNREVIEWED, CONFIRMED, EXCUSED] }
+              decisionVersion: { type: integer, minimum: 0 }
+              reason: { type: [string, 'null'] }
+              decidedAt: { type: [string, 'null'], format: date-time }
+              decisionPolicyVersion: { type: [string, 'null'] }
     HoldEstimate:
       type: object
       required: [holdId, holdVersion, asOf, estimatedAt, reason, policyVersion, compatibleCopies, waitingAhead]

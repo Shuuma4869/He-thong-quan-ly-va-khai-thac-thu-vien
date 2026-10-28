@@ -59,6 +59,13 @@ export function resourcePath(resource: Resource, bookId?: string) {
 export async function getBooks(value: CatalogQuery, signal?: AbortSignal) {
   return z.object({ items: z.array(bookSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books?${catalogParams(value)}`, true, signal));
 }
+export async function getSearchSuggestions(query: string, signal?: AbortSignal) {
+  const term = query.trim();
+  if (term.length < 3 || term.length > 150) throw new Error('Từ khóa gợi ý phải dài từ 3 đến 150 ký tự.');
+  const params = new URLSearchParams({ query: term });
+  return z.array(z.object({ id: z.string().uuid(), title: z.string() })).max(5).parse(
+    await coreApi.get<unknown>(`/public/catalog/books/suggestions?${params}`, true, signal));
+}
 export async function getRecentBooks(signal?: AbortSignal) {
   return z.object({ items: z.array(bookSchema), page: pageSchema }).parse(await coreApi.get<unknown>('/public/catalog/books?sort=updated&size=8', true, signal));
 }
@@ -77,6 +84,15 @@ export async function getBookCards(ids: string[], signal?: AbortSignal) {
 export async function getAuthor(id: string, signal?: AbortSignal) { return named.parse(await coreApi.get<unknown>(`/public/catalog/authors/${encodeURIComponent(id)}`, true, signal)); }
 export async function getEditions(bookId: string, page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(editionSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(bookId)}/editions?page=${page}&size=20`, true, signal));
+}
+const availabilitySchema = z.object({ bookId: z.string().uuid(), checkedAt: z.string().datetime(),
+  branches: z.array(z.object({ editionId: z.string().uuid(), branchId: z.string().uuid(),
+    branchCode: z.string(), branchName: z.string(), catalogedCopies: z.number().int().nonnegative(),
+    availableCopies: z.number().int().nonnegative(), waitingHolds: z.number().int().nonnegative() })) });
+export type Availability = z.infer<typeof availabilitySchema>;
+export async function getBookAvailability(bookId: string, signal?: AbortSignal) {
+  return availabilitySchema.parse(await coreApi.get<unknown>(
+    `/public/catalog/books/${encodeURIComponent(bookId)}/availability`, true, signal));
 }
 export function getCatalogPage(resource: 'authors' | 'categories', page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: Named[]; page: Page }>;
 export function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: CatalogRecord[]; page: Page }>;

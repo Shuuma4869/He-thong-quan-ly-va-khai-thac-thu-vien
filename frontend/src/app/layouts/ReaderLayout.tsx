@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { LogIn, Menu } from 'lucide-react';
+import { LogIn, Menu, SlidersHorizontal } from 'lucide-react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
@@ -23,6 +23,7 @@ export function ReaderLayout() {
             aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={21}/></button>
           <Link className="library-topbar-brand" to="/"><BrandLogo variant="compact" /></Link>
           <SearchCommand/>
+          <Link className="library-topbar-action library-appearance-shortcut" to="/cai-dat/giao-dien" aria-label="Cài đặt giao diện" title="Cài đặt giao diện"><SlidersHorizontal size={18}/></Link>
           {auth.user ? <><span className="library-topbar-user">{auth.user.fullName}</span>
             {auth.user.roles.some(role => role === 'LIBRARIAN' || role === 'ADMIN') &&
               <Link className="library-topbar-staff" to="/nhan-vien/bang-dieu-khien">Khu nhân viên</Link>}

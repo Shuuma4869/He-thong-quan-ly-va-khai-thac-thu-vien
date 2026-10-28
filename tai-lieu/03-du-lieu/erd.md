@@ -245,5 +245,5 @@ Phase 1A đã triển khai `USERS`, `ROLES`, `USER_ROLES`, `REFRESH_TOKENS` bằ
 - Chỉ một loan chưa trả được tồn tại cho một copy; thực thi bằng constraint/index cùng transaction.
 - Barcode là duy nhất. ISBN không được giả định luôn có hoặc luôn duy nhất toàn cầu nếu dữ liệu nguồn chưa xác minh.
 - Copy state và active hold assignment quyết định availability; không dùng `books.available/total` làm nguồn thật.
-- Favorites unique theo `(user_id, book_id)`, cascade khi User/Book bị xóa. Reviews unique theo cặp này, restrict xóa User/Book; review hiện công khai ngay, chưa có moderation workflow. Rating nằm trên review; average/count là projection tính từ reviews hiện hành, không phải nguồn dữ liệu riêng.
+- Favorites unique theo `(user_id, book_id)`, cascade khi User/Book bị xóa. Reviews unique theo cặp này, restrict xóa User/Book; review công khai ngay và V29 có trạng thái VISIBLE/HIDDEN. `review_reports` lưu ảnh chụp nội dung khi báo cáo, `review_moderation_audit` lưu quyết định HIDE/DISMISS của ADMIN. Rating nằm trên review; average/count chỉ tính review VISIBLE, không phải nguồn dữ liệu riêng.
 - Các entity analytics nằm trong `lams_insight`; Core phát fact qua outbox/event thay vì cho Insight sửa schema Core.

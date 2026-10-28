@@ -4,4 +4,4 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record Review(UUID id, UUID userId, UUID bookId, String body, int rating,
-                     Instant createdAt, Instant updatedAt) {}
+                     Instant createdAt, Instant updatedAt, String moderationStatus) {}

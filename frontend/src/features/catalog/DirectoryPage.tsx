@@ -6,6 +6,7 @@ import { CatalogError, Pagination } from './CatalogStates';
 import { useAuth } from '../auth/auth-context';
 import { getDirectoryImages } from './directory-image-api';
 import { DirectoryVisual } from './DirectoryVisual';
+import readersPhoto from '../../assets/img/editorial/library-readers.jpg';
 
 export function DirectoryPage({ kind }: { kind: 'authors' | 'categories' }) {
   const { isInitializing } = useAuth();
@@ -32,8 +33,9 @@ export function DirectoryPage({ kind }: { kind: 'authors' | 'categories' }) {
   const submit = (event: FormEvent) => { event.preventDefault(); change(input.trim(), 0); };
   return <section className="shell library-page directory-page py-8">
     <nav aria-label="Đường dẫn" className="catalog-breadcrumb"><Link to="/">Trang chủ</Link><span aria-hidden="true">/</span><span>{title}</span></nav>
-    <header className="directory-hero"><p className="eyebrow">Khám phá thư viện</p><h1 className="page-title">{title}</h1>
-    <p className="mt-2">{author ? 'Tìm tác giả và xem các tác phẩm trong danh mục.' : 'Chọn thể loại để khám phá những tác phẩm phù hợp.'}</p></header>
+    <header className="directory-hero"><div><p className="eyebrow">Khám phá thư viện</p><h1 className="page-title">{title}</h1>
+    <p className="mt-2">{author ? 'Tìm tác giả và xem các tác phẩm trong danh mục.' : 'Chọn thể loại để khám phá những tác phẩm phù hợp.'}</p></div>
+    <img src={readersPhoto} alt="Không gian đọc và kệ sách trong thư viện" loading="eager" decoding="async"/></header>
     <form className="directory-search mt-6" onSubmit={submit}>
       <label className="field">Tìm {title.toLowerCase()}<input type="search" value={input} maxLength={150}
         onChange={event => setInput(event.target.value)} placeholder={author ? 'Tên tác giả' : 'Tên thể loại'} /></label>

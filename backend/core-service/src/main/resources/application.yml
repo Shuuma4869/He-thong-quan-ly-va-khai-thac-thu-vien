@@ -22,6 +22,17 @@ spring:
     consumer:
       group-id: lams-core-service
       auto-offset-reset: earliest
+  mail:
+    host: ${LAMS_SMTP_HOST:localhost}
+    port: ${LAMS_SMTP_PORT:1025}
+    username: ${LAMS_SMTP_USERNAME:}
+    password: ${LAMS_SMTP_PASSWORD:}
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+      mail.smtp.auth: ${LAMS_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${LAMS_SMTP_STARTTLS:false}
 
 management:
   endpoints:
@@ -36,6 +47,15 @@ server:
   port: ${CORE_PORT:8080}
 
 lams:
+  hold:
+    no-show:
+      policy-version: ${LAMS_NO_SHOW_POLICY_VERSION:advisory-v1}
+      lookback-days: ${LAMS_NO_SHOW_LOOKBACK_DAYS:90}
+      watch-threshold: ${LAMS_NO_SHOW_WATCH_THRESHOLD:2}
+      review-threshold: ${LAMS_NO_SHOW_REVIEW_THRESHOLD:3}
+  email:
+    enabled: ${LAMS_EMAIL_ENABLED:false}
+    from: ${LAMS_EMAIL_FROM:no-reply@lams.local}
   outbox:
     enabled: ${OUTBOX_ENABLED:false}
     job-enabled: ${OUTBOX_JOB_ENABLED:true}

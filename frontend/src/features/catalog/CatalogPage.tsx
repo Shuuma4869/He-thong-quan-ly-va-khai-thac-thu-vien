@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, BookOpenText, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { BookList } from './BookList';
 import { BookFilters } from './BookFilters';
 import { CatalogError, Pagination } from './CatalogStates';
-import { catalogParams, getBooks, parseCatalogQuery, type CatalogQuery } from './catalog-api';
+import { catalogParams, getBooks, getSearchSuggestions, parseCatalogQuery, type CatalogQuery } from './catalog-api';
 import { BookGridSkeleton } from './BookGridSkeleton';
+import booksPhoto from '../../assets/img/editorial/books-table.jpg';
 
 export function CatalogPage() {
   const [params, setParams] = useSearchParams(); const parsed = parseCatalogQuery(params);
@@ -17,8 +18,7 @@ export function CatalogPage() {
       <p>Tìm tác phẩm theo câu chuyện, tác giả hoặc chủ đề bạn quan tâm. Thông tin nguồn và ấn bản luôn được phân biệt rõ để bạn chọn đúng sách.</p>
       <div className="catalog-intro-links"><Link to="/tac-gia">Khám phá tác giả <ArrowRight size={16}/></Link>
         <Link to="/the-loai">Duyệt thể loại <ArrowRight size={16}/></Link></div>
-    </div><div className="catalog-intro-art" aria-hidden="true"><div className="catalog-intro-book one"/><div className="catalog-intro-book two"/>
-      <div className="catalog-intro-book three"/><BookOpenText size={84} strokeWidth={1}/></div></header>
+    </div><div className="catalog-intro-art" aria-hidden="true"><img src={booksPhoto} alt="" loading="eager" decoding="async"/></div></header>
     {parsed.success ? <CatalogResults value={parsed.data} onNavigate={setParams} /> : <div role="alert" className="editorial-card my-5"><p>Bộ lọc trong đường dẫn không hợp lệ.</p><button className="button-secondary mt-3" onClick={() => setParams({})}>Đặt lại bộ lọc</button></div>}
   </section>;
 }
@@ -35,6 +35,12 @@ function CatalogResults({ value, onNavigate }: { value: CatalogQuery; onNavigate
   }, [filtersOpen]);
   const update = useCallback((patch: Partial<CatalogQuery>) => onNavigate(catalogParams({ query, authorId, categoryId, categoryTerm, page, size, sort, ...patch })), [query,authorId,categoryId,categoryTerm,page,size,sort,onNavigate]);
   const result = useQuery({ queryKey: ['catalog',user?.id,'books',value], queryFn: ({ signal }) => getBooks(value,signal), retry: false });
+  const suggest = useQuery({ queryKey: ['catalog','title-suggestions',query],
+    queryFn: ({ signal }) => getSearchSuggestions(query, signal),
+    enabled: !!result.data && result.data.page.totalElements === 0 && page === 0
+      && query.trim().length >= 3 && query.trim().length <= 150
+      && !authorId && !categoryId && !categoryTerm,
+    retry: false });
   const active = [query && { label: `Từ khóa: ${query}`, patch: { query: '', sort: 'title' as const } },
     authorId && { label: 'Tác giả đã chọn', patch: { authorId: '' } },
     categoryId && { label: 'Thể loại đã chọn', patch: { categoryId: '' } },
@@ -62,7 +68,14 @@ function CatalogResults({ value, onNavigate }: { value: CatalogQuery; onNavigate
         <button key={filter.label} type="button" onClick={() => update({ ...filter.patch, page: 0 })}>{filter.label} <span aria-hidden="true">×</span></button>)}
         <button type="button" onClick={() => update({ query: '', authorId: '', categoryId: '', categoryTerm: '', sort: 'title', page: 0 })}>Xóa tất cả</button></div>}
       {result.isPending ? <BookGridSkeleton count={8} /> : result.isError ? <CatalogError error={result.error} retry={() => void result.refetch()} />
-        : <><BookList books={result.data.items} /><Pagination page={result.data.page} onChange={page => update({ page })} /></>}
+        : <><BookList books={result.data.items} />
+          {result.data.page.totalElements === 0 && suggest.data && suggest.data.length > 0 &&
+            <div className="catalog-search-suggestions" aria-label="Gợi ý tên sách gần đúng">
+              <p>Có thể bạn muốn tìm</p>
+              <div>{suggest.data.map(item => <button className="button-secondary" type="button" key={item.id}
+                onClick={() => update({ query: item.title, sort: 'relevance', page: 0 })}>{item.title}</button>)}</div>
+            </div>}
+          <Pagination page={result.data.page} onChange={page => update({ page })} /></>}
     </div>
   </div></>;
 }

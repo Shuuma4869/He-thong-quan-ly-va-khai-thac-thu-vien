@@ -50,7 +50,7 @@ class CatalogMigrationTest {
         // A second startup against the same already-current schema validates Flyway and is a no-op.
         migration("catalog_upgrade", "latest").migrate();
         assertThat(db.queryForObject("SELECT version FROM flyway_schema_history WHERE success "
-                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(26);
+                + "ORDER BY installed_rank DESC LIMIT 1", Integer.class)).isEqualTo(31);
         assertThat(db.queryForObject("SELECT count(*) FROM categories WHERE id=?", Integer.class, category)).isOne();
     }
 

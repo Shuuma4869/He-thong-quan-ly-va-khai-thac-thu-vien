@@ -50,6 +50,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .empty-state { display: grid; min-height: 280px; place-items: center; align-content: center; gap: .65rem; padding: 2rem; text-align: center; color: #66736f; }
 .empty-state h2 { color: #17211f; font-size: 1.1rem; font-weight: 650; }
 .empty-state.compact { min-height: 150px; }
+.catalog-search-suggestions { margin-top: 1rem; padding: 1.25rem; border: 1px solid #dce8df; border-radius: 18px; background: #f7faf7; }
+.catalog-search-suggestions p { margin-bottom: .75rem; color: #315543; font-weight: 650; }
+.catalog-search-suggestions > div { display: flex; flex-wrap: wrap; gap: .5rem; }
 .login-page { display: grid; min-height: 100vh; grid-template-rows: auto 1fr; background: #fff; }
 .login-brand { position: relative; min-height: 180px; overflow: hidden; color: white; background-color: #0b4f4a; background-image: linear-gradient(90deg, rgba(5, 43, 40, .76), rgba(5, 43, 40, .48)), var(--auth-cover-image); background-position: center, center 44%; background-size: cover; background-repeat: no-repeat; }
 .login-brand-content { display: flex; height: 100%; min-height: inherit; flex-direction: column; padding: 1.25rem 1.5rem; }

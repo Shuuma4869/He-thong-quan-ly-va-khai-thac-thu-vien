@@ -1,6 +1,6 @@
 # LAMS — Hệ thống quản lí và khai thác thư viện
 
-Bản nguồn nội dung báo cáo học phần. Chưa có mẫu Phenikaa chính thức để xác nhận định dạng. Tên pháp lý, mã sinh viên, lớp, giảng viên, học kỳ và ngày nộp do thành viên bổ sung theo hồ sơ thật; không tự điền từ alias Git.
+Bản nguồn nội dung báo cáo học phần. Chưa có mẫu chính thức của trường để xác nhận định dạng. Tên pháp lý, mã sinh viên, lớp, giảng viên, học kỳ và ngày nộp do thành viên bổ sung theo hồ sơ thật; không tự điền từ alias Git.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -8,7 +8,7 @@ LAMS hỗ trợ tra cứu và biên mục thư viện, tách tác phẩm, ấn b
 
 ## 2. Yêu cầu người dùng
 
-Nhóm có hai thành viên theo phân công dự án. [13 User Stories và AC](../tai-lieu/01-yeu-cau/user-stories.md) là nguồn truy vết requirement/use case/API/UI/data/test. Mỗi story phải có evidence của commit nộp bài. Không sử dụng roadmap để tăng số story hoàn thành.
+Nhóm có hai thành viên theo phân công dự án. [22 User Stories và AC](../tai-lieu/01-yeu-cau/user-stories.md) là nguồn yêu cầu gốc. [Báo cáo tiểu luận](bao-cao/Bao-cao-tieu-luan-LAMS.md) trình bày thêm 7 story rút ra từ chức năng đã có, thành 29 story, và ghi rõ phần nào là tổng hợp. Mỗi story cần đối chiếu implementation và bằng chứng đúng SHA; roadmap không phải bằng chứng hoàn thành.
 
 ## 3. Phân tích và thiết kế
 
@@ -59,7 +59,7 @@ Tuan phụ trách kiến trúc, frontend và tích hợp; Toan phụ trách các
 
 ## 12. Pháp luật và đạo đức
 
-[Xem căn cứ và giới hạn](../tai-lieu/01-yeu-cau/phap-luat-va-dao-duc.md). Bảo vệ dữ liệu, nguồn ảnh/metadata, minh bạch AI hỗ trợ, accessibility và test trung thực là nghĩa vụ cần trình bày rõ. LICENSE trung lập không cấp quyền mã nguồn mở. Chuyên cần/thảo luận cần minh chứng thật ngoài repo.
+[Xem căn cứ và giới hạn](../tai-lieu/01-yeu-cau/phap-luat-va-dao-duc.md). Bảo vệ dữ liệu, nguồn ảnh/metadata, trợ năng và trình bày kết quả kiểm thử trung thực là nghĩa vụ cần nêu rõ. LICENSE trung lập không cấp quyền mã nguồn mở. Chuyên cần/thảo luận cần minh chứng thật ngoài repo.
 
 ## 13. Hạn chế và hướng phát triển
 

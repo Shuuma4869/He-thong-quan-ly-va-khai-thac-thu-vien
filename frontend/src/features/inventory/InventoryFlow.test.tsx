@@ -22,6 +22,8 @@ let session = { ...initialSession };
 let anomalies: unknown[] = [];
 let fetchMock: ReturnType<typeof vi.fn>;
 let role = 'LIBRARIAN';
+const mediaDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+const onlineDescriptor = Object.getOwnPropertyDescriptor(navigator, 'onLine');
 function app(path = `/nhan-vien/kiem-ke/${sessionId}`) {
   return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRouter/></MemoryRouter></AppProviders>);
 }
@@ -63,7 +65,79 @@ beforeEach(() => {
   fetchMock = vi.fn((url: string, init: RequestInit) => Promise.resolve(response(url, init)));
   vi.stubGlobal('fetch', fetchMock);
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals();
+  if (mediaDescriptor) Object.defineProperty(navigator, 'mediaDevices', mediaDescriptor);
+  else Reflect.deleteProperty(navigator, 'mediaDevices');
+  if (onlineDescriptor) Object.defineProperty(navigator, 'onLine', onlineDescriptor);
+  else Reflect.deleteProperty(navigator, 'onLine');
+});
+
+it('camera không hỗ trợ vẫn giữ ô nhập mã thủ công', async () => {
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined });
+  app(); await screen.findByText(/1 bản trong snapshot/);
+  fireEvent.click(screen.getByRole('button', { name: 'Quét bằng camera' }));
+  expect(await screen.findByText(/chưa hỗ trợ quét mã vạch/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Mã vạch'), { target: { value: 'BC1' } });
+  expect(screen.getByRole('button', { name: 'Ghi nhận scan' })).toBeEnabled();
+});
+
+it('camera giả lập chỉ điền mã, nhân viên xác nhận trước khi gửi scan', async () => {
+  const stop = vi.fn();
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true,
+    value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] }) } });
+  vi.stubGlobal('BarcodeDetector', class { detect = vi.fn().mockResolvedValue([{ rawValue: 'BC1' }]); });
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  app(); await screen.findByText(/1 bản trong snapshot/);
+  fireEvent.click(screen.getByRole('button', { name: 'Quét bằng camera' }));
+  await waitFor(() => expect(screen.getByLabelText('Mã vạch')).toHaveValue('BC1'));
+  expect(stop).toHaveBeenCalled();
+  expect(fetchMock.mock.calls.filter(([url, init]) => url.endsWith('/scans') && init.method === 'POST')).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Ghi nhận scan' }));
+  expect(await screen.findByText(/Đã nhận: BC1/)).toBeInTheDocument();
+});
+
+it('mã lưu tạm khi mất mạng khóa chốt và retry cùng clientScanId sau khi online', async () => {
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+  let first = true;
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (url.endsWith(`/inventory-sessions/${sessionId}/scans`) && init.method === 'POST' && first) {
+      first = false; return Promise.reject(new TypeError('network'));
+    }
+    return Promise.resolve(response(url, init));
+  });
+  app(); await screen.findByText(/1 bản trong snapshot/);
+  fireEvent.change(screen.getByLabelText('Mã vạch'), { target: { value: 'BC1' } });
+  expect(screen.getByRole('button', { name: 'Ghi nhận scan' })).toBeDisabled();
+  expect(screen.getByText(/Đang offline\. Lưu mã tạm thời/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu mã tạm thời' }));
+  expect(await screen.findByText(/1 mã đang chờ/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Chốt phiên' })).toBeDisabled();
+  expect(fetchMock.mock.calls.filter(([url, init]) => url.endsWith('/scans') && init.method === 'POST')).toHaveLength(0);
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+  window.dispatchEvent(new Event('online'));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Kiểm tra và đồng bộ' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra và đồng bộ' }));
+  expect(await screen.findByText(/Chưa nhận được biên nhận cho mã đầu/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra và đồng bộ' }));
+  expect(await screen.findByText(/Đã đồng bộ hết/)).toBeInTheDocument();
+  const calls = fetchMock.mock.calls.filter(([url, init]) => url.endsWith('/scans') && init.method === 'POST');
+  expect(calls).toHaveLength(2);
+  expect(calls[0][1].body).toBe(calls[1][1].body);
+  expect(screen.queryByRole('region', { name: 'Mã chờ đồng bộ' })).not.toBeInTheDocument();
+});
+
+it('phiên đổi version trước đồng bộ phải được nhân viên xác nhận', async () => {
+  app(); await screen.findByText(/1 bản trong snapshot/);
+  fireEvent.change(screen.getByLabelText('Mã vạch'), { target: { value: 'BC1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu mã tạm thời' }));
+  session = { ...session, version: 1 };
+  fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra và đồng bộ' }));
+  expect(await screen.findByText(/Phiên đã có thay đổi/)).toBeInTheDocument();
+  expect(fetchMock.mock.calls.filter(([url, init]) => url.endsWith('/scans') && init.method === 'POST')).toHaveLength(0);
+  fireEvent.click(screen.getByLabelText(/Tôi đã xem lại phiên/));
+  fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra và đồng bộ' }));
+  expect(await screen.findByText(/Đã đồng bộ hết/)).toBeInTheDocument();
+});
 
 it('scan giữ cùng clientScanId khi mất phản hồi rồi chốt đúng version', async () => {
   let first = true;
