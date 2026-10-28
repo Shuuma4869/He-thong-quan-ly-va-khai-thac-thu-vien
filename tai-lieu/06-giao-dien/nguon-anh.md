@@ -14,8 +14,11 @@
 | `categories/nature-forest.jpg` | [Teguh Sugi, Pexels 6903877](https://www.pexels.com/photo/a-green-trees-in-the-forest-6903877/) | Ảnh minh họa thể loại thiên nhiên, môi trường |
 | `categories/romance-reading.jpg` | [Anastasia Nagibina, Pexels 27067376](https://www.pexels.com/photo/young-couple-reading-book-together-27067376/) | Ảnh minh họa thể loại lãng mạn |
 | `categories/children-books.jpg` | [Caleb Oquendo, Pexels 34708269](https://www.pexels.com/photo/library-display-of-colorful-children-s-books-34708269/) | Ảnh minh họa thể loại thiếu nhi |
+| `categories/art-studio.jpg` | [Cup of Couple, Pexels 7302103](https://www.pexels.com/photo/a-painter-painting-an-artwork-7302103/) | Ảnh minh họa nghệ thuật, hội họa |
+| `categories/business-charts.jpg` | [RDNE Stock project, Pexels 7845375](https://www.pexels.com/photo/businesswomen-looking-at-a-chart-and-having-a-discussion-7845375/) | Ảnh minh họa kinh tế, tài chính |
+| `categories/mathematics-board.jpg` | [Jean-Rene Chazottes, Pexels 28608151](https://www.pexels.com/photo/mathematicians-collaborate-on-chalkboard-equations-28608151/) | Ảnh minh họa toán học |
 
-Chín ảnh mới được tải từ CDN ảnh của Pexels với chiều rộng 960–1600 px và nén theo tham số của CDN, sau đó lưu trong mã nguồn. Không có request ảnh tới Pexels khi người dùng mở giao diện. Sáu ảnh thể loại chỉ minh họa cho các nhóm tên đã ánh xạ; các thể loại khác dùng nền chữ thiết kế. Ảnh cũ là bản WebP đã có sẵn trong dự án; tệp gốc mà nhóm cung cấp trước đó hiện không còn tại đường dẫn local cũ nên chưa đối chiếu lại được trang ảnh cụ thể. Cần giữ thông tin gốc này khi thay ảnh.
+Mười hai ảnh JPG được tải từ CDN của Pexels ở chiều rộng 960–1600 px và lưu trong mã nguồn. Không có request ảnh tới Pexels khi người dùng mở giao diện. Chín ảnh thể loại chỉ minh họa cho nhóm tên đã ánh xạ; thể loại khác dùng nền chữ thiết kế. Ảnh WebP cũ đã có sẵn trong dự án; tệp gốc nhóm cung cấp trước đó hiện không còn tại đường dẫn local cũ nên chưa đối chiếu lại được trang ảnh cụ thể. Cần giữ thông tin gốc này khi thay ảnh.
 
 [Giấy phép Pexels](https://www.pexels.com/license/) cho phép sử dụng và chỉnh sửa ảnh trong ứng dụng, không bắt buộc ghi công; nhóm vẫn ghi tên tác giả để dễ truy nguyên. Không bán lại ảnh nguyên bản, không dùng ảnh làm nhãn hiệu, và không ngụ ý người được chụp tán thành LAMS. Điều khoản đã được đối chiếu ngày 28/10/2026; cần kiểm lại trước khi phát hành công khai.
 
