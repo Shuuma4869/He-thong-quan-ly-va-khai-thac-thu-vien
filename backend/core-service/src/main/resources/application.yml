@@ -47,6 +47,12 @@ server:
   port: ${CORE_PORT:8080}
 
 lams:
+  hold:
+    no-show:
+      policy-version: ${LAMS_NO_SHOW_POLICY_VERSION:advisory-v1}
+      lookback-days: ${LAMS_NO_SHOW_LOOKBACK_DAYS:90}
+      watch-threshold: ${LAMS_NO_SHOW_WATCH_THRESHOLD:2}
+      review-threshold: ${LAMS_NO_SHOW_REVIEW_THRESHOLD:3}
   email:
     enabled: ${LAMS_EMAIL_ENABLED:false}
     from: ${LAMS_EMAIL_FROM:no-reply@lams.local}

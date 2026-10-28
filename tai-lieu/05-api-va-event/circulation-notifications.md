@@ -2,7 +2,7 @@
 
 `LoanEventsConsumer` đọc hai topic Loan/Hold của Core, kiểm envelope rồi ghi trạng thái thông báo vào PostgreSQL của Insight. Nó không truy cập database Core và không quyết định sách đã sẵn sàng hay người dùng còn quyền nhận sách. Mọi hành động mượn, trả và nhận giữ chỗ vẫn phải được Core xác minh tại thời điểm gửi lệnh.
 
-Thông báo hiện là dữ liệu nội bộ. Chưa có API hộp thông báo, giao diện đọc/đánh dấu đã xem, email hay push. Không diễn giải việc ghi bảng thành người dùng đã nhận được thông báo.
+Insight có API và giao diện hộp thông báo để người đọc xem, đếm mục chưa đọc và đánh dấu đã đọc. Mục chỉ được tạo khi producer và consumer đã bật; chưa có gửi email hoặc push. Không diễn giải việc ghi bảng thành người dùng đã thực sự mở ứng dụng và đọc thông báo.
 
 ## Dữ liệu và thứ tự xử lý
 
@@ -10,6 +10,8 @@ Prisma migration `202610250001_circulation_notifications` tạo hai bảng:
 
 - `consumed_circulation_events`: eventId và SHA256 của dữ liệu chuẩn hóa, dùng nhận diện sự kiện trùng qua lần khởi động mới.
 - `circulation_notices`: trạng thái mới nhất của từng Loan/Hold, có readerId, loại sự kiện, version, thời điểm nghiệp vụ và hạn trả/nhận nếu cần. Không lưu tên, email, token hoặc snapshot Catalog.
+
+Migration `202610280001_reader_inbox` thêm `reader_notifications`, giữ một mục cho mỗi event HOLD_READY/HOLD_EXPIRED đã áp dụng. API xác minh principal qua Core ở mỗi request và lọc theo readerId lấy từ phiên. Chi tiết và giới hạn vận hành ở [hộp thông báo](../02-kien-truc/hop-thong-bao.md).
 
 Một transaction Insight ghi cả receipt và thông báo. Khóa advisory theo loại/UUID aggregate ngăn hai consumer cập nhật cạnh tranh. Event cũ vẫn được ghi nhận là đã đọc nhưng không ghi đè trạng thái có version cao hơn; HOLD_READY đến sau HOLD_EXPIRED không phục hồi lời nhắc nhận sách. Dùng lại eventId với nội dung khác, cùng version với eventId khác, hoặc đổi readerId của aggregate đều bị từ chối.
 
@@ -45,4 +47,4 @@ Bước replay thực tế cần quyền/phê duyệt vận hành riêng. Bộ t
 
 ## Bằng chứng cần đối chiếu
 
-Parser/processor có test kiểu dữ liệu, topic/key, phiên bản, nội dung thừa, retry và DLQ không ACK. Integration test dùng PostgreSQL/Kafka thật cho duplicate, out-of-order, cạnh tranh, transaction rollback, restart consumer/broker, lỗi storage năm lần và replay fact gốc. Kết quả test/CI gắn với commit trong PR; chưa có bằng chứng email, push, hộp thông báo UI hoặc broker nhiều node.
+Parser/processor có test kiểu dữ liệu, topic/key, phiên bản, nội dung thừa, retry và DLQ không ACK. Integration test dùng PostgreSQL/Kafka thật cho duplicate, out-of-order, cạnh tranh, transaction rollback, restart consumer/broker, lỗi storage năm lần và replay fact gốc. API hộp thông báo có test quyền, giới hạn truy cập và owner; frontend có test trạng thái tải, lỗi và đánh dấu đã đọc. Kết quả test/CI gắn với commit trong PR; chưa có bằng chứng email, push hoặc broker nhiều node.

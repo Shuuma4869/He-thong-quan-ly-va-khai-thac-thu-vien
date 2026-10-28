@@ -41,6 +41,7 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | AcquisitionRecommendation (`acquisition_recommendations`, Insight Prisma) | Đề xuất bổ sung sách nội bộ | Book/branch UUID, cửa sổ và thời điểm snapshot, phiên bản nguồn/công thức, điểm/confidence, evidence JSONB; trạng thái DRAFT/APPROVED/REJECTED, version và thông tin người duyệt; unique snapshot/phạm vi/phiên bản | Insight/Acquisition |
 | AcquisitionDecision (`acquisition_decisions`, Insight Prisma) | Lịch sử quyết định đề xuất | FK recommendation, action, actor, lý do, version; unique recommendation/version; không phải đơn đặt mua | Insight/Acquisition |
 | ReaderNotification (`reader_notifications`, Insight Prisma) | Mục hộp thư từ Hold READY/EXPIRED | UUID `id` là eventId; reader/hold UUID, event/version, occurred/received/expires/read time; index owner/time và owner/unread; không lưu email/tên sách | Insight/Notifications |
+| HoldNoShowDecision (`hold_no_show_decisions`, V30) | Lịch sử quản trị xác nhận hoặc miễn trừ một Hold hết hạn | hold/version unique, quyết định, lý do, actor, policy version và thời điểm; không xóa/sửa bản cũ | Core/Hold |
 | SearchEvent (thiết kế, chưa có bảng) | Tín hiệu tìm kiếm dự kiến | Chưa ghi query, kết quả rỗng hoặc session hash; không được dùng làm dữ liệu báo cáo hiện tại | Insight/Analytics |
 | DemandSignal (thiết kế, chưa có bảng) | Tín hiệu nhu cầu quy chuẩn dự kiến | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
 

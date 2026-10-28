@@ -26,6 +26,52 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
+it('thủ thư xem căn cứ no-show nhưng không có quyền xác nhận', async () => {
+  const holdId = 'a4b701a8-7d74-45b8-b346-1800770d6b34';
+  fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? session : url.includes('/members?') ? page([row], 0, 1)
+      : url.includes('/hold-reliability') ? { policyVersion: 'advisory-v1', from: '2026-08-01T00:00:00Z',
+        to: '2026-10-30T00:00:00Z', confirmed: 0, unreviewed: 1, excused: 0,
+        advisoryLevel: 'CLEAR', restrictionsEnabled: false, recentIncidents: [{ holdId,
+          readyAt: '2026-10-20T00:00:00Z', expiresAt: '2026-10-22T00:00:00Z',
+          closedAt: '2026-10-22T00:00:00Z', decision: 'UNREVIEWED', decisionVersion: 0,
+          reason: null, decidedAt: null, decisionPolicyVersion: null }] } : profile)));
+  app('/nhan-vien/thanh-vien');
+  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }));
+  const panel = await screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' });
+  expect(await within(panel).findByText(/1 chưa rà soát/)).toBeInTheDocument();
+  expect(within(panel).getByText(/Không áp dụng giảm ưu tiên/)).toBeInTheDocument();
+  expect(within(panel).queryByRole('button', { name: 'Xác nhận' })).not.toBeInTheDocument();
+});
+
+it('quản trị viên gửi quyết định no-show kèm phiên bản và lý do', async () => {
+  const holdId = 'a4b701a8-7d74-45b8-b346-1800770d6b34';
+  const record = { holdId, readyAt: '2026-10-20T00:00:00Z', expiresAt: '2026-10-22T00:00:00Z',
+    closedAt: '2026-10-22T00:00:00Z', decision: 'UNREVIEWED', decisionVersion: 0,
+    reason: null, decidedAt: null, decisionPolicyVersion: null };
+  const summary = { policyVersion: 'advisory-v1', from: '2026-08-01T00:00:00Z',
+    to: '2026-10-30T00:00:00Z', confirmed: 0, unreviewed: 1, excused: 0,
+    advisoryLevel: 'CLEAR', restrictionsEnabled: false, recentIncidents: [record] };
+  fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? { ...session, user: { ...user, roles: ['ADMIN'] } }
+      : url.includes('/members?') ? page([row], 0, 1)
+        : url.includes('/no-show') ? { ...summary, confirmed: 1, unreviewed: 0,
+          recentIncidents: [{ ...record, decision: 'CONFIRMED', decisionVersion: 1,
+            reason: 'Đã đối chiếu tại quầy', decidedAt: '2026-10-28T00:00:00Z', decisionPolicyVersion: 'advisory-v1' }] }
+          : url.includes('/hold-reliability') ? summary : profile)));
+  app('/nhan-vien/thanh-vien');
+  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }));
+  const panel = await screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' });
+  fireEvent.change(await within(panel).findByLabelText('Lý do quyết định'),
+    { target: { value: 'Đã đối chiếu tại quầy' } });
+  fireEvent.click(within(panel).getByRole('button', { name: 'Xác nhận' }));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+    String(url).endsWith(`/admin/holds/${holdId}/no-show`) && init.method === 'PATCH'
+    && JSON.parse(String(init.body)).expectedVersion === 0
+    && JSON.parse(String(init.body)).reason === 'Đã đối chiếu tại quầy')).toBe(true));
+  expect(await within(panel).findByText('Đã lưu quyết định và lý do.')).toBeInTheDocument();
+});
+
 it.each(['READER', 'LIBRARIAN', 'ADMIN'])('hồ sơ %s cho phép sửa thông tin của chính mình', async role => {
   fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
     url.endsWith('/auth/refresh') ? { ...session, user: { ...user, roles: [role] } } : account,

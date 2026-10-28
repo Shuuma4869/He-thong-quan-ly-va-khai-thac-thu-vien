@@ -12,6 +12,7 @@ import io.github.shuuma4869.lams.core.circulation.loan.application.LoanRenewalSe
 import io.github.shuuma4869.lams.core.circulation.shared.VersionedRequest;
 import io.github.shuuma4869.lams.core.hold.api.HoldRequest;
 import io.github.shuuma4869.lams.core.hold.application.HoldQueries;
+import io.github.shuuma4869.lams.core.hold.application.HoldNoShowService;
 import io.github.shuuma4869.lams.core.hold.application.HoldService;
 import io.github.shuuma4869.lams.core.hold.domain.Hold;
 import io.github.shuuma4869.lams.core.hold.infrastructure.HoldRepository;
@@ -71,6 +72,7 @@ class HoldIntegrationTest {
     @Autowired HoldService service;
     @Autowired HoldRepository holds;
     @Autowired HoldQueries queries;
+    @Autowired HoldNoShowService noShows;
     @Autowired LoanCommandService loans;
     @Autowired LoanRenewalService renewals;
     @Autowired CopyStateService states;
@@ -136,6 +138,58 @@ class HoldIntegrationTest {
         assertThat(ready.expiresAt()).isEqualTo(clock.instant().plus(Duration.ofHours(48)));
         assertThat(count("hold_changes","hold_id",next.id())).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM holds WHERE copy_id=? AND status='READY'",Integer.class,f.copy)).isOne();
+    }
+
+    @Test void noShowNeedsBusinessEventAndAdminDecisionWithVersionedAudit() throws Exception {
+        var f = fixture();
+        var active = service.create(f.reader, request(f, null, true));
+        assertThat(noShows.mine(f.reader).unreviewed()).isZero();
+        failure(404, () -> noShows.decide(user("ADMIN"), active.id(), 0, "CONFIRMED", "Đã kiểm tra tại quầy"));
+        clock.value = active.expiresAt();
+        service.reconcileBook(f.book);
+        var initial = noShows.mine(f.reader);
+        assertThat(initial.unreviewed()).isOne();
+        assertThat(initial.confirmed()).isZero();
+        assertThat(initial.restrictionsEnabled()).isFalse();
+        assertThat(initial.recentIncidents().getFirst().decision()).isEqualTo("UNREVIEWED");
+        assertThat(noShows.forStaff(f.staff, f.reader).unreviewed()).isOne();
+        failure(403, () -> noShows.forStaff(f.reader, f.reader));
+        failure(403, () -> noShows.decide(f.staff, active.id(), 0, "CONFIRMED", "Đã kiểm tra tại quầy"));
+        UUID admin = user("ADMIN");
+        var confirmed = noShows.decide(admin, active.id(), 0, "CONFIRMED", "Đã đối chiếu sổ nhận sách");
+        assertThat(confirmed.confirmed()).isOne();
+        assertThat(confirmed.recentIncidents().getFirst().decisionVersion()).isOne();
+        failure(409, () -> noShows.decide(admin, active.id(), 0, "EXCUSED", "Chi nhánh đã đóng cửa"));
+        var excused = noShows.decide(admin, active.id(), 1, "EXCUSED", "Chi nhánh đã đóng cửa");
+        assertThat(excused.confirmed()).isZero();
+        assertThat(excused.excused()).isOne();
+        assertThat(count("hold_no_show_decisions", "hold_id", active.id())).isEqualTo(2);
+        var owner = jwt().jwt(j -> j.subject(f.reader.toString())).authorities(new SimpleGrantedAuthority("ROLE_READER"));
+        mvc.perform(get("/api/v1/me/hold-reliability").with(owner)).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/staff/readers/" + f.reader + "/hold-reliability").with(owner))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/me/hold-reliability")).andExpect(status().isUnauthorized());
+        String path = "/api/v1/admin/holds/" + active.id() + "/no-show";
+        String body = "{\"expectedVersion\":2,\"decision\":\"CONFIRMED\",\"reason\":\"Đã đối chiếu lại tại quầy\"}";
+        mvc.perform(patch(path).with(owner).contentType("application/json").content(body))
+                .andExpect(status().isForbidden());
+        var adminToken = jwt().jwt(j -> j.subject(admin.toString())).authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        mvc.perform(patch(path).with(adminToken).contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        assertThat(count("hold_no_show_decisions", "hold_id", active.id())).isEqualTo(3);
+    }
+
+    @Test void competingNoShowDecisionsKeepOneVersionAndPreserveEvidence() throws Exception {
+        var f = fixture();
+        var hold = service.create(f.reader, request(f, null, true));
+        clock.value = hold.expiresAt();
+        service.reconcileBook(f.book);
+        UUID firstAdmin = user("ADMIN"), secondAdmin = user("ADMIN");
+        assertThat(race(() -> noShows.decide(firstAdmin, hold.id(), 0, "CONFIRMED", "Đã đối chiếu tại quầy"),
+                () -> noShows.decide(secondAdmin, hold.id(), 0, "EXCUSED", "Chi nhánh đóng cửa đột xuất")))
+                .containsExactlyInAnyOrder(200, 409);
+        assertThat(count("hold_no_show_decisions", "hold_id", hold.id())).isOne();
+        assertThat(noShows.mine(f.reader).confirmed() + noShows.mine(f.reader).excused()).isOne();
     }
 
     @Test void suspendedReaderIsSkippedWithoutLosingQueueAndCanReceiveAfterReactivation() {

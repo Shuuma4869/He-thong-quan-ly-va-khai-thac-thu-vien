@@ -2054,6 +2054,57 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /me/hold-reliability:
+    get:
+      operationId: getMyHoldReliability
+      tags: [Hold]
+      summary: Xem các lần giữ chỗ hết hạn và quyết định rà soát của chính mình
+      description: Chỉ quyết định CONFIRMED mới được tính; mức tham khảo không tự hạn chế quyền giữ chỗ.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Tổng hợp trong cửa sổ chính sách, content: { application/json: { schema: { $ref: '#/components/schemas/HoldReliability' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /staff/readers/{readerId}/hold-reliability:
+    get:
+      operationId: getReaderHoldReliability
+      tags: [Hold]
+      summary: Nhân viên xem căn cứ no-show của người đọc
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: readerId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tổng hợp và tối đa 50 lần gần nhất, content: { application/json: { schema: { $ref: '#/components/schemas/HoldReliability' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/holds/{holdId}/no-show:
+    patch:
+      operationId: decideHoldNoShow
+      tags: [Hold]
+      summary: Quản trị viên xác nhận hoặc miễn trừ một lần hết hạn có bằng chứng
+      description: Ghi lịch sử bất biến và yêu cầu phiên bản hiện hành; không tự phạt hoặc thay đổi hàng chờ.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: holdId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, decision, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                decision: { type: string, enum: [CONFIRMED, EXCUSED] }
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '200': { description: Tổng hợp sau quyết định, content: { application/json: { schema: { $ref: '#/components/schemas/HoldReliability' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /holds/pickup-branches:
     get:
       operationId: listPickupBranches
@@ -2818,6 +2869,34 @@ components:
         version: { type: integer, format: int64, minimum: 0 }
         policyVersion: { type: string }
         pickupSeconds: { type: integer, minimum: 1, maximum: 31622400 }
+    HoldReliability:
+      type: object
+      required: [policyVersion, from, to, confirmed, unreviewed, excused, advisoryLevel, restrictionsEnabled, recentIncidents]
+      properties:
+        policyVersion: { type: string }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        confirmed: { type: integer, minimum: 0 }
+        unreviewed: { type: integer, minimum: 0 }
+        excused: { type: integer, minimum: 0 }
+        advisoryLevel: { type: string, enum: [CLEAR, WATCH, REVIEW] }
+        restrictionsEnabled: { type: boolean, const: false }
+        recentIncidents:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [holdId, readyAt, expiresAt, closedAt, decision, decisionVersion, reason, decidedAt, decisionPolicyVersion]
+            properties:
+              holdId: { type: string, format: uuid }
+              readyAt: { type: string, format: date-time }
+              expiresAt: { type: string, format: date-time }
+              closedAt: { type: string, format: date-time }
+              decision: { type: string, enum: [UNREVIEWED, CONFIRMED, EXCUSED] }
+              decisionVersion: { type: integer, minimum: 0 }
+              reason: { type: [string, 'null'] }
+              decidedAt: { type: [string, 'null'], format: date-time }
+              decisionPolicyVersion: { type: [string, 'null'] }
     HoldEstimate:
       type: object
       required: [holdId, holdVersion, asOf, estimatedAt, reason, policyVersion, compatibleCopies, waitingAhead]

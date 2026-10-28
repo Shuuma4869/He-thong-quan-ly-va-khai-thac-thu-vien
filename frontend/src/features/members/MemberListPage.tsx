@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { getMembers, memberQueryParams, parseMemberQuery, statusLabels, type MemberQuery } from './member-api';
 import { MemberRequestError } from './MemberRequestError';
 import { MemberSearch } from './MemberSearch';
+import { HoldReliabilityPanel } from './HoldReliabilityPanel';
 
 export function MemberListPage() {
   const [params, setParams] = useSearchParams();
@@ -24,6 +25,7 @@ function MemberResults({ value, onNavigate }: {
   value: MemberQuery; onNavigate: (params: URLSearchParams) => void;
 }) {
   const { user } = useAuth();
+  const [selected, setSelected] = useState<string | null>(null);
   const { query, status, page, size, sort } = value;
   const update = useCallback((patch: Partial<MemberQuery>) => {
     onNavigate(memberQueryParams({ query, status, page, size, sort, ...patch }));
@@ -47,12 +49,14 @@ function MemberResults({ value, onNavigate }: {
         </div> : <div className="member-table-wrap" tabIndex={0} role="region" aria-label="Danh sách thành viên, cuộn ngang để xem đủ cột">
           <table className="member-table">
             <caption className="sr-only">Thành viên theo bộ lọc hiện tại</caption>
-            <thead><tr><th scope="col">Mã thành viên</th><th scope="col">Họ và tên</th><th scope="col">Trạng thái</th></tr></thead>
+            <thead><tr><th scope="col">Mã thành viên</th><th scope="col">Họ và tên</th><th scope="col">Trạng thái</th><th scope="col">Giữ chỗ</th></tr></thead>
             <tbody>{result.data.items.map(member => <tr key={member.userId}>
               <td>{member.memberCode}</td><td>{member.fullName}</td><td>{statusLabels[member.status]}</td>
+              <td><button type="button" className="text-link" onClick={() => setSelected(member.userId)}>Xem hết hạn</button></td>
             </tr>)}</tbody>
           </table>
         </div>}
+        {selected && <HoldReliabilityPanel key={selected} readerId={selected}/>}
         <nav className="mt-5 flex flex-wrap items-center gap-3" aria-label="Phân trang thành viên">
           <button type="button" className="button-secondary" disabled={page === 0}
             onClick={() => update({ page: page - 1 })}>Trang trước</button>

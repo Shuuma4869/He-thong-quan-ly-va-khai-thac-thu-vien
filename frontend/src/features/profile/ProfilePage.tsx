@@ -5,6 +5,7 @@ import { BookOpen, Heart, KeyRound, Mail, ShieldCheck, Star, UserRound } from 'l
 import { useAuth } from '../auth/auth-context';
 import { MemberRequestError } from '../members/MemberRequestError';
 import { statusLabels } from '../members/member-api';
+import { getMyHoldReliability } from '../members/hold-reliability-api';
 import { cancelEmailRequest, changePassword, confirmEmail, getAccount, requestEmail, updateAccount } from './account-api';
 
 export function ProfilePage() {
@@ -12,6 +13,8 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const account = useQuery({ queryKey: ['account', user?.id], queryFn: ({ signal }) => getAccount(signal), enabled: !!user, retry: false });
+  const reliability = useQuery({ queryKey: ['hold-reliability-self', user?.id],
+    queryFn: ({ signal }) => getMyHoldReliability(signal), enabled: !!user && account.isSuccess, retry: false });
   const [name, setName] = useState(''); const [phone, setPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState(''); const [nextPassword, setNextPassword] = useState('');
   const [emailPassword, setEmailPassword] = useState(''); const [nextEmail, setNextEmail] = useState('');
@@ -90,6 +93,7 @@ export function ProfilePage() {
             </form>}</section>
           <section className="account-panel account-activity" aria-label="Hoạt động của tôi"><div className="account-panel-heading"><ShieldCheck size={20}/><h2>Hoạt động của tôi</h2></div>
             <p className="account-help">Xem dữ liệu thật trong tài khoản của bạn.</p>
+            {reliability.isSuccess && <p className="account-help">Giữ chỗ hết hạn trong {Math.round((new Date(reliability.data.to).getTime() - new Date(reliability.data.from).getTime()) / 86_400_000)} ngày: {reliability.data.unreviewed} lần chưa rà soát, {reliability.data.confirmed} lần đã xác nhận, {reliability.data.excused} lần được miễn trừ. Chính sách hiện không tự hạn chế tài khoản.</p>}
             <div className="account-shortcuts"><Link to="/thu-vien-cua-toi#sach-yeu-thich"><Heart size={19}/> Sách yêu thích →</Link>
               <Link to="/thu-vien-cua-toi#danh-gia"><Star size={19}/> Đánh giá của tôi →</Link>
               <Link to="/muon-va-giu-cho"><BookOpen size={19}/> Mượn và giữ chỗ →</Link></div>
