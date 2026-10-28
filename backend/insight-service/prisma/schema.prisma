@@ -54,6 +54,23 @@ model CirculationNotice {
   @@map("circulation_notices")
 }
 
+// Mỗi event hợp lệ tạo tối đa một mục hộp thư; chỉ giữ mã giao dịch và thời điểm.
+model ReaderNotification {
+  id               String    @id @db.Uuid
+  readerId         String    @map("reader_id") @db.Uuid
+  aggregateType    String    @map("aggregate_type") @db.VarChar(8)
+  aggregateId      String    @map("aggregate_id") @db.Uuid
+  aggregateVersion BigInt    @map("aggregate_version")
+  eventType        String    @map("event_type") @db.VarChar(40)
+  occurredAt       DateTime  @map("occurred_at") @db.Timestamptz(6)
+  receivedAt       DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+  readAt           DateTime? @map("read_at") @db.Timestamptz(6)
+
+  @@index([readerId, receivedAt(sort: Desc), id(sort: Desc)], map: "reader_notifications_reader_received_idx")
+  @@map("reader_notifications")
+}
+
 // Kết quả phân tích đã chốt; các số liệu chỉ là bằng chứng dẫn xuất từ Core.
 model AcquisitionRecommendation {
   id                    String   @id @default(uuid()) @db.Uuid

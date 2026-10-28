@@ -27,6 +27,7 @@ const InventorySessionPage = lazy(() => import('../../features/inventory/Invento
 const AcquisitionPage = lazy(() => import('../../features/acquisition/AcquisitionPage').then(value => ({ default: value.AcquisitionPage })));
 const AdminAccountsPage = lazy(() => import('../../features/admin/AdminAccountsPage').then(value => ({ default: value.AdminAccountsPage })));
 const ReviewReportsPage = lazy(() => import('../../features/admin/ReviewReportsPage').then(value => ({ default: value.ReviewReportsPage })));
+const NotificationsPage = lazy(() => import('../../features/notifications/NotificationsPage').then(value => ({ default: value.NotificationsPage })));
 
 function Deferred({ children }: { children: ReactNode }) {
   return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
@@ -49,6 +50,7 @@ export function AppRouter() {
           <Route path="ho-so" element={<ProfilePage />} />
           <Route path="thu-vien-cua-toi" element={<MyLibraryPage />} />
           <Route path="muon-va-giu-cho" element={<Deferred><ReaderLoansPage /></Deferred>} />
+          <Route path="thong-bao" element={<Deferred><NotificationsPage /></Deferred>} />
           <Route path="giu-cho/:bookId/:editionId" element={<HoldCreatePage />} />
         </Route>
       </Route>

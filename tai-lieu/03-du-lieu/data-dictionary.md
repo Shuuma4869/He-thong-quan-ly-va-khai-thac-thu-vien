@@ -40,6 +40,7 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | InventoryResolution (`inventory_resolutions`, V21) | Quyết định rà soát của nhân viên | duy nhất theo anomaly; REVIEWED hoặc MOVE_TO_SCANNED_SHELF, reason, version Copy, actor và thời điểm | Core/Inventory |
 | AcquisitionRecommendation (`acquisition_recommendations`, Insight Prisma) | Đề xuất bổ sung sách nội bộ | Book/branch UUID, cửa sổ và thời điểm snapshot, phiên bản nguồn/công thức, điểm/confidence, evidence JSONB; trạng thái DRAFT/APPROVED/REJECTED, version và thông tin người duyệt; unique snapshot/phạm vi/phiên bản | Insight/Acquisition |
 | AcquisitionDecision (`acquisition_decisions`, Insight Prisma) | Lịch sử quyết định đề xuất | FK recommendation, action, actor, lý do, version; unique recommendation/version; không phải đơn đặt mua | Insight/Acquisition |
+| ReaderNotification (`reader_notifications`, Insight Prisma) | Mục hộp thư từ Hold READY/EXPIRED | UUID `id` là eventId; reader/hold UUID, event/version, occurred/received/expires/read time; index owner/time và owner/unread; không lưu email/tên sách | Insight/Notifications |
 | SearchEvent (thiết kế, chưa có bảng) | Tín hiệu tìm kiếm dự kiến | Chưa ghi query, kết quả rỗng hoặc session hash; không được dùng làm dữ liệu báo cáo hiện tại | Insight/Analytics |
 | DemandSignal (thiết kế, chưa có bảng) | Tín hiệu nhu cầu quy chuẩn dự kiến | source type, target book/query cluster, weight, window, evidence | Insight/Analytics |
 
@@ -56,7 +57,7 @@ V16 thêm `loans`; V17 thêm receipt/audit; V18 thêm Hold/audit/gia hạn, khô
 - Inventory: `branches`, `shelves`, `book_copies` có migration V8–V10; phiên/snapshot/scan/anomaly ở V20 và resolution ở V21. `copy_location_history` chuyên biệt chưa có; quyết định chuyển kệ từ kiểm kê được truy qua resolution và version Copy.
 - Circulation/reader: lịch sử Hold dùng tên thực tế `hold_changes`, không tạo thêm `hold_events` trùng chức năng.
 - Discovery: `search_documents` chưa có migration; tra cứu từ vựng dùng cột và chỉ mục trên `books`. Core có endpoint read facts cho Copy/Hold/Loan; Insight có migration lưu `acquisition_recommendations` và `acquisition_decisions`, adapter đọc Core và API nội bộ tạo/duyệt đề xuất. Web và EXE E2E đã đi qua hai dịch vụ trên PostgreSQL tạm và kiểm bản ghi quyết định thật.
-- System dự kiến: `notifications`, `system_policies`, `audit_logs`, `media_assets` là tên trong mô hình mục tiêu, chưa phải bảng đang có. `outbox_events` được tạo từ V1 và bổ sung cơ chế giao nhận ở V19; thông báo người dùng hiện lưu trong bảng `circulation_notices` của Insight.
+- System dự kiến: `system_policies`, `audit_logs`, `media_assets` là tên trong mô hình mục tiêu, chưa phải bảng đang có. `outbox_events` được tạo từ V1 và bổ sung cơ chế giao nhận ở V19; Insight giữ projection trạng thái mới nhất trong `circulation_notices` và mục hộp thư người đọc trong `reader_notifications`. Chưa có lịch dọn retention hoặc FK xuyên database tới User của Core.
 
 ## Media asset
 

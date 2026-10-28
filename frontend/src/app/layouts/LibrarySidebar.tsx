@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BarChart3, BookCopy, BookOpen, ChevronLeft, ChevronRight, ClipboardList, Heart, House, LibraryBig, Lightbulb,
-  LogIn, Star, UserRound, Users, X, type LucideIcon } from 'lucide-react';
+  LogIn, Star, Bell, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
@@ -51,6 +51,7 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
       { label: 'Sách yêu thích', to: '/thu-vien-cua-toi#sach-yeu-thich', icon: Heart },
       { label: 'Đánh giá của tôi', to: '/thu-vien-cua-toi#danh-gia', icon: Star },
       { label: 'Mượn và giữ chỗ', to: '/muon-va-giu-cho', icon: BookCopy },
+      { label: 'Thông báo', to: '/thong-bao', icon: Bell },
       { label: 'Hồ sơ', to: '/ho-so', icon: UserRound },
     ] }] : [{ title: 'Tài khoản', items: [
       { label: 'Đăng nhập', to: '/dang-nhap', icon: LogIn },

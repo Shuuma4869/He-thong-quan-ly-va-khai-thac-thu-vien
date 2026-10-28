@@ -904,7 +904,7 @@ test('Tìm kiếm chung, thư viện cá nhân và điều hướng sidebar', as
   await expect(desktopSidebar.locator('.library-nav-active')).toHaveCount(1);
 });
 
-test('Hồ sơ lưu thay đổi, email chờ xác minh và đổi mật khẩu thu hồi phiên', async ({ page, request }) => {
+test('Hồ sơ lưu thay đổi, xử lý email theo cấu hình và đổi mật khẩu thu hồi phiên', async ({ page, request }) => {
   test.setTimeout(90_000);
   const email = `account-${randomUUID()}@example.test`;
   const updatedPassword = `Updated-${randomUUID()}`;
@@ -915,6 +915,9 @@ test('Hồ sơ lưu thay đổi, email chờ xác minh và đổi mật khẩu t
   const login = await request.post(`${core}/auth/login`, { data: { identifier: email, password } });
   expect(login.status()).toBe(200);
   const oldAccess = String((await login.json()).accessToken);
+  const accountResponse = await request.get(`${core}/me/account`, { headers: { Authorization: `Bearer ${oldAccess}` } });
+  expect(accountResponse.status()).toBe(200);
+  const { emailVerificationEnabled } = await accountResponse.json() as { emailVerificationEnabled: boolean };
 
   await navigate(page, '/dang-nhap');
   await page.getByLabel('Email hoặc mã thành viên').fill(email);
@@ -932,13 +935,18 @@ test('Hồ sơ lưu thay đổi, email chờ xác minh và đổi mật khẩu t
   await expect(personal.getByLabel('Số điện thoại')).toHaveValue('+84987654321');
 
   const emailPanel = page.getByRole('region', { name: 'Địa chỉ email' });
-  await emailPanel.getByLabel('Email mới').fill(`new-${email}`);
-  await emailPanel.getByLabel('Mật khẩu hiện tại').fill(password);
-  await emailPanel.getByRole('button', { name: 'Ghi nhận email mới' }).click();
-  await expect(emailPanel.getByText(`new-${email}`, { exact: true })).toBeVisible();
-  await expect(emailPanel.getByText(email, { exact: true })).toBeVisible();
-  await emailPanel.getByRole('button', { name: 'Hủy yêu cầu' }).click();
-  await expect(emailPanel.getByText(`new-${email}`, { exact: true })).not.toBeVisible();
+  if (emailVerificationEnabled) {
+    await emailPanel.getByLabel('Email mới').fill(`new-${email}`);
+    await emailPanel.getByLabel('Mật khẩu hiện tại').fill(password);
+    await emailPanel.getByRole('button', { name: 'Gửi mã xác minh' }).click();
+    await expect(emailPanel.getByText(`new-${email}`, { exact: true })).toBeVisible();
+    await expect(emailPanel.getByText(email, { exact: true })).toBeVisible();
+    await emailPanel.getByRole('button', { name: 'Hủy yêu cầu' }).click();
+    await expect(emailPanel.getByText(`new-${email}`, { exact: true })).not.toBeVisible();
+  } else {
+    await expect(emailPanel.getByText(/chưa bật gửi mã xác minh/)).toBeVisible();
+    await expect(emailPanel.getByLabel('Email mới')).toHaveCount(0);
+  }
 
   const security = page.getByRole('region', { name: 'Đổi mật khẩu' });
   await security.getByLabel('Mật khẩu hiện tại').fill(password);

@@ -77,7 +77,7 @@ class CatalogIntegrationTest {
                     .containsExactlyInAnyOrder("bookId", "bookTitle", "favoritedAt");
             var review = (Map<String, Object>) schemas.get("Review");
             assertThat(((Map<String, Object>) review.get("properties")).keySet())
-                    .containsExactlyInAnyOrder("reviewId", "bookId", "body", "rating", "createdAt", "updatedAt", "mine")
+                    .containsExactlyInAnyOrder("reviewId", "bookId", "body", "rating", "createdAt", "updatedAt", "mine", "moderationStatus")
                     .doesNotContain("userId", "email", "fullName");
             var rating = (Map<String, Object>) schemas.get("RatingSummary");
             assertThat(((Map<String, Object>) rating.get("properties")).keySet())
