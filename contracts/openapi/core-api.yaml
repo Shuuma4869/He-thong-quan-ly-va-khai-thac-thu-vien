@@ -835,7 +835,7 @@ paths:
       operationId: listBookReviews
       tags: [Reviews and ratings]
       summary: Liệt kê Reviews công khai của một sách
-      description: Reviews được công khai ngay sau khi tạo. Response không chứa userId hoặc thông tin định danh người viết; mine chỉ cho biết review có thuộc principal hiện tại không. Sort ổn định theo createdAt rồi reviewId.
+      description: Reviews VISIBLE được công khai ngay sau khi tạo. Review đã ẩn không nằm trong trang này. Response không chứa userId hoặc thông tin định danh người viết; mine chỉ cho biết review có thuộc principal hiện tại không. Sort ổn định theo createdAt rồi reviewId.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -858,7 +858,7 @@ paths:
       operationId: createBookReview
       tags: [Reviews and ratings]
       summary: Tạo review và rating của principal hiện tại cho sách
-      description: Mỗi user chỉ có một review trên mỗi Book. Review được công khai ngay; không có API moderation trong phạm vi này.
+      description: Mỗi user chỉ có một review trên mỗi Book. Review được công khai ngay, nhưng có thể bị quản trị viên ẩn sau khi xem báo cáo.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -886,7 +886,7 @@ paths:
       operationId: getBookRatingSummary
       tags: [Reviews and ratings]
       summary: Lấy rating aggregate được tính từ Reviews hiện hành
-      description: Average được làm tròn 2 chữ số bằng HALF_UP; khi chưa có review, average là null và count bằng 0. Aggregate không lưu thành nguồn dữ liệu độc lập.
+      description: Average chỉ tính review VISIBLE và được làm tròn 2 chữ số bằng HALF_UP; khi chưa có review, average là null và count bằng 0. Aggregate không lưu thành nguồn dữ liệu độc lập.
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Average và số reviews, content: { application/json: { schema: { $ref: '#/components/schemas/RatingSummary' } } } }
@@ -936,7 +936,7 @@ paths:
       operationId: listMyReviews
       tags: [Reviews and ratings]
       summary: Đánh giá của principal hiện tại
-      description: ACTIVE và role hiện hành; không nhận owner từ client. Sort createdAt DESC rồi reviewId ASC. bookId là bộ lọc, sách chưa có review của mình trả trang rỗng. Không trả PII.
+      description: ACTIVE và role hiện hành; không nhận owner từ client. Sort createdAt DESC rồi reviewId ASC. bookId là bộ lọc, sách chưa có review của mình trả trang rỗng. Chủ đánh giá vẫn thấy review đã ẩn với moderationStatus=HIDDEN; chỉnh sửa không tự công khai lại. Không trả PII.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
@@ -947,6 +947,74 @@ paths:
         '400': { $ref: '#/components/responses/Problem' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /books/{bookId}/reviews/{reviewId}/reports:
+    post:
+      operationId: reportBookReview
+      tags: [Reviews and ratings]
+      summary: Báo cáo đánh giá không phù hợp
+      description: Không thể báo cáo đánh giá của mình, báo cáo trùng hoặc review đã ẩn. Tối đa 20 báo cáo mỗi tài khoản trong 24 giờ. Nội dung review được chụp lại tại thời điểm báo cáo.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bookId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: reviewId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '201': { description: Đã nhận báo cáo, content: { application/json: { schema: { type: object, properties: { reportId: { type: string, format: uuid } } } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /admin/review-reports:
+    get:
+      operationId: listReviewReports
+      tags: [Reviews and ratings]
+      summary: Danh sách báo cáo dành cho ADMIN hiện hành
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [OPEN, RESOLVED], default: OPEN } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Trang báo cáo và ảnh chụp nội dung lúc gửi }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /admin/review-reports/{reportId}/decisions:
+    post:
+      operationId: decideReviewReport
+      tags: [Reviews and ratings]
+      summary: Ẩn đánh giá hoặc bác báo cáo, ghi audit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, reason]
+              properties:
+                action: { type: string, enum: [HIDE, DISMISS] }
+                reason: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '200': { description: Đã ghi quyết định và audit }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
   /members:
     get:
@@ -2362,7 +2430,7 @@ components:
         rating: { type: integer, minimum: 1, maximum: 5 }
     Review:
       type: object
-      required: [reviewId, bookId, body, rating, createdAt, updatedAt, mine]
+      required: [reviewId, bookId, body, rating, createdAt, updatedAt, mine, moderationStatus]
       properties:
         reviewId: { type: string, format: uuid }
         bookId: { type: string, format: uuid }
@@ -2371,6 +2439,7 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         mine: { type: boolean, description: Review có thuộc principal hiện tại hay không; không tiết lộ userId. }
+        moderationStatus: { type: string, enum: [VISIBLE, HIDDEN] }
     ReviewPage:
       type: object
       required: [items, page]

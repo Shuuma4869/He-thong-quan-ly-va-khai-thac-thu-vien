@@ -19,7 +19,9 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 | Book (`books`, V6/V22) | Tác phẩm logic | UUID `id`; title, normalized title, description; V22 thêm `search_title`, `search_description`, `search_vector` để tra cứu, cập nhật qua trigger; quan hệ nhiều-nhiều với Author/Category; không chứa barcode hoặc số lượng availability | Core/Catalog |
 | CatalogExternalSource (`catalog_external_sources`, V25) | Định danh thư mục ngoài của Book | Khóa `(source_code, source_record_id)`; `book_id` FK RESTRICT; URL nguồn, SHA-256 ảnh chụp metadata, title/author gốc, ngày phát hành ebook nếu có và thời điểm nhập. Không chứa ISBN hoặc tồn kho suy đoán | Core/Catalog |
 | Favorite (`favorites`, V14) | Liên kết sách yêu thích của user | FK `user_id`/`book_id`; unique ghép `(user_id, book_id)`; `created_at` UTC; xóa User hoặc Book sẽ cascade liên kết | Core/Reader contributions |
-| Review (`reviews`, V15) | Review và rating công khai của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `created_at`/`updated_at`; chưa có workflow moderation | Core/Reader contributions |
+| Review (`reviews`, V15/V29) | Review và rating của user cho Book | UUID `id`; FK User/Book restrict; unique `(user_id, book_id)`; body đã trim 1–5000 ký tự; rating `SMALLINT` 1–5; `moderation_status` VISIBLE/HIDDEN; `created_at`/`updated_at` | Core/Reader contributions |
+| ReviewReport (`review_reports`, V29) | Báo cáo nội dung đánh giá | UUID `id`; review/book/reporter/owner ID; ảnh chụp body/rating và lý do; unique `(reporter_id, review_id)`; OPEN/RESOLVED; có FK Book/User, không có FK Review để giữ bằng chứng khi tác giả xóa review | Core/Review moderation |
+| ReviewModerationAudit (`review_moderation_audit`, V29) | Lý do quyết định của quản trị viên | UUID `id`; FK report/actor; HIDE/DISMISS, before/after status, timestamp; không xóa cùng review | Core/Review moderation |
 | Edition (`editions`, V7) | Ấn bản của Book | UUID `id`; Book FK bắt buộc; Publisher tùy chọn; ISBN-13 tùy chọn, chưa unique; năm và ngôn ngữ tùy chọn | Core/Catalog |
 | Branch (`branches`, V8) | Chi nhánh thư viện | UUID `id`; `code` duy nhất; `name` bắt buộc; trạng thái ACTIVE/DISABLED | Core/Inventory |
 | Shelf (`shelves`, V9) | Kệ thuộc chi nhánh | UUID `id`; Branch FK; mã duy nhất trong Branch; label; thứ tự; không xóa khi còn Copy tham chiếu | Core/Inventory |
@@ -43,7 +45,7 @@ Prisma `MetadataLookup` ánh xạ `metadata_lookups`: UUID id/owner_id, isbn13 (
 
 V13 cấp version media bằng `catalog_media_revision_seq` cho mỗi lần tạo/thay ảnh, bắt đầu trên version lớn nhất khi nâng cấp. Không reset khi gỡ ảnh; request cũ không được áp dụng lên tham chiếu tạo lại. Sequence có thể có khoảng trống; không dùng làm số lượng ảnh hoặc số lần chỉnh sửa.
 
-V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book. V15 tạo Reviews, unique một review/user/book; xóa User/Book bị restrict khi còn review. Rating thuộc Review; average/count được tính từ các review hiện hành, không lưu aggregate riêng. Review công khai ngay, chưa có API hoặc trạng thái moderation.
+V14 tạo Favorites với unique `(user_id, book_id)` và cascade theo User/Book. V15 tạo Reviews, unique một review/user/book; xóa User/Book bị restrict khi còn review. V29 thêm trạng thái và bảng báo cáo/kiểm duyệt. Rating thuộc Review; average/count chỉ tính review VISIBLE, không lưu aggregate riêng. Review công khai ngay lúc tạo và có thể bị ẩn sau quyết định của ADMIN.
 
 ## Các nhóm còn lại
 

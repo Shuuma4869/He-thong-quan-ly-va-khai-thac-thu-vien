@@ -5,9 +5,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record ReviewResponse(UUID reviewId, UUID bookId, String body, int rating,
-                            Instant createdAt, Instant updatedAt, boolean mine) {
+                            Instant createdAt, Instant updatedAt, boolean mine, String moderationStatus) {
     public static ReviewResponse from(Review review, UUID actorId) {
         return new ReviewResponse(review.id(), review.bookId(), review.body(), review.rating(),
-                review.createdAt(), review.updatedAt(), review.userId().equals(actorId));
+                review.createdAt(), review.updatedAt(), review.userId().equals(actorId), review.moderationStatus());
     }
 }

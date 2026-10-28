@@ -65,6 +65,7 @@ function Library({ owner }: { owner: string }) {
                 {book ? <BookCover title={book.title} author={book.authors[0]?.name} cover={book.cover}/>
                   : <BookOpen size={27} aria-hidden="true"/>}</Link>
               <div><p className="eyebrow">Đánh giá của tôi · {review.rating}/5 sao</p>
+                {review.moderationStatus === 'HIDDEN' && <p className="text-sm text-muted">Đã ẩn sau kiểm duyệt</p>}
                 {book && <><h3><Link to={`/sach/${book.id}`}>{book.title}</Link></h3>
                   <p className="my-review-author">{book.authors.map(author => author.name).join(', ') || 'Chưa rõ tác giả'}</p></>}
                 <p className="my-review-body whitespace-pre-wrap break-words">{review.body}</p>

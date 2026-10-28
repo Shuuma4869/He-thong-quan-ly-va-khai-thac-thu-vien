@@ -6,7 +6,8 @@ const uuid = z.string().uuid();
 const pathId = (id: string) => uuid.parse(id);
 export const favoriteSchema = z.object({ bookId: uuid, bookTitle: z.string(), favoritedAt: z.string().datetime() });
 export const reviewSchema = z.object({ reviewId: uuid, bookId: uuid, body: z.string(), rating: z.number().int().min(1).max(5),
-  createdAt: z.string().datetime(), updatedAt: z.string().datetime(), mine: z.boolean() });
+  createdAt: z.string().datetime(), updatedAt: z.string().datetime(), mine: z.boolean(),
+  moderationStatus: z.enum(['VISIBLE', 'HIDDEN']).default('VISIBLE') });
 const reviewPage = z.object({ items: z.array(reviewSchema), page: pageSchema });
 export type Review = z.infer<typeof reviewSchema>;
 export type ReviewInput = { body: string; rating: number };

@@ -189,7 +189,7 @@ public class PublicCatalogService {
         if (bookIds.isEmpty()) return Map.of();
         var result = new LinkedHashMap<UUID, Rating>();
         named.query("SELECT book_id,AVG(rating)::numeric(3,2) AS average,COUNT(*) AS count "
-                        + "FROM reviews WHERE book_id IN (:bookIds) GROUP BY book_id",
+                        + "FROM reviews WHERE book_id IN (:bookIds) AND moderation_status='VISIBLE' GROUP BY book_id",
                 new MapSqlParameterSource("bookIds", bookIds), (RowCallbackHandler) rs ->
                 result.put(rs.getObject("book_id", UUID.class), new Rating(rs.getBigDecimal("average"), rs.getLong("count"))));
         return result;

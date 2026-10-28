@@ -4,7 +4,7 @@
 
 Backend nền tảng do Toan triển khai ở PR #11: Favorites V14, Reviews V15 và rating tính từ reviews. Tuan review, sửa lỗi tích hợp và phụ trách giao diện. Core dùng Spring JDBC/PostgreSQL; Insight không tham gia ghi dữ liệu này.
 
-Các API yêu cầu phiên đăng nhập hợp lệ. Service đọc lại trạng thái ACTIVE và role READER/LIBRARIAN/ADMIN từ Identity; JWT cũ không giữ được quyền đã bị thu hồi. Favorites luôn lấy owner từ principal. Review công khai với tài khoản được phép đọc Catalog, nhưng chỉ owner được sửa/xóa; staff không có quyền moderation ngầm. DTO review chỉ trả cờ `mine`, không trả userId, email hoặc tên người viết.
+Các API yêu cầu phiên đăng nhập hợp lệ. Service đọc lại trạng thái ACTIVE và role READER/LIBRARIAN/ADMIN từ Identity; JWT cũ không giữ được quyền đã bị thu hồi. Favorites luôn lấy owner từ principal. Review công khai với tài khoản được phép đọc Catalog, nhưng chỉ owner được sửa/xóa. Kiểm duyệt là luồng riêng, chỉ ADMIN hiện hành được quyết định; thủ thư không có quyền moderation ngầm. DTO review chỉ trả cờ `mine`, không trả userId, email hoặc tên người viết.
 
 ## Persistence và cạnh tranh
 
@@ -37,7 +37,9 @@ DEV1 bổ sung hai truy vấn cho UI: GET `/me/favorites/{bookId}` trả `{bookI
 - Favorite có khóa `(user_id, book_id)`, FK cascade. PUT tạo mới trả 201, lặp trả 200; DELETE trả 204 kể cả chưa lưu nếu Book tồn tại. Nếu add/remove cạnh tranh liên tục, PUT có thể trả 409 để client tải lại.
 - Review có unique user–book, FK restrict, body 1–5000 ký tự Unicode sau strip và rating 1–5. Concurrent create chỉ có một bản ghi; request trùng trả 409.
 - List dùng transaction RepeatableRead để count và items cùng snapshot; thứ tự có UUID tie-break. Không nối giá trị người dùng vào SQL.
-- Rating đọc AVG/COUNT trực tiếp, làm tròn hai chữ số HALF_UP; rỗng trả `average: null, count: 0`. Một lần đọc phản ánh snapshot của câu SELECT, không phải cam kết dữ liệu sẽ không đổi ngay sau response.
+- Rating đọc AVG/COUNT trực tiếp trên review VISIBLE, làm tròn hai chữ số HALF_UP; rỗng trả `average: null, count: 0`. Một lần đọc phản ánh snapshot của câu SELECT, không phải cam kết dữ liệu sẽ không đổi ngay sau response.
+
+V29 bổ sung báo cáo và quyết định kiểm duyệt. Báo cáo giữ ảnh chụp nội dung tại thời điểm gửi; quyết định HIDE/DISMISS và lý do được ghi audit. Xem [quy trình kiểm duyệt](../04-nghiep-vu/kiem-duyet-danh-gia.md) để biết quyền, giới hạn và vấn đề retention chưa được chốt.
 
 ## Partial PATCH
 

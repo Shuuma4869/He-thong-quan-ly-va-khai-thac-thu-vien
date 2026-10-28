@@ -43,7 +43,8 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
   });
   const groups = mode === 'staff' ? (user?.roles.includes('ADMIN') ? staffGroups.map(group =>
     group.title === 'Danh mục & tài khoản' ? { ...group, items: [...group.items,
-      { label: 'Quản trị tài khoản', to: '/nhan-vien/tai-khoan', icon: Users }] } : group) : staffGroups) : [
+      { label: 'Quản trị tài khoản', to: '/nhan-vien/tai-khoan', icon: Users },
+      { label: 'Báo cáo đánh giá', to: '/nhan-vien/bao-cao-danh-gia', icon: Star }] } : group) : staffGroups) : [
     ...readerPublic,
     ...(user ? [{ title: 'Thư viện của tôi', items: [
       { label: 'Thư viện của tôi', to: '/thu-vien-cua-toi', icon: LibraryBig },
