@@ -2,13 +2,13 @@ name: ${COMPOSE_PROJECT_NAME:-lams}
 
 services:
   postgres:
-    image: postgres:17.6-alpine
+    image: postgres:17.11-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-lams}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lams-local-password}
     ports:
-      - "${POSTGRES_PORT:-15432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-15432}:5432"
     volumes:
       - lams-postgres-data:/var/lib/postgresql/data
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -20,10 +20,10 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:8.2.1-alpine
+    image: redis:8.2.9-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-16379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-16379}:6379"
     volumes:
       - lams-redis-data:/data
     healthcheck:
@@ -34,9 +34,9 @@ services:
     restart: unless-stopped
 
   kafka:
-    image: apache/kafka:4.1.0
+    image: apache/kafka:4.1.2
     ports:
-      - "${KAFKA_PORT:-19092}:19092"
+      - "127.0.0.1:${KAFKA_PORT:-19092}:19092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -68,8 +68,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-lams-local}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-lams-local-password}
     ports:
-      - "${MINIO_API_PORT:-19000}:9000"
-      - "${MINIO_CONSOLE_PORT:-19001}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-19000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-19001}:9001"
     volumes:
       - lams-minio-data:/data
     healthcheck:

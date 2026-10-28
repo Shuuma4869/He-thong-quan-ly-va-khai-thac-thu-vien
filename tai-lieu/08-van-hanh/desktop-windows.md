@@ -47,7 +47,7 @@ Lệnh cuối mở cửa sổ LAMS, có hot reload; không mở tab trình duy�
 - Cài theo tài khoản Windows hiện tại, có shortcut và trình gỡ cài đặt. Bộ cài chưa được ký số; Windows có thể hiện SmartScreen. Không tắt bảo vệ Windows; chỉ cài artifact từ bản build/CI đã xác minh.
 - Người dùng bản cài không cần Rust, Node hoặc Vite để mở giao diện. Họ vẫn cần dịch vụ LAMS hoạt động tại địa chỉ được build sẵn. Chưa có cấu hình máy chủ từ UI, auto-updater, ký số hoặc bản macOS/Linux.
 
-Không commit `.tools`, `target`, bộ cài, node_modules hay dữ liệu WebView vào Git. CI job `desktop-windows` build trên Windows sạch và cung cấp bộ cài dưới dạng artifact của từng run, không tự phát hành release hoặc merge PR.
+Không commit `.tools`, `target`, bộ cài, node_modules hay dữ liệu WebView vào Git. CI job `desktop-windows` build trên Windows sạch và cung cấp bộ cài cùng file SHA-256 dưới dạng artifact của từng run. Kiểm checksum sau khi tải artifact; job này không tự phát hành release hoặc merge PR.
 
 ## Địa chỉ và phiên đăng nhập
 
@@ -89,6 +89,8 @@ E2E cần Docker, Chromium của Playwright (`npx playwright install chromium` t
 CDP chỉ bật qua biến môi trường của lượt kiểm thử, với profile WebView riêng trong thư mục target bị Git bỏ qua. Launcher thường không bật debug port. Script dừng tiến trình và xóa database tạm do chính nó tạo, không xóa volume dự án. Log/ảnh/report của test là artifact local, không phải tài liệu bàn giao.
 
 Để kiểm cả bản đã cài, thêm `-DesktopExecutable "$env:LOCALAPPDATA\LAMS\lams-desktop.exe"` cùng `-Desktop`. Chỉ chọn EXE LAMS của bản build cần nghiệm thu; profile/dữ liệu test vẫn tách khỏi phiên sử dụng bình thường.
+
+Ngày 28/10/2026, trên máy phát triển Windows 11, bản NSIS local 0.1.0 đã được cài, chạy E2E 18/18 trên EXE cài đặt, gỡ bằng uninstaller `/S` rồi cài lại thành công. Thư mục Maven dùng chung trong `%LOCALAPPDATA%\LAMS\maven` vẫn còn sau khi gỡ. Bài kiểm này xác nhận máy hiện tại, chưa phải nghiệm thu trên máy Windows thứ hai hoặc gói cài toàn bộ backend. Bộ cài local chưa ký Authenticode; CI phải build lại từ commit bàn giao và artifact của CI cần được kiểm riêng trước khi phát cho người khác.
 
 ## Khi gặp lỗi
 

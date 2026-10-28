@@ -48,6 +48,10 @@
 
 Phase 3 bổ sung US-14/15/16, W6 và minh chứng EXE riêng tại [nguồn ảnh](minh-chung-giao-dien/README.md). Gate tích hợp của Phase 3 phải đối chiếu PR #13/CI đúng head, không tự đóng Academic Final Gate.
 
+## Kiểm tra phát hành local sau Phase 5–7
+
+Ngày 28/10/2026 đã chạy lại 18 E2E Web, 18 E2E trên EXE nguồn và 18 E2E trên EXE cài đặt, cùng Core 279 test, Insight 117 unit/HTTP + 17 integration và frontend 169 test. Bản cài NSIS được gỡ/cài lại trên cùng máy; hai database được backup và restore thử riêng. Đây là phép kiểm local trên working tree trước commit phát hành, không thay CI đúng SHA hoặc bài thử trên máy Windows khác. Các hàng rubric ở trên phản ánh bằng chứng lịch sử của từng mốc, chưa tự động chuyển thành điểm hoặc xác nhận nộp bài. Kết quả cuối phải lấy từ commit và CI được bàn giao; xem [số liệu hiệu năng](../tai-lieu/07-kiem-thu/hieu-nang.md), [security](../tai-lieu/07-kiem-thu/security-matrix.md) và [runbook recovery](../tai-lieu/08-van-hanh/sao-luu-khoi-phuc.md).
+
 ## Academic Final Gate
 
 - [ ] Giảng viên xác nhận hybrid/Nest scope và XORs.

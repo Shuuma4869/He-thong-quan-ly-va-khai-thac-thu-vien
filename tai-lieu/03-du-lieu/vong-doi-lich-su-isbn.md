@@ -28,6 +28,8 @@ Các mốc dưới đây là lựa chọn vận hành cần được Tuan và đ
 
 Trước pilot có dữ liệu thật, cần có người chịu trách nhiệm, lịch xử lý và kiểm chứng xóa. Không mô tả bản Phase 2.5 là đã tự đáp ứng các mốc trên. Bản demo/CI chỉ dùng fixture; chưa cho phép suy từ fixture sang nghiệm thu vận hành dữ liệu cá nhân.
 
+Có thể kiểm kê trước một mốc UTC bằng `cd backend/insight-service; node scripts/metadata-retention-preview.mjs 2026-01-01T00:00:00Z`. Lệnh trả về tổng số hàng và số hàng cũ hơn mốc, không in UUID/ISBN, không sửa dữ liệu. Mốc nhập chỉ phục vụ khảo sát; nên dùng tài khoản database chỉ đọc ngoài môi trường demo. Lệnh không xác định tài khoản mồ côi vì không truy vấn Core và không thay thế quyết định lưu giữ của đơn vị vận hành.
+
 ## Quy trình xử lý được phê duyệt
 
 1. Xác minh yêu cầu, môi trường và UUID từ nguồn Core có thẩm quyền. Không dùng tên/email gần giống, không coi Core timeout/503 là bằng chứng tài khoản đã bị xóa.

@@ -59,7 +59,7 @@ Health:
 | MinIO API (tùy chọn) | `localhost:19000` | `minio:9000` |
 | MinIO Console (tùy chọn) | `localhost:19001` | `minio:9001` |
 
-Ứng dụng chạy trực tiếp trên host dùng các giá trị `localhost` trong `.env`. Container ứng dụng phải được truyền URL service-name/internal-port; không dùng host port hoặc `localhost` để gọi container khác.
+Ứng dụng chạy trực tiếp trên host dùng các giá trị `localhost` trong `.env`. Compose chỉ bind PostgreSQL, Redis, Kafka và MinIO tùy chọn vào `127.0.0.1`; máy khác trong LAN không được kết nối qua các cổng đó. Container ứng dụng phải được truyền URL service-name/internal-port; không dùng host port hoặc `localhost` để gọi container khác. PostgreSQL 17.11, Redis 8.2.9 và Kafka 4.1.2 là các bản patch local đã kiểm tại Phase 8; trước khi đổi image trên máy có dữ liệu, sao lưu cả hai database và thử restore theo runbook.
 
 Chỉ khi cần kiểm tra MinIO riêng, chạy `docker compose --profile media up -d --build --wait minio` rồi `.\scripts\smoke-test.ps1 -IncludeMinio`. Profile này không xóa hoặc tạo lại volume khi dừng. Nếu máy đã có container MinIO chạy từ cấu hình cũ và không còn dùng, `docker compose stop minio` sẽ hạ dịch vụ mà giữ dữ liệu.
 
@@ -82,11 +82,15 @@ Insight từ Phase 2.5 yêu cầu PostgreSQL sẵn sàng khi khởi động. N�
 
 ## Dừng an toàn
 
+Đóng cửa sổ Desktop, dừng Core và Insight bằng `Ctrl+C` ở đúng hai terminal đã khởi chạy, chờ tiến trình thoát rồi mới dừng hạ tầng. Không đóng đột ngột PostgreSQL khi còn lệnh ghi đang chạy. Nếu cần giữ hạ tầng cho lần chạy sau, có thể để ba container tiếp tục chạy.
+
 ```powershell
 .\scripts\stop-infra.ps1
 ```
 
 Script chạy `docker compose --profile media down` để dừng cả MinIO nếu dịch vụ tùy chọn đã được bật; không xóa named volume. Xem [xử lý lỗi môi trường](xu-ly-loi-moi-truong.md) trước khi can thiệp dữ liệu.
+
+Trước khi nâng phiên bản có migration, làm theo [runbook backup và restore](sao-luu-khoi-phuc.md) cho **cả Core và Insight**. Khi một service không lên: kiểm `docker compose ps`, health của từng service, rồi xem log khởi động đã lược secret. Lỗi Flyway/Prisma cần sửa migration hoặc cấu hình trên bản sao database; không dùng `flyway clean`, `prisma db push` hay xóa volume demo để khởi động bằng được. Quay lại mã cũ chỉ an toàn nếu schema hiện tại vẫn tương thích; nếu migration không tương thích ngược, phục hồi **hai database** theo cửa sổ bảo trì và đối soát dữ liệu xuyên dịch vụ trước khi mở lại quyền ghi.
 
 ## Desktop và web
 

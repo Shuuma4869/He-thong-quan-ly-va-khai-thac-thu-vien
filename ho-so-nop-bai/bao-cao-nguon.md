@@ -67,6 +67,8 @@ Chưa đóng xác nhận hybrid từ giảng viên, định dạng trường, qu
 
 ## 14. Phụ lục bằng chứng
 
+Đợt kiểm tra phát hành local ngày 28/10/2026 đã chạy Core 279 test, Insight 117 unit/HTTP và 17 integration, frontend 169 test, OpenAPI, Rust fmt/test/clippy, E2E Web 18/18, EXE nguồn 18/18 và EXE cài đặt 18/18 trên database tạm. Sau khi nâng dependency, các phép kiểm cần chạy lại ở commit bàn giao và xem CI đúng SHA; số trên không tự trở thành bằng chứng của commit chưa tạo. [Số liệu tải](../tai-lieu/07-kiem-thu/hieu-nang.md) và [bảo mật](../tai-lieu/07-kiem-thu/security-matrix.md) ghi giới hạn, gồm hai advisory Spring MVC còn trên SBOM. [Recovery](../tai-lieu/08-van-hanh/sao-luu-khoi-phuc.md) đã diễn tập hai database cô lập; chưa có kiểm máy Windows thứ hai, HTTPS thực, retention production hoặc video nộp bài.
+
 - Repository: https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien
 - PR #10: Phase 2; PR #11: backend Phase 3; [PR #12](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/12): Phase 2.5 đã merge tại b9cf5f3, CI main 39985051027 đạt 5/5. [PR #25](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/25) và [PR #27](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/pull/27) là nguồn truy vết tích hợp Phase 5–7.
 - SHA, kết quả CI và E2E: lấy từ lần bàn giao cuối; không dùng số test cũ làm bằng chứng bản mới.

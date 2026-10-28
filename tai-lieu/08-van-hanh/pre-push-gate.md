@@ -9,6 +9,10 @@
 - [ ] Khi sửa Catalog/Inventory/media: migration upgrade, quyền DB hiện tại, Shelf/Copy concurrency, media timeout/provenance và E2E liên quan PASS
 - [ ] Frontend typecheck/lint/test/build PASS
 - [ ] Khi sửa desktop: Rust fmt/test/clippy, Tauri release/NSIS build và E2E WebView2 với API thật PASS
+- [ ] Khi bàn giao bộ cài: kiểm SHA-256 của artifact CI, cài/chạy/gỡ trên Windows; ghi riêng kết quả máy phát triển và máy thứ hai
+- [ ] Khi đổi image hoặc schema: sao lưu cả Core và Insight, restore thử vào database mới, kiểm migration và API trên bản restore
+- [ ] Khi đổi dependency: quét npm/Maven và image, ghi advisory còn lại cùng điều kiện áp dụng; không suy "an toàn tuyệt đối" từ số cảnh báo
+- [ ] Trước pilot có dữ liệu thật: người vận hành phê duyệt retention, nơi giữ backup, secrets, HTTPS và quyền truy cập
 - [ ] Tài liệu/API/task output khớp implementation; không thêm audit/PR draft vào repo
 - [ ] Docker Compose config PASS
 - [ ] PostgreSQL `SELECT 1` PASS
