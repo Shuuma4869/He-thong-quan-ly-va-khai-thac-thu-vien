@@ -629,7 +629,7 @@ test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang
   await expect(page.getByRole('link', { name: `Xem sách ${prefix.title}`, exact: true })).toHaveCount(0);
 });
 
-test('Landing và Catalog công khai: tìm sách thật, menu mobile và bốn mốc responsive', async ({ page, request }) => {
+test('Landing và Catalog công khai: tìm sách thật, menu mobile và sáu mốc responsive', async ({ page, request }) => {
   test.setTimeout(120_000);
   const headers = await staffApi(request);
   const category = await createCatalog(request, headers, '/categories', { name: `A0 Khám phá ${suffix}` });

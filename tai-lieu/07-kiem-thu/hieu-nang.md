@@ -30,6 +30,8 @@ Script `scripts/benchmark-catalog.mjs` chạy warm-up rồi đo từng nhóm req
 
 Phép đo này chưa lượng hóa riêng resolution của từng bất thường, lock contention khi nhiều nhân viên ghi cùng phiên, CPU của tiến trình hoặc máy quét barcode thật. Các bài integration khác kiểm tính đúng đắn và tranh chấp, không được dùng thay số đo tải.
 
+Lượt kiểm lại với image PostgreSQL 17.11 trên cùng máy, sau khi chạy nhiều bài E2E và build desktop, cũng đạt 2/2 bài. Mốc 5.000 Copy/100 scan: mở 597 ms, scan p50/p95 14,4/18,5 ms, finalize 740 ms. Mốc 1.000 Copy/250 scan: mở 81 ms, scan p50/p95 13,9/26,4 ms, finalize 143 ms. 5.001 Copy bị từ chối trong 31 ms, không tạo session dở dang. Đây là hai lượt chạy khác thời điểm; chênh lệch không chứng minh PostgreSQL 17.11 nhanh hay chậm hơn 17.6 vì tải máy và cache đã thay đổi.
+
 ## Acquisition
 
 Core/Insight/Web/EXE đã chạy E2E cho phân tích và quyết định đề xuất trên PostgreSQL cô lập. Chưa có bộ số liệu lặp đủ để báo p50/p95 riêng cho analysis, adapter, list/detail, CSV và 409 khi nhiều nhân viên thao tác. Trước khi đặt ngưỡng hiệu năng cho nghiệp vụ này cần fixture có số dòng đại diện, warm-up, tải đồng thời và theo dõi CPU/RAM hai service. Không thực hiện stress có ghi trên database demo chính.
