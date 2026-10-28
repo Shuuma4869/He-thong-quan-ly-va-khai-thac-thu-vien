@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicCatalogController {
     public record MediaEnvelope(PublicCatalogService.Cover media) {}
     private final PublicCatalogService catalog;
-    public PublicCatalogController(PublicCatalogService catalog) { this.catalog = catalog; }
+    private final PublicAvailabilityService availability;
+    public PublicCatalogController(PublicCatalogService catalog, PublicAvailabilityService availability) {
+        this.catalog = catalog; this.availability = availability;
+    }
 
     @GetMapping("/books")
     public PublicCatalogService.Result<PublicCatalogService.BookCard> books(
@@ -34,6 +37,10 @@ public class PublicCatalogController {
     public PublicCatalogService.Result<Edition> editions(@PathVariable UUID id,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         return catalog.editions(id, page, size);
+    }
+    @GetMapping("/books/{id}/availability")
+    public PublicAvailabilityService.Availability availability(@PathVariable UUID id) {
+        return availability.forBook(id);
     }
     @GetMapping("/{kind:authors|categories}")
     public PublicCatalogService.Result<PublicCatalogService.Named> names(@PathVariable String kind,

@@ -35,6 +35,61 @@ class PublicCatalogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
 
+    @Test void availabilityUsesLiveCopyLoanAndHoldFactsWithoutExposingCopyDetails() throws Exception {
+        UUID book = UUID.randomUUID(), edition = UUID.randomUUID(), active = UUID.randomUUID();
+        UUID disabled = UUID.randomUUID(), activeShelf = UUID.randomUUID(), disabledShelf = UUID.randomUUID();
+        UUID reader = UUID.randomUUID(), waitingReader = UUID.randomUUID();
+        UUID free = UUID.randomUUID(), loaned = UUID.randomUUID();
+        UUID inconsistentLoan = UUID.randomUUID(), reserved = UUID.randomUUID(), lost = UUID.randomUUID();
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Khả dụng','khả dụng')", book);
+        jdbc.update("INSERT INTO editions(id,book_id) VALUES (?,?)", edition, book);
+        jdbc.update("INSERT INTO branches(id,code,name) VALUES (?,'ACTIVE-TEST','Chi nhánh mở'),"
+                + "(?,'DISABLED-TEST','Chi nhánh đóng')", active, disabled);
+        jdbc.update("UPDATE branches SET status='DISABLED' WHERE id=?", disabled);
+        jdbc.update("INSERT INTO shelves(id,branch_id,code,label) VALUES (?,?,'A','Kệ A'),(?,?,'B','Kệ B')",
+                activeShelf, active, disabledShelf, disabled);
+        jdbc.update("INSERT INTO users(id,member_code,email,email_normalized,full_name,password_hash,status,created_at,updated_at) "
+                + "VALUES (?,?,?,?,?,'test-only','ACTIVE',now(),now())", reader,
+                "TV" + reader.toString().substring(0, 16), reader + "@test.invalid", reader + "@test.invalid", "Người đọc");
+        jdbc.update("INSERT INTO users(id,member_code,email,email_normalized,full_name,password_hash,status,created_at,updated_at) "
+                + "VALUES (?,?,?,?,?,'test-only','ACTIVE',now(),now())", waitingReader,
+                "TV" + waitingReader.toString().substring(0, 16), waitingReader + "@test.invalid",
+                waitingReader + "@test.invalid", "Người chờ");
+        for (var item : java.util.List.of(free, loaned, inconsistentLoan, reserved, lost)) {
+            String state = item.equals(loaned) ? "ON_LOAN" : item.equals(lost) ? "LOST" : "AVAILABLE";
+            jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status) VALUES (?,?,?,?,?)",
+                    item, edition, "BC-" + item, activeShelf, state);
+        }
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status) VALUES (?,?,?,?, 'AVAILABLE')",
+                UUID.randomUUID(), edition, "DISABLED-COPY-" + UUID.randomUUID(), disabledShelf);
+        for (UUID item : java.util.List.of(loaned, inconsistentLoan)) {
+            jdbc.update("INSERT INTO loans(id,copy_id,edition_id,reader_id,branch_id,borrowed_by,borrowed_at,due_at,"
+                    + "policy_version,policy_snapshot) VALUES (?,?,?,?,?,?,now()-interval '1 day',"
+                    + "now()+interval '1 day','test-v1','{}'::jsonb)",
+                    UUID.randomUUID(), item, edition, reader, active, reader);
+        }
+        jdbc.update("INSERT INTO holds(id,reader_id,book_id,edition_id,branch_id,status,queued_at,ready_at,expires_at,"
+                + "copy_id,policy_version,pickup_seconds) VALUES (?,?,?,?,?,'READY',now()-interval '1 hour',"
+                + "now(),now()+interval '1 hour',?,'test-v1',3600)",
+                UUID.randomUUID(), reader, book, edition, active, reserved);
+        jdbc.update("INSERT INTO holds(id,reader_id,book_id,edition_id,branch_id,status,queued_at,policy_version,"
+                + "pickup_seconds) VALUES (?,?,?,?,?,'WAITING',now(),'test-v1',3600)",
+                UUID.randomUUID(), waitingReader, book, edition, active);
+        String path = "/api/v1/public/catalog/books/{id}/availability";
+        mvc.perform(get(path, book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkedAt").exists())
+                .andExpect(jsonPath("$.branches.length()").value(1))
+                .andExpect(jsonPath("$.branches[0].editionId").value(edition.toString()))
+                .andExpect(jsonPath("$.branches[0].availableCopies").value(1))
+                .andExpect(jsonPath("$.branches[0].catalogedCopies").value(5))
+                .andExpect(jsonPath("$.branches[0].waitingHolds").value(1))
+                .andExpect(jsonPath("$.branches[0].barcode").doesNotExist());
+        jdbc.update("UPDATE book_copies SET status='ON_LOAN' WHERE id=?", free);
+        mvc.perform(get(path, book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.branches[0].availableCopies").value(0));
+        mvc.perform(get(path, UUID.randomUUID())).andExpect(status().isNotFound());
+    }
+
     @Test void batchCardsPreserveRequestedOrderAndBoundTheRequest() throws Exception {
         UUID first = UUID.randomUUID(), second = UUID.randomUUID(), missing = UUID.randomUUID();
         jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Thẻ đầu','thẻ đầu'),(?,'Thẻ sau','thẻ sau')",

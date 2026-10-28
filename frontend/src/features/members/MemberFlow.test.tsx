@@ -10,7 +10,7 @@ const session = { accessToken: 'test-access', accessTokenExpiresAt: '2030-01-01T
 const row = { userId: id, memberCode: 'TV-1234', fullName: 'Nguyễn An', status: 'ACTIVE' };
 const profile = { ...row, email: user.email, profile: null };
 const account = { userId: id, memberCode: user.memberCode, fullName: user.fullName, email: user.email,
-  status: 'ACTIVE', phone: null, pendingEmail: null, pendingEmailRequestedAt: null };
+  status: 'ACTIVE', phone: null, pendingEmail: null, pendingEmailRequestedAt: null, emailVerificationEnabled: true };
 const page = (items: typeof row[] = [row], number = 0, total = 21) => ({
   items, page: { number, size: 20, totalElements: total, totalPages: Math.ceil(total / 20) },
 });
@@ -72,11 +72,31 @@ it('đổi email chỉ ở trạng thái chờ xác minh và có thể hủy', a
   const section = await screen.findByRole('region', { name: 'Địa chỉ email' });
   fireEvent.change(within(section).getByLabelText('Email mới'), { target: { value: 'new@example.test' } });
   fireEvent.change(within(section).getByLabelText('Mật khẩu hiện tại'), { target: { value: 'CurrentPassword123' } });
-  fireEvent.click(within(section).getByRole('button', { name: 'Ghi nhận email mới' }));
+  fireEvent.click(within(section).getByRole('button', { name: 'Gửi mã xác minh' }));
   expect(await within(section).findByText(/Đang chờ xác minh:/)).toBeInTheDocument();
   expect(within(section).getByText('an@example.test')).toBeInTheDocument();
   fireEvent.click(within(section).getByRole('button', { name: 'Hủy yêu cầu' }));
   await waitFor(() => expect(within(section).queryByText(/Đang chờ xác minh:/)).not.toBeInTheDocument());
+});
+it('không gợi ý gửi mã khi môi trường chưa bật SMTP', async () => {
+  fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(
+    url.endsWith('/auth/refresh') ? session : { ...account, emailVerificationEnabled: false })));
+  app();
+  expect(await screen.findByText(/Máy chủ hiện chưa bật gửi mã xác minh/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Gửi mã xác minh' })).not.toBeInTheDocument();
+});
+it('xác minh email gửi mã tới API rồi yêu cầu đăng nhập lại', async () => {
+  const pending = { ...account, pendingEmail: 'new@example.test', pendingEmailRequestedAt: '2026-10-27T00:00:00Z' };
+  fetchMock.mockImplementation((url: string) => Promise.resolve(
+    String(url).endsWith('/me/account/email-confirm') || String(url).endsWith('/auth/logout')
+      ? new Response(null, { status: 204 }) : Response.json(String(url).endsWith('/auth/refresh') ? session : pending)));
+  app();
+  const section = await screen.findByRole('region', { name: 'Địa chỉ email' });
+  fireEvent.change(within(section).getByLabelText('Mã xác minh'), { target: { value: 'abcdefghjklm' } });
+  fireEvent.click(within(section).getByRole('button', { name: 'Xác minh email' }));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+    String(url).endsWith('/me/account/email-confirm') && init.method === 'POST'
+    && JSON.parse(init.body).code === 'ABCDEFGHJKLM')).toBe(true));
 });
 it('đổi mật khẩu thành công đăng xuất khỏi giao diện', async () => {
   fetchMock.mockImplementation((url: string) => Promise.resolve(

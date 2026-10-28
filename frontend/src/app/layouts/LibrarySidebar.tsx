@@ -41,7 +41,9 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
     try { window.localStorage.setItem('lams-sidebar-collapsed', String(!value)); } catch { /* Private storage may be unavailable. */ }
     return !value;
   });
-  const groups = mode === 'staff' ? staffGroups : [
+  const groups = mode === 'staff' ? (user?.roles.includes('ADMIN') ? staffGroups.map(group =>
+    group.title === 'Danh mục & tài khoản' ? { ...group, items: [...group.items,
+      { label: 'Quản trị tài khoản', to: '/nhan-vien/tai-khoan', icon: Users }] } : group) : staffGroups) : [
     ...readerPublic,
     ...(user ? [{ title: 'Thư viện của tôi', items: [
       { label: 'Thư viện của tôi', to: '/thu-vien-cua-toi', icon: LibraryBig },

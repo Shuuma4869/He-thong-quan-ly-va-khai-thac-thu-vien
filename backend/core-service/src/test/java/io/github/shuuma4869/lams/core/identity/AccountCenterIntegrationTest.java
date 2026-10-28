@@ -10,8 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.shuuma4869.lams.core.identity.application.EmailVerificationSender;
+import io.github.shuuma4869.lams.core.identity.application.AccountCenterService;
+import io.github.shuuma4869.lams.core.identity.application.AuthFailure;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,6 +27,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -34,10 +42,13 @@ class AccountCenterIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("lams.auth.jwt-secret", () -> "account-center-secret-with-at-least-32-bytes");
+        registry.add("lams.email.enabled", () -> "true");
     }
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired AccountCenterService accounts;
+    @MockitoBean EmailVerificationSender sender;
 
     private String register(String email) throws Exception {
         var result = mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
@@ -93,7 +104,7 @@ class AccountCenterIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    @Test void emailRequestNeverChangesLoginAddressWithoutVerification() throws Exception {
+    @Test void emailRequiresDeliveredCodeAndCanBeCancelled() throws Exception {
         String current = address(), proposed = address(), token = register(current);
         String endpoint = "/api/v1/me/account/email-request";
         mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
@@ -103,10 +114,111 @@ class AccountCenterIntegrationTest {
                         .content(payload(Map.of("currentPassword", "CurrentPassword123", "email", proposed))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.email").value(current))
                 .andExpect(jsonPath("$.pendingEmail").value(proposed));
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(sender).send(org.mockito.ArgumentMatchers.eq(proposed), code.capture());
+        assertThat(code.getValue()).matches("[A-HJ-NP-Z2-9]{12}");
+        assertThat(jdbc.queryForObject("SELECT pending_email_code_hash FROM users WHERE email_normalized=?",
+                String.class, current)).doesNotContain(code.getValue());
+        mvc.perform(post("/api/v1/me/account/email-confirm").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload(Map.of("code", "WRONGCODE123"))))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(jdbc.queryForObject("SELECT pending_email_attempts FROM users WHERE email_normalized=?",
+                Integer.class, current)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT email FROM users WHERE email_normalized=?", String.class, current))
                 .isEqualTo(current);
         mvc.perform(delete(endpoint).header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/me/account").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.pendingEmail").doesNotExist());
+        mvc.perform(post("/api/v1/me/account/email-confirm").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload(Map.of("code", code.getValue()))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test void confirmationIsSingleUseAndRevokesOldSessions() throws Exception {
+        String current = address(), proposed = address(), token = register(current);
+        mvc.perform(post("/api/v1/me/account/email-request").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("currentPassword", "CurrentPassword123", "email", proposed))))
+                .andExpect(status().isOk());
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(sender).send(org.mockito.ArgumentMatchers.eq(proposed), code.capture());
+        mvc.perform(post("/api/v1/me/account/email-confirm").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload(Map.of("code", code.getValue()))))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/me/account").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+        assertThat(jdbc.queryForObject("SELECT email FROM users WHERE email_normalized=?", String.class, proposed))
+                .isEqualTo(proposed);
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("identifier", current, "password", "CurrentPassword123"))))
+                .andExpect(status().isUnauthorized());
+        String fresh = json.readTree(mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("identifier", proposed, "password", "CurrentPassword123"))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("accessToken").asText();
+        mvc.perform(post("/api/v1/me/account/email-confirm").header("Authorization", "Bearer " + fresh)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload(Map.of("code", code.getValue()))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test void expiredCodeCannotChangeEmailAndResendIsLimited() throws Exception {
+        String current = address(), proposed = address(), token = register(current);
+        String endpoint = "/api/v1/me/account/email-request";
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("currentPassword", "CurrentPassword123", "email", proposed))))
+                .andExpect(status().isOk());
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(sender).send(org.mockito.ArgumentMatchers.eq(proposed), code.capture());
+        mvc.perform(post(endpoint).header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("currentPassword", "CurrentPassword123", "email", proposed))))
+                .andExpect(status().isTooManyRequests());
+        jdbc.update("UPDATE users SET pending_email_expires_at=now()-interval '1 second' WHERE email_normalized=?", current);
+        mvc.perform(post("/api/v1/me/account/email-confirm").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload(Map.of("code", code.getValue()))))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(jdbc.queryForObject("SELECT email FROM users WHERE email_normalized=?", String.class, current))
+                .isEqualTo(current);
+    }
+
+    @Test void concurrentConfirmationCanOnlyApplyOnce() throws Exception {
+        String current = address(), proposed = address(), token = register(current);
+        mvc.perform(post("/api/v1/me/account/email-request").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("currentPassword", "CurrentPassword123", "email", proposed))))
+                .andExpect(status().isOk());
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(sender).send(org.mockito.ArgumentMatchers.eq(proposed), code.capture());
+        UUID actor = jdbc.queryForObject("SELECT id FROM users WHERE email_normalized=?", UUID.class, current);
+        CountDownLatch release = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> confirmAfter(release, actor, code.getValue()));
+            var second = pool.submit(() -> confirmAfter(release, actor, code.getValue()));
+            release.countDown();
+            assertThat(first.get(10, TimeUnit.SECONDS) + second.get(10, TimeUnit.SECONDS)).isEqualTo(1);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users WHERE email_normalized=?", Long.class, proposed))
+                .isEqualTo(1);
+    }
+
+    @Test void existingAddressIsOnlyRejectedAfterMailboxProof() throws Exception {
+        String current = address(), ownedByAnother = address();
+        String token = register(current);
+        register(ownedByAnother);
+        mvc.perform(post("/api/v1/me/account/email-request").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(Map.of("currentPassword", "CurrentPassword123", "email", ownedByAnother))))
+                .andExpect(status().isOk());
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(sender).send(org.mockito.ArgumentMatchers.eq(ownedByAnother), code.capture());
+        mvc.perform(post("/api/v1/me/account/email-confirm").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload(Map.of("code", code.getValue()))))
+                .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("SELECT email FROM users WHERE email_normalized=?", String.class, current))
+                .isEqualTo(current);
+    }
+
+    private int confirmAfter(CountDownLatch release, UUID actor, String code) throws InterruptedException {
+        release.await();
+        try { accounts.confirmEmail(actor, code); return 1; }
+        catch (AuthFailure expected) { return 0; }
     }
 }

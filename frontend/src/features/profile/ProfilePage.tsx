@@ -5,7 +5,7 @@ import { BookOpen, Heart, KeyRound, Mail, ShieldCheck, Star, UserRound } from 'l
 import { useAuth } from '../auth/auth-context';
 import { MemberRequestError } from '../members/MemberRequestError';
 import { statusLabels } from '../members/member-api';
-import { cancelEmailRequest, changePassword, getAccount, requestEmail, updateAccount } from './account-api';
+import { cancelEmailRequest, changePassword, confirmEmail, getAccount, requestEmail, updateAccount } from './account-api';
 
 export function ProfilePage() {
   const { user, logout, refreshSession } = useAuth();
@@ -15,6 +15,7 @@ export function ProfilePage() {
   const [name, setName] = useState(''); const [phone, setPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState(''); const [nextPassword, setNextPassword] = useState('');
   const [emailPassword, setEmailPassword] = useState(''); const [nextEmail, setNextEmail] = useState('');
+  const [emailCode, setEmailCode] = useState('');
   const [notice, setNotice] = useState('');
   useEffect(() => { if (account.data) { setName(account.data.fullName); setPhone(account.data.phone ?? ''); } }, [account.data]);
   const profileChange = useMutation({ mutationFn: () => updateAccount(name, phone), onSuccess: async data => {
@@ -26,7 +27,10 @@ export function ProfilePage() {
   } });
   const emailChange = useMutation({ mutationFn: () => requestEmail(emailPassword, nextEmail), onSuccess: data => {
     client.setQueryData(['account', user?.id], data); setEmailPassword(''); setNextEmail('');
-    setNotice('Đã ghi nhận email mới. Email đăng nhập hiện tại vẫn được giữ cho tới khi có bước xác minh.');
+    setNotice('Mã xác minh đã được gửi tới email mới. Mã có hiệu lực 15 phút.');
+  } });
+  const emailConfirmation = useMutation({ mutationFn: () => confirmEmail(emailCode), onSuccess: async () => {
+    setEmailCode(''); await logout(); navigate('/dang-nhap', { replace: true });
   } });
   const cancelEmail = useMutation({ mutationFn: cancelEmailRequest, onSuccess: async () => {
     await account.refetch(); setNotice('Đã hủy yêu cầu đổi email.');
@@ -67,15 +71,23 @@ export function ProfilePage() {
             <p className="account-current-email">Email đang dùng: <strong>{account.data.email}</strong></p>
             {account.data.pendingEmail && <div className="account-pending"><p>Đang chờ xác minh: <strong>{account.data.pendingEmail}</strong></p>
               <button type="button" className="text-link" disabled={cancelEmail.isPending} onClick={() => cancelEmail.mutate()}>Hủy yêu cầu</button></div>}
-            <p className="account-help">Bản pilot chưa cấu hình gửi email xác minh. Yêu cầu được lưu lại nhưng email đăng nhập chỉ đổi sau khi xác minh được triển khai.</p>
-            <form onSubmit={event => submit(event, () => emailChange.mutate())}>
+            {account.data.pendingEmail && account.data.emailVerificationEnabled && <form onSubmit={event => submit(event, () => emailConfirmation.mutate())}>
+              <label className="field">Mã xác minh<input value={emailCode} required minLength={12} maxLength={12} autoComplete="one-time-code"
+                onChange={event => setEmailCode(event.target.value.toUpperCase())}/></label>
+              <p className="account-help">Nhập mã trong email mới. Mã hết hạn sau 15 phút; nhập sai tối đa 5 lần. Khi xác minh xong, bạn cần đăng nhập lại bằng email mới.</p>
+              <button type="submit" className="button-primary" disabled={emailConfirmation.isPending}>Xác minh email</button>
+              {emailConfirmation.isError && <p role="alert" className="account-error">Mã không hợp lệ hoặc đã hết hạn. Kiểm tra lại hoặc yêu cầu mã mới.</p>}
+            </form>}
+            {account.data.emailVerificationEnabled ? <p className="account-help">Bạn có thể yêu cầu mã mới sau 1 phút, tối đa 5 lần trong 24 giờ.</p>
+              : <p className="account-help">Máy chủ hiện chưa bật gửi mã xác minh. Email đăng nhập vẫn giữ nguyên; hãy liên hệ người vận hành nếu cần đổi.</p>}
+            {account.data.emailVerificationEnabled && <form onSubmit={event => submit(event, () => emailChange.mutate())}>
               <label className="field">Email mới<input type="email" autoComplete="email" required maxLength={320} value={nextEmail}
                 onChange={event => setNextEmail(event.target.value)}/></label>
               <label className="field">Mật khẩu hiện tại<input type="password" autoComplete="current-password" required value={emailPassword}
                 onChange={event => setEmailPassword(event.target.value)}/></label>
-              <button type="submit" className="button-secondary" disabled={emailChange.isPending}>Ghi nhận email mới</button>
-              {emailChange.isError && <p role="alert" className="account-error">Chưa ghi nhận được email. Kiểm tra mật khẩu hoặc dùng email khác.</p>}
-            </form></section>
+              <button type="submit" className="button-secondary" disabled={emailChange.isPending}>Gửi mã xác minh</button>
+              {emailChange.isError && <p role="alert" className="account-error">Chưa gửi được mã. Kiểm tra mật khẩu, địa chỉ email hoặc cấu hình gửi thư.</p>}
+            </form>}</section>
           <section className="account-panel account-activity" aria-label="Hoạt động của tôi"><div className="account-panel-heading"><ShieldCheck size={20}/><h2>Hoạt động của tôi</h2></div>
             <p className="account-help">Xem dữ liệu thật trong tài khoản của bạn.</p>
             <div className="account-shortcuts"><Link to="/thu-vien-cua-toi#sach-yeu-thich"><Heart size={19}/> Sách yêu thích →</Link>

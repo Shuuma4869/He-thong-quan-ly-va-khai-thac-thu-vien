@@ -19,6 +19,9 @@ function response(url:string) {
   if (path.endsWith(`/me/favorites/${id}`)) return {bookId:id,saved:false};
   if (path.endsWith('/reviews/summary')) return {bookId:id,average:null,count:0};
   if (path.endsWith('/editions')) return page([edition,{...edition,id:authorId,isbn13:null,publicationYear:2024}]);
+  if (path.endsWith('/availability')) return { bookId:id, checkedAt:'2026-10-28T00:00:00Z',
+    branches:[{ editionId:id, branchId:authorId, branchCode:'CN1', branchName:'Chi nhánh 1',
+      catalogedCopies:2, availableCopies:1, waitingHolds:1 }] };
   if (path.endsWith(`/books/${id}`)) return book;
   if (path.endsWith(`/authors/${authorId}`)) return book.authors[0];
   if (path.endsWith('/books')) return page([book],Number(new URL(url).searchParams.get('page')??0),21);
@@ -81,11 +84,30 @@ it('loading, lỗi và retry được phân biệt với empty', async () => {
   fireEvent.click(screen.getByRole('button',{name:'Thử lại'}));
   expect(await screen.findByText('Chưa có sách phù hợp')).toBeInTheDocument();
 });
-it('Book Detail tách hai Edition và không bịa availability', async () => {
+it('Book Detail tách hai Edition và hiển thị availability thật từ API', async () => {
   app(`/sach/${id}`); expect(await screen.findByRole('heading',{name:book.title})).toBeInTheDocument();
   expect(await screen.findByText('ISBN 9780140328721')).toBeInTheDocument();
   expect(screen.getByText('Ấn bản không có ISBN')).toBeInTheDocument();
+  expect(await screen.findByText((_, node) => node?.tagName === 'LI'
+    && node.textContent?.includes('Chi nhánh 1: 1 bản sẵn có') === true)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Tải lại tình trạng' }));
+  await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/availability')).length).toBeGreaterThan(1));
   expect(screen.queryByRole('button',{name:/Mượn|Giữ chỗ/})).not.toBeInTheDocument();
+});
+it('availability hiển thị lỗi, thử lại và trạng thái không có bản vật lý', async () => {
+  let failed = false;
+  fetchMock.mockImplementation((url: string) => {
+    if (String(url).endsWith('/availability')) {
+      if (!failed) { failed = true; return Promise.resolve(Response.json({ detail: 'private trace' }, { status: 503 })); }
+      return Promise.resolve(Response.json({ bookId: id, checkedAt: '2026-10-28T00:00:00Z', branches: [] }));
+    }
+    return Promise.resolve(Response.json(response(url)));
+  });
+  app(`/sach/${id}`);
+  const area = await screen.findByLabelText('Tình trạng bản sách');
+  expect(await within(area).findByRole('alert')).not.toHaveTextContent('private trace');
+  fireEvent.click(within(area).getByRole('button', { name: 'Thử lại' }));
+  expect(await screen.findAllByText('Chưa có bản sách vật lý tại chi nhánh đang hoạt động.')).toHaveLength(2);
 });
 it('Author Detail lấy sách bằng UUID, không giả biography', async () => {
   app(`/tac-gia/${authorId}`); await screen.findByRole('heading',{name:'Tác giả A'});

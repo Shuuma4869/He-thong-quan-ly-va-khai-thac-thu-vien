@@ -24,6 +24,8 @@ pwsh -NoProfile -File .\scripts\check-quality.ps1
 Bootstrap không ghi đè `.env` đã tồn tại và không xóa volume. Với môi trường mới, script tạo ngẫu nhiên mật khẩu PostgreSQL và JWT secret; với môi trường cũ, script kiểm tra giá trị bắt buộc, mật khẩu giữa Core/Insight và lỗi xác thực volume. Flyway chạy khi Core khởi động; Prisma migration được bootstrap deploy.
 Mặc định Compose chỉ khởi động PostgreSQL, Redis và Kafka. MinIO không phục vụ ảnh Catalog hiện tại nên nằm trong profile `media` và không tiêu thụ tài nguyên khi khởi động thông thường.
 
+Muốn thử đổi email trên máy phát triển, chạy `docker compose --profile email-dev up -d mailpit`, đặt `LAMS_EMAIL_ENABLED=true` trong `.env` rồi khởi động lại Core. Mailpit nhận SMTP ở `localhost:1025`; mở `http://localhost:8025` để lấy mã. Không bật cờ này khi chưa có SMTP phù hợp; mặc định API gửi mã trả 503 và không tạo yêu cầu mới. Mailpit chỉ bind vào `127.0.0.1`, không chuyển thư ra ngoài.
+
 Trong Git Bash của VS Code có thể dùng `./scripts/lams.sh doctor|setup|bootstrap|smoke|seed-demo|core|insight|web|desktop|quality|e2e|desktop-e2e|build-desktop|stop`. Chạy `./scripts/lams.sh` không tham số để xem trợ giúp. `core`, `insight`, `web` và `desktop` dùng terminal riêng, kiểm cổng trước khi chạy để tránh mở trùng service. Đường dẫn có dấu tiếng Việt và khoảng trắng được wrapper chuyển sang đường dẫn Windows khi gọi PowerShell 7.
 
 ## Chạy ứng dụng

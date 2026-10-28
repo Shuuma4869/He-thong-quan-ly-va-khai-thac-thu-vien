@@ -22,6 +22,7 @@ public class AccountCenterController {
     public record ProfileUpdate(@NotBlank @Size(max = 150) String fullName, String phone) {}
     public record PasswordChange(@NotBlank String currentPassword, @NotBlank String newPassword) {}
     public record EmailRequest(@NotBlank String currentPassword, @NotBlank @Email String email) {}
+    public record EmailConfirm(@NotBlank String code) {}
     private final AccountCenterService accounts;
     public AccountCenterController(AccountCenterService accounts) { this.accounts = accounts; }
     private static UUID actor(JwtAuthenticationToken token) { return UUID.fromString(token.getToken().getSubject()); }
@@ -44,6 +45,11 @@ public class AccountCenterController {
     @DeleteMapping("/email-request")
     public ResponseEntity<Void> cancelEmail(JwtAuthenticationToken token) {
         accounts.cancelEmail(actor(token));
+        return ResponseEntity.noContent().build();
+    }
+    @PostMapping("/email-confirm")
+    public ResponseEntity<Void> confirmEmail(JwtAuthenticationToken token, @Valid @RequestBody EmailConfirm body) {
+        accounts.confirmEmail(actor(token), body.code());
         return ResponseEntity.noContent().build();
     }
 }

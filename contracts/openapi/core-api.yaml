@@ -112,6 +112,24 @@ paths:
                   page: { $ref: '#/components/schemas/PageMetadata' }
         '404': { description: Không có tác phẩm }
         '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/books/{id}/availability:
+    get:
+      operationId: getPublicBookAvailability
+      tags: [PublicCatalog]
+      summary: Tình trạng bản sách theo ấn bản và chi nhánh đang hoạt động
+      description: >-
+        Dữ liệu Copy, Loan và Hold được đọc trong một transaction REPEATABLE READ.
+        availableCopies chỉ đếm Copy AVAILABLE không có Loan đang mở hoặc Hold READY.
+        waitingHolds là số yêu cầu WAITING liên quan; số liệu có thể đổi sau checkedAt.
+        Không trả mã vạch, vị trí kệ hoặc dữ liệu người mượn. Tối đa 200 cặp ấn bản/chi nhánh.
+      security: []
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tình trạng hiện tại, content: { application/json: { schema: { $ref: '#/components/schemas/PublicBookAvailability' } } } }
+        '404': { description: Không có tác phẩm }
+        '422': { description: Quá nhiều cặp ấn bản và chi nhánh }
+        '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/{kind}:
     get:
       operationId: listPublicNames
@@ -563,8 +581,8 @@ paths:
     post:
       operationId: requestMyEmailChange
       tags: [Member]
-      summary: Ghi nhận email mới ở trạng thái chờ xác minh
-      description: Pilot chưa có dịch vụ gửi thư; endpoint không đổi email đăng nhập và chưa thể hoàn tất xác minh.
+      summary: Gửi mã xác minh tới email mới
+      description: Chỉ hoạt động khi SMTP được cấu hình và bật. Mã dùng một lần, hiệu lực 15 phút; tối đa 5 lần gửi trong 24 giờ và cách nhau ít nhất 1 phút. Email đăng nhập cũ được giữ cho tới khi xác minh.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -579,7 +597,9 @@ paths:
       responses:
         '200': { description: Email chờ xác minh, content: { application/json: { schema: { $ref: '#/components/schemas/AccountCenter' } } } }
         '403': { description: Mật khẩu hiện tại sai hoặc tài khoản ngừng hoạt động }
-        '409': { description: Email đã được sử dụng }
+        '409': { description: Không thể sử dụng địa chỉ email này }
+        '429': { description: Gửi lại quá sớm hoặc hết lượt trong 24 giờ }
+        '503': { description: Gửi thư chưa được cấu hình hoặc tạm lỗi }
     delete:
       operationId: cancelMyEmailChange
       tags: [Member]
@@ -587,6 +607,109 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '204': { description: Đã hủy yêu cầu }
+  /me/account/email-confirm:
+    post:
+      operationId: confirmMyEmailChange
+      tags: [Member]
+      summary: Xác minh email mới bằng mã đã gửi
+      description: Tối đa 5 lần nhập sai; mã hết hạn sau 15 phút. Thành công tăng credential_version và thu hồi refresh token để người dùng đăng nhập lại bằng email mới.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, minLength: 12, maxLength: 12 }
+      responses:
+        '204': { description: Email đã đổi; cần đăng nhập lại }
+        '409': { description: Email đã được tài khoản khác sử dụng trước khi xác minh }
+        '422': { description: 'Mã sai, đã dùng hết lượt hoặc hết hạn' }
+  /admin/accounts:
+    get:
+      operationId: listAdminAccounts
+      tags: [IdentityAdmin]
+      summary: Tra cứu tài khoản dành riêng cho quản trị viên
+      description: Kiểm role ADMIN và trạng thái ACTIVE hiện hành trong DB. Tìm theo mã, họ tên hoặc email; ký tự đại diện được escape.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: query, schema: { type: string, maxLength: 150 } }
+        - { in: query, name: status, schema: { type: string, enum: [ACTIVE, LOCKED, DISABLED] } }
+        - { in: query, name: page, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { in: query, name: size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Danh sách, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccountPage' } } } }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/accounts/{id}:
+    get:
+      operationId: getAdminAccount
+      tags: [IdentityAdmin]
+      summary: Xem chi tiết tài khoản
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Tài khoản, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccount' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/accounts/{id}/status:
+    patch:
+      operationId: changeAdminAccountStatus
+      tags: [IdentityAdmin]
+      summary: Khóa hoặc mở khóa tài khoản
+      description: expectedVersion chống ghi đè cập nhật; thay đổi tăng credential_version, thu hồi phiên và ghi audit. Không cho khóa quản trị viên hoạt động cuối cùng.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, status, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                status: { type: string, enum: [ACTIVE, LOCKED] }
+                reason: { type: string, minLength: 5, maxLength: 250 }
+      responses:
+        '200': { description: Tài khoản sau cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccount' } } } }
+        '409': { description: Xung đột phiên bản hoặc quản trị viên cuối cùng }
+  /admin/accounts/{id}/roles/{role}:
+    patch:
+      operationId: changeAdminAccountRole
+      tags: [IdentityAdmin]
+      summary: Cấp hoặc thu hồi vai trò
+      description: Chỉ ba vai trò hiện có; cần ít nhất một vai trò và một quản trị viên ACTIVE. Mọi thay đổi tăng credential_version, thu hồi phiên và ghi audit.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+        - { in: path, name: role, required: true, schema: { type: string, enum: [READER, LIBRARIAN, ADMIN] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, grant, reason]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+                grant: { type: boolean }
+                reason: { type: string, minLength: 5, maxLength: 250 }
+      responses:
+        '200': { description: Tài khoản sau cập nhật, content: { application/json: { schema: { $ref: '#/components/schemas/AdminAccount' } } } }
+        '409': { description: Xung đột phiên bản hoặc quản trị viên cuối cùng }
+  /admin/accounts/{id}/audit:
+    get:
+      operationId: listAdminAccountAudit
+      tags: [IdentityAdmin]
+      summary: Xem tối đa 100 thay đổi quản trị gần nhất của tài khoản
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Lịch sử thay đổi, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AdminAccountAudit' } } } } }
   /me/favorites:
     get:
       operationId: listMyFavorites
@@ -2400,7 +2523,7 @@ components:
         context: { type: string, enum: [portrait, book-cover] }
     AccountCenter:
       type: object
-      required: [userId, memberCode, fullName, email, status, phone, pendingEmail, pendingEmailRequestedAt]
+      required: [userId, memberCode, fullName, email, status, phone, pendingEmail, pendingEmailRequestedAt, emailVerificationEnabled]
       properties:
         userId: { type: string, format: uuid }
         memberCode: { type: string }
@@ -2410,6 +2533,59 @@ components:
         phone: { type: [string, 'null'] }
         pendingEmail: { type: [string, 'null'], format: email }
         pendingEmailRequestedAt: { type: [string, 'null'], format: date-time }
+        emailVerificationEnabled: { type: boolean, description: SMTP đã được bật cho môi trường này }
+    AdminAccount:
+      type: object
+      required: [id, memberCode, fullName, email, status, roles, version, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        memberCode: { type: string }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [ACTIVE, LOCKED, DISABLED] }
+        roles: { type: array, items: { type: string, enum: [READER, LIBRARIAN, ADMIN] } }
+        version: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+    AdminAccountPage:
+      type: object
+      required: [items, number, size, totalElements]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminAccount' } }
+        number: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, minimum: 0 }
+    AdminAccountAudit:
+      type: object
+      required: [id, actorId, targetId, action, beforeValue, afterValue, reason, targetVersion, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorId: { type: string, format: uuid }
+        targetId: { type: string, format: uuid }
+        action: { type: string, enum: [STATUS, ROLE_GRANT, ROLE_REVOKE] }
+        beforeValue: { type: string }
+        afterValue: { type: string }
+        reason: { type: string }
+        targetVersion: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+    PublicBookAvailability:
+      type: object
+      required: [bookId, checkedAt, branches]
+      properties:
+        bookId: { type: string, format: uuid }
+        checkedAt: { type: string, format: date-time }
+        branches:
+          type: array
+          items:
+            type: object
+            required: [editionId, branchId, branchCode, branchName, catalogedCopies, availableCopies, waitingHolds]
+            properties:
+              editionId: { type: string, format: uuid }
+              branchId: { type: string, format: uuid }
+              branchCode: { type: string }
+              branchName: { type: string }
+              catalogedCopies: { type: integer, minimum: 0 }
+              availableCopies: { type: integer, minimum: 0 }
+              waitingHolds: { type: integer, minimum: 0 }
     PublicBook:
       type: object
       required: [id, title, description, authors, categories, cover, averageRating, ratingCount, catalogSource]

@@ -25,6 +25,7 @@ const CirculationReportPage = lazy(() => import('../../features/circulation/Circ
 const InventorySessionsPage = lazy(() => import('../../features/inventory/InventorySessionsPage').then(value => ({ default: value.InventorySessionsPage })));
 const InventorySessionPage = lazy(() => import('../../features/inventory/InventorySessionPage').then(value => ({ default: value.InventorySessionPage })));
 const AcquisitionPage = lazy(() => import('../../features/acquisition/AcquisitionPage').then(value => ({ default: value.AcquisitionPage })));
+const AdminAccountsPage = lazy(() => import('../../features/admin/AdminAccountsPage').then(value => ({ default: value.AdminAccountsPage })));
 
 function Deferred({ children }: { children: ReactNode }) {
   return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
@@ -65,6 +66,9 @@ export function AppRouter() {
         <Route path="kiem-ke" element={<Deferred><InventorySessionsPage /></Deferred>} />
         <Route path="kiem-ke/:sessionId" element={<Deferred><InventorySessionPage /></Deferred>} />
         <Route path="de-xuat-bo-sung" element={<Deferred><AcquisitionPage /></Deferred>} />
+        <Route element={<RoleGuard allowed={['ADMIN']} />}>
+          <Route path="tai-khoan" element={<Deferred><AdminAccountsPage /></Deferred>} />
+        </Route>
       </Route>
       </Route></Route>
       <Route path="*" element={<NotFoundPage />} />

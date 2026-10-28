@@ -26,7 +26,7 @@ Màn tra cứu ISBN dùng React-Bootstrap trong phạm vi `.metadata-history`; k
 
 ## Phạm vi hiện có
 
-Reader có Catalog, My Library, đánh giá và Account Center. Staff dùng cùng topbar/sidebar nhưng có bảng điều khiển, quầy lưu thông, kiểm kê và các màn quản trị theo quyền. Bảng điều khiển chỉ hiện số liệu lấy từ API; chưa có feed hoạt động hay biểu đồ vì chưa có nguồn dữ liệu tương ứng. Email mới ở trạng thái chờ xác minh, không trở thành email đăng nhập khi chưa có bước xác nhận sở hữu hộp thư.
+Reader có Catalog, My Library, đánh giá và Account Center. Staff dùng cùng topbar/sidebar nhưng có bảng điều khiển, quầy lưu thông, kiểm kê và các màn quản trị theo quyền. Bảng điều khiển chỉ hiện số liệu lấy từ API; chưa có feed hoạt động hay biểu đồ vì chưa có nguồn dữ liệu tương ứng. Email mới chỉ trở thành email đăng nhập sau khi nhập mã gửi tới hộp thư mới; khi SMTP chưa bật, giao diện nói rõ tính năng tạm chưa khả dụng.
 
 ## Kiểm tra giao diện
 
