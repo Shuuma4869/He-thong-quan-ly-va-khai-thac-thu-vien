@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, BookOpen, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import heroImage from '../../assets/img/auth/auth-cover-library.webp';
@@ -8,6 +8,7 @@ import { useAuth } from '../auth/auth-context';
 import { BookList } from '../catalog/BookList';
 import { BookGridSkeleton } from '../catalog/BookGridSkeleton';
 import { getBooks, getPublicCategories, getRecentBooks, type Named } from '../catalog/catalog-api';
+import { DirectoryVisual } from '../catalog/DirectoryVisual';
 import { ReferencePicker } from '../catalog/ReferencePicker';
 
 export function ReaderHomePage() {
@@ -51,8 +52,8 @@ export function ReaderHomePage() {
       {categories.isPending ? <p role="status">Đang tải thể loại…</p> : categories.isError
         ? <div className="landing-retry" role="alert">Chưa tải được thể loại. <button type="button" onClick={() => void categories.refetch()}>Thử lại</button></div>
         : categories.data.items.length ? <div className="landing-category-grid">{categories.data.items.slice(0, 8).map(item =>
-          <Link key={item.id} to={`/the-loai/${item.id}`} className="landing-category-card">
-            <span className="landing-category-icon"><BookOpen size={27}/></span><span>{item.name}</span><ArrowRight size={18}/>
+          <Link key={item.id} aria-label={item.name} to={`/the-loai/${item.id}`} className="landing-category-card landing-category-photo-card">
+            <DirectoryVisual kind="categories" title={item.name}/><span>{item.name}</span><ArrowRight size={18}/>
           </Link>)}</div> : <p>Thư viện chưa có thể loại để giới thiệu.</p>}
     </section>
     <section className="landing-section landing-section-soft" aria-labelledby="landing-recent-title">

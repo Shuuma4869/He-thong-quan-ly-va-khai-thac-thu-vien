@@ -46,7 +46,13 @@ function BookDetail({ id }: { id: string }) {
             ★ {book.data.averageRating.toFixed(1)} / 5 · {book.data.ratingCount} đánh giá</p>}
           <p className="book-detail-description whitespace-pre-wrap">{book.data.description || 'Tác phẩm này chưa có phần giới thiệu. Bạn vẫn có thể xem tác giả, thể loại và các ấn bản đã được biên mục.'}</p>
           <div className="book-detail-actions">{user ? <FavoriteButton bookId={id}/> : <Link className="button-primary" to="/dang-nhap">Đăng nhập để lưu sách <ArrowRight size={16}/></Link>}
-            <a className="button-secondary" href="#cac-an-ban">Xem ấn bản <BookCopy size={17}/></a></div>
+            <button type="button" className="button-primary" onClick={() => {
+              const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                || ['off', 'reduced'].includes(document.documentElement.dataset.appearanceMotion ?? '');
+              document.getElementById('cac-an-ban')?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth', block: 'start' });
+              document.getElementById('editions-heading')?.focus({ preventScroll: true });
+            }}>Xem ấn bản và giữ chỗ <BookCopy size={17}/></button>
+            {user && <Link className="button-secondary" to="/muon-va-giu-cho">Mượn và giữ chỗ của tôi</Link>}</div>
           {book.data.catalogSource && <p className="book-source-note">Dữ liệu thư mục đối chiếu từ <a className="text-link" href={book.data.catalogSource.sourceUrl} target="_blank" rel="noopener noreferrer">Project Gutenberg ↗</a>. Ngày phát hành ebook không phải năm xuất bản sách in; thông tin nguồn không chứng minh thư viện có bản vật lý.</p>}
         </div>
       </div>
@@ -56,8 +62,8 @@ function BookDetail({ id }: { id: string }) {
         <div><BookCopy size={20} aria-hidden="true"/><span>Nguồn thông tin</span><strong>{book.data.catalogSource ? 'Thư mục tham khảo' : 'Danh mục thư viện'}</strong></div>
       </div>
       <section id="cac-an-ban" className="detail-section" aria-labelledby="editions-heading"><div className="detail-section-heading"><div>
-        <p className="eyebrow">Biên mục thư viện</p><h2 id="editions-heading">Các ấn bản</h2>
-        <p>Mỗi ấn bản có thông tin xuất bản riêng. Số bản sẵn có chỉ phản ánh thời điểm kiểm tra; yêu cầu giữ chỗ vẫn được xác nhận ở server.</p></div></div>
+        <p className="eyebrow">Biên mục thư viện</p><h2 id="editions-heading" tabIndex={-1}>Các ấn bản</h2>
+        <p>Chọn ấn bản bên dưới để giữ chỗ tại chi nhánh nhận. Khi đến thư viện, thủ thư ghi nhận lượt mượn tại quầy. Bạn có thể theo dõi yêu cầu trong mục Mượn và giữ chỗ.</p></div></div>
       <div className="my-4" aria-label="Tình trạng bản sách">
         {availability.isPending ? <p role="status">Đang kiểm tra bản sách theo chi nhánh…</p>
           : availability.isError ? <CatalogError error={availability.error} retry={() => void availability.refetch()}/>

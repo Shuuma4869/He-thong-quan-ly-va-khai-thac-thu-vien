@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { HashRouter, MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../app/providers/AppProviders';
 import { AppRouter } from '../../app/router/AppRouter';
 
@@ -28,7 +28,25 @@ function response(url:string) {
   return page([]);
 }
 beforeEach(() => { role='READER'; fetchMock=vi.fn((url:string) => Promise.resolve(Response.json(response(url)))); vi.stubGlobal('fetch',fetchMock); });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); window.history.replaceState(null, '', '/'); });
+
+it('desktop mở ấn bản ngay tại trang sách, giữ nguyên route và có lối giữ chỗ', async () => {
+  window.history.replaceState(null, '', `/#/sach/${id}`);
+  const scroll = vi.fn();
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  const original = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  try {
+    render(<AppProviders><HashRouter><AppRouter/></HashRouter></AppProviders>);
+    await screen.findByText('ISBN 9780140328721');
+    fireEvent.click(screen.getByRole('button', { name: 'Xem ấn bản và giữ chỗ' }));
+    expect(window.location.hash).toBe(`#/sach/${id}`);
+    expect(scroll).toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Các ấn bản' })).toHaveFocus();
+    expect(screen.getAllByRole('link', { name: 'Giữ chỗ ấn bản này' })[0]).toHaveAttribute('href', `#/giu-cho/${id}/${id}`);
+    expect(screen.queryByText(/404/)).not.toBeInTheDocument();
+  } finally { HTMLElement.prototype.scrollIntoView = original; }
+});
 
 it('Reader tra sách, phân trang, đồng bộ query và reset trang', async () => {
   app('/sach?query=Tác&page=0&size=20');

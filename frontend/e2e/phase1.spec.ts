@@ -389,6 +389,10 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   expect(readerLogin.status()).toBe(200); const reader = await readerLogin.json();
   const readerHeaders = { Authorization: `Bearer ${reader.accessToken}` };
   await loginCatalog(page, 'READER'); await navigate(page, `/sach/${book.id}`);
+  await page.getByRole('button', { name: 'Xem ấn bản và giữ chỗ' }).click();
+  await expect(page).toHaveURL(new RegExp(`/sach/${book.id}$`));
+  await expect(page.getByRole('heading', { name: 'Các ấn bản' })).toBeFocused();
+  await captureFullPage(page, { path: 'test-results/book-detail-glass.png', fullPage: true });
   await page.getByRole('link', { name: 'Giữ chỗ ấn bản này' }).click();
   await expect(page.getByRole('checkbox')).not.toBeChecked();
   await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
@@ -578,6 +582,86 @@ test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận ch
     await captureFullPage(page, { path: `test-results/inventory-${width}.png`, fullPage: true });
   }
   if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
+});
+
+for (const role of ['READER', 'LIBRARIAN', 'ADMIN'] as const) {
+test(`Ảnh danh mục phủ khung, menu và quay lại hoạt động (${role})`, async ({ page, request }) => {
+  test.setTimeout(60_000);
+  const headers = await staffApi(request);
+  await createCatalog(request, headers, '/categories', { name: `A0 Chuyên mục ${role} ${suffix}` });
+    await loginCatalog(page, role);
+    await navigate(page, role === 'READER' ? '/the-loai' : '/nhan-vien/bang-dieu-khien');
+    await expect(page.locator('.appearance-loading')).toHaveCount(0);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const collapse = page.getByRole('button', { name: 'Thu gọn thanh điều hướng' });
+    await collapse.click();
+    await expect(page.locator('.library-sidebar-desktop')).toHaveClass(/is-collapsed/);
+    const expand = page.getByRole('button', { name: 'Mở rộng thanh điều hướng' });
+    await expect(expand).toBeEnabled();
+    await expand.click();
+    await expect(page.locator('.library-sidebar-desktop')).not.toHaveClass(/is-collapsed/);
+    await captureFullPage(page, { path: `test-results/glass-${role}.png`, fullPage: true });
+    await page.setViewportSize({ width: 390, height: 900 });
+    const roleMenu = page.getByRole('button', { name: role === 'READER' ? 'Mở menu thư viện' : 'Mở menu nhân viên' });
+    await roleMenu.click();
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).not.toBeVisible();
+    await expect(roleMenu).toBeFocused();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    for (const path of ['/tac-gia', '/the-loai']) {
+      await navigate(page, path);
+      const hero = page.locator('.directory-hero');
+      await expect(hero).toBeVisible();
+      await expect.poll(() => hero.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+      const bounds = await hero.boundingBox();
+      const photo = await hero.locator('img').boundingBox();
+      expect(Math.abs(bounds!.width - photo!.width)).toBeLessThan(3);
+      if (path === '/the-loai') {
+        await expect(page.locator('.directory-card .directory-visual img').first()).toBeVisible();
+        expect(await page.locator('.directory-card .directory-visual-fallback').count()).toBe(0);
+      }
+      if (role === 'READER') await captureFullPage(page, { path: `test-results/hero-${path.slice(1)}.png`, fullPage: true });
+    }
+    await page.setViewportSize({ width: 390, height: 900 });
+    const trigger = page.getByRole('button', { name: 'Mở menu thư viện' });
+    await trigger.click();
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).toBeVisible();
+    await page.getByRole('button', { name: 'Đóng menu', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  await navigate(page, '/the-loai');
+  // Điều hướng trong cùng ứng dụng để kiểm tra nút quay lại, kể cả HashRouter.
+  await page.evaluate((desktop) => {
+    if (desktop) location.hash = '/duong-dan-khong-ton-tai';
+    else { history.pushState({ idx: (history.state?.idx ?? 0) + 1 }, '', '/duong-dan-khong-ton-tai'); dispatchEvent(new PopStateEvent('popstate')); }
+  }, !!desktopEndpoint);
+  await expect(page.getByRole('heading', { name: 'Không tìm thấy trang' })).toBeVisible();
+  await page.getByRole('button', { name: 'Quay lại' }).click();
+  await expect(page.getByRole('heading', { name: /Thể loại|Khám phá sách/, exact: true })).toBeVisible();
+});
+}
+
+test('Admin hủy phiên kiểm kê và tải lại vẫn giữ biên nhận đã hủy', async ({ page, request }) => {
+  const headers = await staffApi(request);
+  const branch = await createCatalog(request, headers, '/branches', { code: `H-${suffix}`, name: `Chi nhánh hủy ${suffix}` });
+  await loginCatalog(page, 'ADMIN');
+  await navigate(page, '/nhan-vien/kiem-ke');
+  await page.getByRole('button', { name: 'Chọn chi nhánh', exact: true }).click();
+  await page.getByRole('radio', { name: new RegExp(branch.code) }).click();
+  await page.getByRole('button', { name: 'Mở phiên kiểm kê' }).click();
+  await expect(page.getByRole('heading', { name: 'Phiên kiểm kê', exact: true })).toBeVisible();
+  await page.getByRole('radio', { name: 'Hủy phiên' }).check();
+  await page.getByLabel('Lý do hủy (bắt buộc)').fill('Đã kiểm tra và hủy phiên thử nghiệm');
+  await page.getByLabel(/Đã kiểm tra các lượt quét/).check();
+  await page.getByRole('button', { name: 'Hủy phiên', exact: true }).click();
+  await expect(page.getByText('Đã hủy', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Đã hủy', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ghi nhận scan' })).toHaveCount(0);
+  await captureFullPage(page, { path: 'test-results/admin-cancelled-session.png', fullPage: true });
 });
 
 test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang ổn định', async ({ page, request }) => {

@@ -12,8 +12,9 @@ describe('Ảnh minh họa thể loại', () => {
     expect(categoryEditorialPhoto('Art')?.alt).toContain('Họa sĩ');
   });
 
-  it('không gán ảnh chủ đề không liên quan', () => {
-    expect(categoryEditorialPhoto('Văn học')).toBeNull();
-    expect(categoryEditorialPhoto('Martial arts')).toBeNull();
+  it('tên chưa ánh xạ dùng ảnh thư viện chung, không gán ảnh chủ đề không liên quan', () => {
+    expect(categoryEditorialPhoto('Văn học').alt).toContain('ảnh minh họa chuyên mục');
+    expect(categoryEditorialPhoto('Martial arts').alt).toContain('ảnh minh họa chuyên mục');
+    expect(categoryEditorialPhoto('Animals-Wild-Birds').alt).toContain('Rừng');
   });
 });
