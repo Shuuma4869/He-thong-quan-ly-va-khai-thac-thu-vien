@@ -149,3 +149,32 @@ Ngày 23/10/2026, cùng tám hành trình đã đạt trên EXE/WebView2 local t
 Còn phải đo với người dùng: độ dễ hiểu thông báo, thời gian hoàn thành, focus sau lỗi/xóa và tiêu chí “≤4” theo định nghĩa học phần. Không tuyên bố mọi hành trình Catalog/Inventory đạt bốn tương tác; form nhiều field phải đếm riêng.
 
 Tham khảo Booking.com ở nguyên tắc tìm kiếm nổi bật, lọc sát kết quả và hành động rõ; không dùng logo/ảnh của họ, chưa có đánh giá đối chiếu trực quan chính thức. React-Bootstrap hỗ trợ stylesheet tùy chọn: https://react-bootstrap.github.io/docs/getting-started/introduction/.
+
+## W7 — Báo cáo hoạt động giữ chỗ
+
+```text
+Sidebar / Topbar / Tìm kiếm / Chuông thông báo
+Hoạt động giữ chỗ — giới thiệu và múi giờ Việt Nam
+  Từ ngày [date]       Đến trước ngày [date]
+  Chi nhánh [chọn]     Tác phẩm [tìm và chọn]
+  [Xem hoạt động giữ chỗ]
+  Giới hạn sáu tháng lịch và 10.000 nhóm
+Kết quả: tổng sự kiện / kỳ đã áp dụng / [Xuất CSV]
+  Tạo / Sẵn sàng / Đã nhận / Hủy / Hết hạn
+  Ngày | Chi nhánh | Sự kiện | Số lần
+  [Trước]  Trang x/y, 50 nhóm/trang  [Sau]
+```
+
+Màn hẹp xếp bộ lọc thành một cột; bảng nằm trong vùng cuộn ngang có nhãn và focus bàn phím. Chưa chọn kỳ, không có sự kiện, đang tải và lỗi là bốn trạng thái riêng. CSV dùng bộ lọc đã áp dụng, không dùng phần nhập đang sửa. Báo cáo không diễn giải tổng sự kiện thành số người hoặc số Hold duy nhất.
+
+## W8 — Bảng điều khiển và truy cập nhanh
+
+```text
+Bảng điều khiển / [Cập nhật số liệu]
+Tác phẩm / Bản sách / Phiên mở / Đang mượn / Quá hạn / Đề xuất
+Biểu đồ sự kiện giữ chỗ 30 ngày | Ba lượt quá hạn gần đây
+Phiên kiểm kê đang mở          | Mượn trả / Báo cáo
+Đề xuất bổ sung                | Tài khoản và nội dung (Admin)
+```
+
+Mỗi khối dùng trạng thái tải/lỗi riêng. Các nhóm widget có thể ẩn, hiện trong Appearance; thứ tự giữ cố định. Chuông mở hộp thoại xem nhanh năm thông báo, dẫn tới hộp thư riêng. Tìm kiếm trên điện thoại mở hộp thoại thay vì thu nhỏ ô nhập desktop. Các wireframe này mô tả cấu trúc triển khai, không phải bằng chứng đã nghiệm thu bằng hình chụp.

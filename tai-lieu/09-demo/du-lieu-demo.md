@@ -35,15 +35,26 @@ Muốn thử tìm kiếm và phân trang với dữ liệu lớn, sau bộ seed 
 node .\scripts\demo-catalog.mjs --media-review > .\tai-lieu\09-demo\anh-bia-ung-vien.csv
 ```
 
-Danh sách 32 URL là ứng viên, không tự xuất hiện trong Catalog. Tám bìa đầu đã được đối chiếu nhan đề/tác giả trên trang tác phẩm, tranh và họa sĩ trong colophon của Standard Ebooks, cùng thời điểm hoàn thành tranh. Các họa sĩ này mất trước năm 1923. Standard Ebooks [dành phần thiết kế họ tạo cho phạm vi công cộng theo CC0](https://standardebooks.org/about/standard-ebooks-and-the-public-domain); tranh gốc được kiểm thêm theo thời hạn bảo hộ tại nơi trình diễn. Để ghi tám tham chiếu đã rà vào **database demo local**, sau khi cấp tài khoản quản trị demo, chạy:
+Danh sách 32 URL là ứng viên, không tự xuất hiện trong Catalog. Mười hai bìa đã được đối chiếu nhan đề/tác giả trên trang tác phẩm, tranh và họa sĩ trong colophon của Standard Ebooks, cùng thời điểm hoàn thành tranh. Các họa sĩ này mất trước năm 1923. Standard Ebooks [dành phần thiết kế họ tạo cho phạm vi công cộng theo CC0](https://standardebooks.org/about/standard-ebooks-and-the-public-domain); tranh gốc được kiểm thêm theo thời hạn bảo hộ tại nơi trình diễn. Để ghi 12 tham chiếu đã rà vào **database demo local**, sau khi cấp tài khoản quản trị demo, chạy:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\approve-demo-covers.ps1 -ListOnly
 pwsh -NoProfile -File .\scripts\approve-demo-covers.ps1
 ```
 
-Lệnh thứ hai yêu cầu xác nhận `DEMO`, dùng tài khoản `admin.demo@lams.test`, kiểm từng Edition với nhan đề/tác giả trong PostgreSQL rồi gọi API duyệt của Core. Nếu đã có đúng URL thì bỏ qua; nếu có URL khác thì dừng, không ghi đè. Kho mật khẩu demo được giải mã bằng đúng tài khoản Windows đã tạo; ở máy khác script hỏi mật khẩu qua SecureString. Có thể dùng `-ConfirmDemoDatabase` khi chạy không tương tác trên database demo đã kiểm. Kết quả ở máy chuẩn bị trình diễn: **8 ảnh đã duyệt**, 24 ứng viên còn lại chưa duyệt. Chạy script trên máy khác để tạo lại 8 tham chiếu; không sao chép database hoặc kho mật khẩu sang Git.
+Lệnh thứ hai yêu cầu xác nhận `DEMO`, dùng tài khoản `admin.demo@lams.test`, kiểm từng Edition với nhan đề/tác giả trong PostgreSQL rồi gọi API duyệt của Core. Nếu đã có đúng URL thì bỏ qua; nếu có URL khác thì dừng, không ghi đè. Kho mật khẩu demo được giải mã bằng đúng tài khoản Windows đã tạo; ở máy khác script hỏi mật khẩu qua SecureString. Có thể dùng `-ConfirmDemoDatabase` khi chạy không tương tác trên database demo đã kiểm. Kết quả ở máy chuẩn bị trình diễn: **12 ảnh đã duyệt (37,5%)**, 20 ứng viên còn lại chưa duyệt. Chạy script trên máy khác để tạo lại 12 tham chiếu; không sao chép database hoặc kho mật khẩu sang Git.
 
 Các bìa được duyệt vẫn là ảnh ngoài tải trực tiếp từ Standard Ebooks, không được nhúng vào repository hoặc EXE. Nhân viên cần kiểm lại quyền và nguồn khi chuyển sang môi trường ngoài demo, nhất là nếu thay ảnh hoặc triển khai ở nước khác. Chỉ ảnh được duyệt mới đi qua API công khai; ảnh thiếu, tải chậm hoặc tải lỗi dùng bìa chữ có tên tác phẩm. Không lấy bìa ngẫu nhiên cho 10.000 tác phẩm tham khảo.
 
 Google Books vẫn bị khóa khỏi phần hiển thị bìa công khai. Standard Ebooks được thêm như một nguồn có thể duyệt thủ công; URL ảnh phải ở `standardebooks.org`, là HTTPS, không redirect và vượt qua kiểm MIME/kích thước của Core. Nếu điều kiện quyền hoặc định danh chưa rõ, bỏ qua ảnh đó.
+
+Bốn bìa bổ sung được đối chiếu ngày 30/10/2026. Nguồn quyền và bằng chứng tranh được lưu cùng tham chiếu khi gọi API; không dựa riêng vào tên tác giả để chấp thuận.
+
+| Tác phẩm | Tranh bìa theo colophon | Đối chiếu bổ sung |
+|---|---|---|
+| Frankenstein — Mary Shelley | Portrait of Adam, 1578; Giuseppe Arcimboldo (mất 1593) | [Kunsthistorisches Museum](https://www.khm.at/de/object/73) |
+| The Time Machine — H. G. Wells | The Black Marble Clock, khoảng 1870; Paul Cézanne (mất 1906) | [National Gallery of Art](https://www.nga.gov/artists/1115-paul-cezanne) |
+| The Invisible Man — H. G. Wells | Village in the Snow, 1894; Paul Gauguin (mất 1903) | [National Gallery](https://www.nationalgallery.org.uk/artists/paul-gauguin) |
+| The Island of Doctor Moreau — H. G. Wells | Cannon Rock, 1895; Winslow Homer (mất 1910) | [Metropolitan Museum](https://www.metmuseum.org/art/collection/search/11113) |
+
+Bộ demo vẫn chưa có chân dung tác giả được duyệt. CSV ứng viên ghi trạng thái tại lúc tạo danh sách; trạng thái hiển thị thực tế nằm trong bảng media của Core và phải được kiểm trên từng database.

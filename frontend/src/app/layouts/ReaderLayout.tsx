@@ -6,6 +6,7 @@ import { BrandLogo } from '../../shared/branding/BrandLogo';
 import { LibrarySidebar } from './LibrarySidebar';
 import { SearchCommand } from '../../features/catalog/SearchCommand';
 import { BackToTop } from './BackToTop';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
 
 export function ReaderLayout() {
   const auth = useAuth();
@@ -24,6 +25,7 @@ export function ReaderLayout() {
             aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={21}/></button>
           <Link className="library-topbar-brand" to="/"><BrandLogo variant="compact" /></Link>
           <SearchCommand/>
+          <NotificationBell/>
           <Link className="library-topbar-action library-appearance-shortcut" to="/cai-dat/giao-dien" aria-label="Cài đặt giao diện" title="Cài đặt giao diện"><SlidersHorizontal size={18}/></Link>
           {auth.user ? <><span className="library-topbar-user">{auth.user.fullName}</span>
             {auth.user.roles.some(role => role === 'LIBRARIAN' || role === 'ADMIN') &&

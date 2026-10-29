@@ -1,21 +1,30 @@
-# Screen Map
+# Bản đồ màn hình
 
-Staff Catalog có vùng “Lịch sử tra cứu ISBN” (không route mới), owner-scoped list/filter/page/save/replay/delete. React-Bootstrap chỉ trong vùng này, CSS scoped không Reboot toàn cục. [Wireframe W5](wireframes.md) mô tả bố cục.
+Web và Windows dùng chung React; Windows dùng HashRouter. Bảng dưới mô tả đường dẫn trong ứng dụng, không phải URL API. Chặn route chỉ hỗ trợ trải nghiệm; Core và Insight vẫn kiểm quyền ở mỗi endpoint.
 
-| Khu vực | Màn hình | Giai đoạn |
+| Khu vực | Đường dẫn | Nội dung |
 |---|---|---|
-| Public | Landing `/`, đăng nhập, đăng ký, 404 | Landing dùng ảnh thư viện và danh mục Core thật; các trang còn lại đã có |
-| Reader/Staff/Admin | Profile chỉ đọc | Đã triển khai Phase 1C; API /me/profile |
-| Reader/Staff/Admin | Catalog list/filter, Book Detail và Author Detail | Phase 2 đọc API Core thật; Phase 6 thêm tìm kiếm xếp hạng/không dấu |
-| Reader/Staff/Admin | My Library: Favorites và Reviews của mình; Review/Rating trong Book Detail | Phase 3; `/thu-vien-cua-toi`, Core API thật |
-| Reader | Loans, Holds, History mượn trả | `/muon-va-giu-cho` đã có; thông báo mới lưu nội bộ tại Insight, chưa có hộp thư UI |
-| Staff | Dashboard | Đã có; yêu cầu quyền nhân viên |
-| Staff | Danh sách thành viên, tìm/lọc/sort/phân trang | Đã triển khai Phase 1C; API /members |
-| Staff | Catalog quản lý Author/Category/Publisher/Book/Edition/Branch/Shelf/Copy; duyệt ảnh | Phase 2 |
-| Staff | Circulation Desk, Hold Queue | `/nhan-vien/luu-thong` đã có |
-| Staff | Kiểm kê kệ, scan và rà soát bất thường | `/nhan-vien/kiem-ke` và `/nhan-vien/kiem-ke/:sessionId`; dùng Core API, chưa có camera/offline |
-| Admin | Users/Roles, Policies, Audit, Settings | MVP |
-| Admin | Analytics, Acquisition | Advanced |
-| Reader | Semantic suggestions, alternative edition ETA | Advanced |
+| Công khai | `/`, `/dang-nhap`, `/dang-ky` | Giới thiệu, đăng nhập và đăng ký Reader |
+| Công khai | `/sach`, `/sach/:bookId` | Tìm/lọc/phân trang, tác phẩm, ấn bản, tình trạng bản sách theo chi nhánh, đánh giá |
+| Công khai | `/tac-gia`, `/tac-gia/:authorId` | Danh sách và chi tiết tác giả |
+| Công khai | `/the-loai`, `/the-loai/:categoryId` | Danh sách và chi tiết thể loại |
+| Mọi người | `/cai-dat/giao-dien` | Xem trước, lưu, bỏ thay đổi, khôi phục preset; khách lưu trên trình duyệt |
+| Đã đăng nhập | `/ho-so` | Sửa hồ sơ, đổi mật khẩu, thu hồi phiên; đổi email khi SMTP được bật |
+| Đã đăng nhập | `/thu-vien-cua-toi` | Yêu thích, đánh giá của mình và tóm tắt mượn/giữ chỗ |
+| Đã đăng nhập | `/muon-va-giu-cho`, `/giu-cho/:bookId/:editionId` | Lịch sử mượn, gia hạn, giữ chỗ theo chi nhánh, hủy yêu cầu |
+| Đã đăng nhập | `/thong-bao` | Hộp thư riêng, đánh dấu đã đọc; chuông topbar xem nhanh tối đa năm mục |
+| Librarian/Admin | `/nhan-vien/bang-dieu-khien` | Số liệu danh mục, bản sách, kiểm kê, mượn/quá hạn, đề xuất và hoạt động giữ chỗ |
+| Librarian/Admin | `/nhan-vien/thanh-vien` | Danh sách, tìm/lọc/sắp xếp và phân trang thành viên |
+| Librarian/Admin | `/nhan-vien/danh-muc` | Author, Category, Publisher, Book, Edition, Branch, Shelf, Copy; duyệt media và lịch sử ISBN |
+| Librarian/Admin | `/nhan-vien/luu-thong` | Quầy mượn/trả và hàng chờ nhận sách |
+| Librarian/Admin | `/nhan-vien/bao-cao-luu-thong` | Báo cáo lượt mượn và CSV |
+| Librarian/Admin | `/nhan-vien/bao-cao-giu-cho` | Báo cáo sự kiện giữ chỗ, lọc ngày/chi nhánh/tác phẩm và CSV |
+| Librarian/Admin | `/nhan-vien/kiem-ke`, `/nhan-vien/kiem-ke/:sessionId` | Mở phiên, snapshot, quét, chốt và xác nhận xử lý bất thường; camera/offline tùy khả năng thiết bị |
+| Librarian/Admin | `/nhan-vien/de-xuat-bo-sung` | Phân tích tín hiệu thật, lập đề xuất, xét duyệt nội bộ, audit và CSV |
+| Admin | `/nhan-vien/tai-khoan` | Khóa/mở tài khoản, đổi vai trò có lý do và lịch sử |
+| Admin | `/nhan-vien/bao-cao-danh-gia` | Xử lý nội dung đánh giá bị báo cáo |
+| Mọi người | Đường dẫn không tồn tại | 404 có quay lại và về trang chủ |
 
-Route hiện có `/`, `/dang-nhap`, `/dang-ky`, `/ho-so`, `/thu-vien-cua-toi`, `/muon-va-giu-cho`, `/sach`, `/sach/:bookId`, `/tac-gia/:authorId`, `/nhan-vien/bang-dieu-khien`, `/nhan-vien/thanh-vien`, `/nhan-vien/danh-muc`, `/nhan-vien/luu-thong`, `/nhan-vien/bao-cao-luu-thong`, `/nhan-vien/kiem-ke`, `/nhan-vien/kiem-ke/:sessionId` và trang 404. Catalog và trang tác phẩm/tác giả đọc được khi chưa đăng nhập qua projection công khai; Profile/My Library yêu cầu đăng nhập; route nhân viên chỉ cho `LIBRARIAN` hoặc `ADMIN`. Bộ lọc Member/Catalog giữ state trong URL. Book Detail tách Edition; không hiển thị số bản sẵn có giả. Profile vẫn chỉ đọc.
+Lịch sử ISBN nằm trong Catalog, không thêm route. React-Bootstrap chỉ áp dụng trong `.metadata-history`; xem [wireframe W5](wireframes.md). Book Detail tách Book, Edition và Copy; “Xem ấn bản và giữ chỗ” chuyển focus trong cùng trang, không điều hướng tới một route Edition không tồn tại. Các tác phẩm Gutenberg tham khảo không tự có tồn kho vật lý.
+
+Giữ chỗ có ước tính thời gian theo điều kiện hiện tại; ước tính không phải cam kết được nhận sách. Semantic search và dashboard doanh thu chưa được triển khai. Báo cáo giữ chỗ là lịch sử sự kiện, không thay thế trạng thái hàng chờ hiện hành.

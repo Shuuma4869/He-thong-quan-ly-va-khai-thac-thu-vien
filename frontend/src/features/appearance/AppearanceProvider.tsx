@@ -18,10 +18,31 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   const [loadedOwner, setLoadedOwner] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const saveRequest = useRef<symbol | null>(null);
+  const session = useRef({ owner, generation: 0 });
+  if (session.current.owner !== owner) session.current = { owner, generation: session.current.generation + 1 };
+  const state = useRef({ saved, values });
+  state.current = { saved, values };
+  useEffect(() => {
+    const changed = (event: StorageEvent) => {
+      if (owner === 'guest' && (event.key === GUEST_KEY || event.key === null)) {
+        const next = guestAppearance();
+        const dirty = JSON.stringify(state.current.values) !== JSON.stringify(state.current.saved);
+        setSaved(next);
+        if (!dirty) setValues(next);
+        else setError('Thiết lập khách đã đổi ở tab khác. Bản xem thử được giữ lại; chọn Bỏ thay đổi để dùng bản vừa lưu.');
+      } else if (owner !== 'guest' && event.key === `lams-ui-revision:${owner}`) {
+        setError('Giao diện đã được lưu ở tab khác. Tải lại trang để nhận thiết lập mới trước khi chỉnh tiếp.');
+      }
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, [owner]);
   useEffect(() => {
     if (isInitializing) return;
     let active = true;
     setLoading(true); setSaving(false); setError(null);
+    saveRequest.current = null;
     if (!userId) {
       const guest = guestAppearance();
       setSaved(guest); setValues(guest); setRevision(0); setLoading(false); setLoadedOwner('guest');
@@ -46,23 +67,32 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   }, [values, pending]);
   const save = async (candidate: Appearance) => {
     const requestedOwner = ownerRef.current;
+    const generation = session.current.generation;
+    const stillCurrent = () => ownerRef.current === requestedOwner && session.current.generation === generation;
+    if (pending || saveRequest.current) throw new Error('Vui lòng chờ thiết lập đang tải hoặc lưu.');
     const next = parseAppearance(candidate);
+    const request = Symbol();
+    saveRequest.current = request;
     setSaving(true); setError(null);
     try {
       if (user) {
         const stored = await coreApi.put<Stored>('/me/ui-preferences', { schemaVersion: 1, revision, values: next });
-        if (ownerRef.current !== requestedOwner) return;
+        if (!stillCurrent()) return;
         setRevision(stored.revision); setSaved(parseAppearance(stored.values)); setValues(parseAppearance(stored.values));
+        try { localStorage.setItem(`lams-ui-revision:${requestedOwner}`, String(stored.revision)); } catch { /* Cross-tab hints are optional; server revision remains authoritative. */ }
       } else {
-        if (ownerRef.current !== requestedOwner) return;
+        if (!stillCurrent()) return;
         localStorage.setItem(GUEST_KEY, JSON.stringify(next));
         setSaved(next); setValues(next);
       }
     } catch (cause) {
-      if (ownerRef.current !== requestedOwner) return;
+      if (!stillCurrent()) return;
       setError(cause instanceof Error ? cause.message : 'Không lưu được thiết lập giao diện.');
       throw cause;
-    } finally { if (ownerRef.current === requestedOwner) setSaving(false); }
+    } finally {
+      if (saveRequest.current === request) saveRequest.current = null;
+      if (stillCurrent()) setSaving(false);
+    }
   };
   const reset = () => save(defaults);
   const discard = () => setValues(saved);

@@ -6,6 +6,7 @@ import { ReferencePicker } from '../catalog/ReferencePicker';
 import { getReport, downloadReport, reportParams, type ReportQuery } from './report-api';
 import { CirculationError } from './CirculationStates';
 import { formatTime } from './circulation-labels';
+import { localDate } from './hold-report-api';
 
 export function CirculationReportPage() {
   const { user } = useAuth(); return user ? <Report key={user.id} owner={user.id}/> : null;
@@ -30,6 +31,7 @@ function Report({ owner }: { owner: string }) {
     finally { abort.current = null; if (live.current) setDownloading(false); }
   };
   return <section><Link className="text-link" to="/nhan-vien/luu-thong">← Quầy lưu thông</Link><h1 className="page-title my-4">Báo cáo mượn theo chi nhánh</h1>
+    <nav className="report-navigation" aria-label="Báo cáo thư viện"><span aria-current="page">Báo cáo mượn</span><Link to="/nhan-vien/bao-cao-giu-cho">Hoạt động giữ chỗ</Link></nav>
     <p className="text-muted my-3">Chọn những lượt bắt đầu mượn trong kỳ, rồi xem trạng thái của chúng tại lúc đọc. Số đã trả không phải số lần trả phát sinh trong kỳ.</p>
     <form className="editorial-card my-5" onSubmit={e => { e.preventDefault(); try { reportParams(draft); setValidation(''); setQuery({ ...draft }); setDownloadError(null); } catch (error) { setValidation((error as Error).message); } }}>
       <fieldset disabled={downloading} className="grid gap-4 md:grid-cols-2">
@@ -44,7 +46,7 @@ function Report({ owner }: { owner: string }) {
     </form>
     {query && (report.isPending ? <p role="status">Đang tổng hợp báo cáo…</p> : report.isError ? <CirculationError error={report.error} reload={() => void report.refetch()}/>
       : <section aria-label="Kết quả báo cáo">
-        <p className="my-3">Từ {query.from} đến trước {query.to} · {report.data.timezone} · Cập nhật {formatTime(report.data.asOf)}</p>
+        <p className="my-3">Từ {localDate(query.from)} đến trước {localDate(query.to)} · {report.data.timezone} · Cập nhật {formatTime(report.data.asOf)}</p>
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 my-4">{[
           ['Bắt đầu mượn', report.data.totals.borrowed], ['Còn đang mượn', report.data.totals.active], ['Đã trả', report.data.totals.returned], ['Quá hạn (thuộc đang mượn)', report.data.totals.overdue],
         ].map(([label, count]) => <div className="editorial-card" key={label}><dt>{label}</dt><dd className="text-2xl font-semibold mt-3">{count}</dd></div>)}</dl>
@@ -53,7 +55,7 @@ function Report({ owner }: { owner: string }) {
         {downloadError && <CirculationError error={downloadError}/>}
         {!report.data.items.length ? <p className="my-4">Không có lượt bắt đầu mượn trong khoảng này.</p> : <div className="overflow-x-auto my-5"><table className="w-full text-left">
           <thead><tr>{['Ngày mượn', 'Chi nhánh', 'Bắt đầu mượn', 'Đang mượn', 'Đã trả', 'Quá hạn'].map(label => <th className="p-3" key={label}>{label}</th>)}</tr></thead>
-          <tbody>{report.data.items.map(row => <tr key={`${row.date}:${row.branchId}`}><td className="p-3 whitespace-nowrap">{row.date}</td><td className="p-3">{row.branchName}</td>
+          <tbody>{report.data.items.map(row => <tr key={`${row.date}:${row.branchId}`}><td className="p-3 whitespace-nowrap">{localDate(row.date)}</td><td className="p-3">{row.branchName}</td>
             <td className="p-3">{row.borrowed}</td><td className="p-3">{row.active}</td><td className="p-3">{row.returned}</td><td className="p-3">{row.overdue}</td></tr>)}</tbody>
         </table></div>}
       </section>)}

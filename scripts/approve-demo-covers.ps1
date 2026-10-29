@@ -25,13 +25,17 @@ $covers = @(
     @{ Id='aba8d579-3778-57aa-97e3-0123cc8d2217'; Title='Northanger Abbey'; Author='Jane Austen'; Slug='jane-austen/northanger-abbey'; Art='Before the Mirror'; Artist='Édouard Manet'; Year=1876; Died=1883 },
     @{ Id='ffe90547-5883-572c-bb03-07e6277927f9'; Title='Jane Eyre'; Author='Charlotte Brontë'; Slug='charlotte-bronte/jane-eyre'; Art='Portrait of a Young Girl'; Artist='Vilhelm Hammershøi'; Year=1903; Died=1916 },
     @{ Id='c035322c-cc7b-5b50-b994-5caf85f4ec32'; Title='Wuthering Heights'; Author='Emily Brontë'; Slug='emily-bronte/wuthering-heights'; Art='Edith Villiers'; Artist='George Frederic Watts'; Year=1862; Died=1904 },
-    @{ Id='40a05c93-3261-575b-b956-a2307ee0a799'; Title='Dracula'; Author='Bram Stoker'; Slug='bram-stoker/dracula'; Art='Italian Landscape of Ruins in the Moonlight'; Artist='Joseph Magnus Stäck'; Year=1850; Died=1868 }
+    @{ Id='40a05c93-3261-575b-b956-a2307ee0a799'; Title='Dracula'; Author='Bram Stoker'; Slug='bram-stoker/dracula'; Art='Italian Landscape of Ruins in the Moonlight'; Artist='Joseph Magnus Stäck'; Year=1850; Died=1868 },
+    @{ Id='a662973c-d238-5846-96dd-4317f61ad0d6'; Title='Frankenstein'; Author='Mary Shelley'; Slug='mary-shelley/frankenstein'; Art='Portrait of Adam'; Artist='Giuseppe Arcimboldo'; Year=1578; Died=1593; Biography='https://www.khm.at/de/object/73' },
+    @{ Id='67338f37-d7c1-5386-83b1-a99ea81a3cb8'; Title='The Time Machine'; Author='H. G. Wells'; Slug='h-g-wells/the-time-machine'; Art='The Black Marble Clock'; Artist='Paul Cézanne'; Year='khoảng 1870'; Died=1906; Biography='https://www.nga.gov/artists/1115-paul-cezanne' },
+    @{ Id='ed1de5c9-0adb-5fd5-8829-19db19d5785a'; Title='The Invisible Man'; Author='H. G. Wells'; Slug='h-g-wells/the-invisible-man'; Art='Village in the Snow'; Artist='Paul Gauguin'; Year=1894; Died=1903; Biography='https://www.nationalgallery.org.uk/artists/paul-gauguin' },
+    @{ Id='278ed830-3abb-5793-bacf-4725387e1ebe'; Title='The Island of Doctor Moreau'; Author='H. G. Wells'; Slug='h-g-wells/the-island-of-doctor-moreau'; Art='Cannon Rock'; Artist='Winslow Homer'; Year=1895; Died=1910; Biography='https://www.metmuseum.org/art/collection/search/11113' }
 )
 if ($ListOnly) {
     $covers | ForEach-Object { "{0} | {1} | {2} ({3})" -f $_.Id,$_.Title,$_.Art,$_.Year }
     return
 }
-if (-not $ConfirmDemoDatabase -and (Read-Host 'Gõ DEMO để duyệt 8 bìa cho database local') -cne 'DEMO') {
+if (-not $ConfirmDemoDatabase -and (Read-Host "Gõ DEMO để duyệt $($covers.Count) bìa cho database local") -cne 'DEMO') {
     throw 'Đã hủy, không thay đổi ảnh.'
 }
 
@@ -82,13 +86,14 @@ try {
         }
         $repoSlug = $cover.Slug.Replace('/','_')
         $colophon = "https://github.com/standardebooks/$repoSlug/blob/master/src/epub/text/colophon.xhtml"
+        $biography = if ($cover.ContainsKey('Biography')) { " Niên đại họa sĩ: $($cover.Biography). Đối chiếu 30/10/2026." } else { '' }
         $body = @{
             source='standard-ebooks'; sourceId=$cover.Slug
             sourceUrl="https://standardebooks.org/ebooks/$($cover.Slug)"; imageUrl=$imageUrl
             license='CC0 cho thiết kế Standard Ebooks; tranh gốc hết thời hạn bảo hộ theo đối chiếu demo'
             licenseUrl='https://standardebooks.org/about/standard-ebooks-and-the-public-domain'
             attribution="Standard Ebooks; tranh $($cover.Art) ($($cover.Year)) của $($cover.Artist)."
-            evidence="Đã đối chiếu bìa với $($cover.Title) / $($cover.Author). Colophon: $colophon. Họa sĩ mất năm $($cover.Died); tranh hoàn thành năm $($cover.Year). Chỉ dùng cho dữ liệu demo local."
+            evidence="Đã đối chiếu bìa với $($cover.Title) / $($cover.Author). Colophon: $colophon. Họa sĩ mất năm $($cover.Died); tranh hoàn thành năm $($cover.Year).$biography Chỉ dùng cho dữ liệu demo local."
             confirmed=$true; expectedVersion=$null
         } | ConvertTo-Json -Compress
         $approved = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -ContentType 'application/json' -Body $body

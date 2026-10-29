@@ -5,6 +5,7 @@ import { useAuth } from '../../features/auth/auth-context';
 import { LibrarySidebar } from './LibrarySidebar';
 import { SearchCommand } from '../../features/catalog/SearchCommand';
 import { BackToTop } from './BackToTop';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
 
 export function StaffLayout() {
   const auth = useAuth();
@@ -24,6 +25,7 @@ export function StaffLayout() {
           <span className="library-topbar-section"><span className="library-topbar-section-full">Nền tảng vận hành thư viện</span>
             <span className="library-topbar-section-short">LAMS</span></span>
           <SearchCommand/>
+          <NotificationBell/>
           <Link className="library-topbar-action library-appearance-shortcut" to="/cai-dat/giao-dien" aria-label="Cài đặt giao diện" title="Cài đặt giao diện"><SlidersHorizontal size={18}/></Link>
           <span className="library-topbar-user">{auth.user?.fullName}</span>
           <button className="library-topbar-action" type="button" onClick={() => void signOut()}>Đăng xuất</button>
