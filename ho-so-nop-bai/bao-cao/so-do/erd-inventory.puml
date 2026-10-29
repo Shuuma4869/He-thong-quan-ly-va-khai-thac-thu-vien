@@ -1,0 +1,56 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+hide circle
+entity "branches" as branches {
+  * id : UUID <<PK>>
+  * code : VARCHAR(30) <<UQ>>
+}
+entity "shelves" as shelves {
+  * id : UUID <<PK>>
+  * branch_id : UUID <<FK>>
+  * code : VARCHAR(30)
+}
+entity "inventory_sessions" as sessions {
+  * id : UUID <<PK>>
+  * branch_id : UUID <<FK>>
+  shelf_id : UUID <<FK, nullable>>
+  * status : VARCHAR(16)
+  * version : BIGINT
+}
+entity "inventory_snapshots" as snapshots {
+  * session_id : UUID <<PK, FK>>
+  * copy_id : UUID <<PK, no FK>>
+  * barcode : VARCHAR(100)
+  * copy_version : BIGINT
+}
+entity "inventory_scans" as scans {
+  * id : UUID <<PK>>
+  * session_id : UUID <<FK>>
+  * client_scan_id : UUID
+  * barcode : VARCHAR(100)
+}
+entity "inventory_anomalies" as anomalies {
+  * id : UUID <<PK>>
+  * session_id : UUID <<FK>>
+  copy_id : UUID <<nullable, no FK>>
+  * kind : VARCHAR(32)
+}
+entity "inventory_resolutions" as resolutions {
+  * id : UUID <<PK>>
+  * anomaly_id : UUID <<FK, UQ>>
+  * action : VARCHAR(32)
+}
+branches ||--o{ shelves : branch_id
+branches ||--o{ sessions : branch_id
+shelves ||--o{ sessions : shelf_id
+sessions ||--o{ snapshots : session_id
+sessions ||--o{ scans : session_id
+sessions ||--o{ anomalies : session_id
+anomalies ||--o| resolutions : anomaly_id
+note bottom of snapshots
+  copy_id cố ý không có FK tới book_copies:
+  snapshot phải giữ bằng chứng khi Copy sống thay đổi.
+end note
+@enduml

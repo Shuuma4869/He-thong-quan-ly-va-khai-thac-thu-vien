@@ -37,8 +37,13 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
   const panel = useRef<HTMLElement>(null);
   const previousLocation = useRef(location.pathname + location.hash);
   const collapsed = appearance.values.sidebarState === 'collapsed';
-  const toggle = () => void appearance.save({ ...appearance.values,
-    sidebarState: collapsed ? 'expanded' : 'collapsed' }).catch(() => {});
+  const toggle = () => {
+    if (appearance.saving) return;
+    const previous = appearance.values;
+    const next = { ...previous, sidebarState: collapsed ? 'expanded' as const : 'collapsed' as const };
+    appearance.preview(next);
+    void appearance.save(next).catch(() => appearance.preview(previous));
+  };
   const baseGroups = mode === 'staff' ? (user?.roles.includes('ADMIN') ? staffGroups.map(group =>
     group.title === 'Danh mục & tài khoản' ? { ...group, items: [...group.items,
       { label: 'Quản trị tài khoản', to: '/nhan-vien/tai-khoan', icon: Users },
@@ -90,13 +95,13 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
       </div>)}
     </nav>
     {compact && <button type="button" className="library-sidebar-toggle" aria-label={collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
-      aria-expanded={!collapsed} onClick={toggle}>{collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}<span>{collapsed ? 'Mở rộng' : 'Thu gọn'}</span></button>}
+      aria-expanded={!collapsed} disabled={appearance.saving} onClick={toggle}>{collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}<span>{collapsed ? 'Mở rộng' : 'Thu gọn'}</span></button>}
   </>;
   return <>
     <aside className={`library-sidebar-desktop ${collapsed ? 'is-collapsed' : ''}`}>{contents(true)}</aside>
-    {open && <div className="library-drawer-layer"><button className="library-drawer-backdrop" type="button"
+    <div className="library-drawer-layer" data-open={open} inert={!open} aria-hidden={!open}><button className="library-drawer-backdrop" type="button"
       aria-label="Đóng menu thư viện" onClick={onClose}/>
       <aside ref={panel} className="library-sidebar-drawer" role="dialog" aria-modal="true" aria-label="Menu thư viện">{contents(false)}</aside>
-    </div>}
+    </div>
   </>;
 }

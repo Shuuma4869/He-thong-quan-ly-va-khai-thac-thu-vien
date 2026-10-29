@@ -55,7 +55,7 @@ Ngày 28/10/2026 đã chạy lại 18 E2E Web, 18 E2E trên EXE nguồn và 18 E
 ## Academic Final Gate
 
 - [ ] Giảng viên xác nhận hybrid/Nest scope và XORs.
-- [ ] Mẫu báo cáo Phenikaa được cung cấp và áp dụng.
+- [ ] Mẫu báo cáo chính thức của học phần/trường được cung cấp và áp dụng; không suy trường từ báo cáo tham khảo.
 - [ ] Chủ thể quyền/license/asset được xác nhận.
 - [ ] Video thật dưới 8 phút và screenshot/evidence có nguồn.
 - [ ] Cách đếm tương tác và yêu cầu usability với người tham gia được xác nhận; không suy từ kiểm thử tự động.

@@ -1,8 +1,8 @@
 # Báo cáo tiểu luận Hệ thống quản lí và khai thác thư viện LAMS
 
-**Bản làm việc:** `Tuan/core-platform`, PR #31; mã nguồn được khảo sát tại `0ef4007ac95fc4704e56527569fb0c1399a56e0d`, ngày 28/10/2026. Thay đổi sau mốc này phải có kiểm thử và SHA riêng trước khi nộp.
+**Bản làm việc:** Đối chiếu baseline `main` sau PR #31 tại merge commit `8169ac75629306db8a12d1f2667abb1b81991d82`, ngày 29/10/2026. Các sửa đổi của vòng hoàn thiện này cần CI và SHA riêng trước khi xem là mốc nộp cuối.
 
-**Thông tin trường, học phần, giảng viên, sinh viên, lớp và ngày nộp:** chưa có hồ sơ được xác nhận trong repository. Nhóm cần điền theo thông báo học phần; báo cáo không suy các thông tin này từ tên thư mục hay dự án tham khảo.
+**Tình trạng nộp:** NOT_READY. README của LAMS ghi lớp học phần, họ tên và mã số của hai thành viên; tên trường, khoa, giảng viên, logo chính thức, địa điểm và ngày nộp chưa được nhóm xác nhận. Bìa giữ chỗ cần điền, không suy các thông tin này từ báo cáo dự án khác.
 
 # Tóm tắt
 
@@ -10,7 +10,7 @@ LAMS giải quyết bài toán tìm tài liệu và quản lý bản sách vật
 
 Ứng dụng React/TypeScript chạy trên trình duyệt và trong cửa sổ Tauri/WebView2 Windows. Core Service dùng Spring Boot, JDBC và Flyway để quản lý danh tính, Catalog, lưu thông và kiểm kê. Insight Service dùng NestJS/Prisma để lưu lịch sử tra ISBN, thông báo và đề xuất bổ sung. Mỗi dịch vụ sở hữu một database PostgreSQL. PR #31 bổ sung giao diện sáng, điều hướng nổi, thiết lập giao diện theo tài khoản và ảnh biên tập có ghi nguồn.
 
-Trên SHA khảo sát, CI đạt 5/5 job: Core, Node apps, API contracts, Web E2E và build desktop Windows. Local đạt 190/190 test frontend, lint, typecheck và build; 35 tổ hợp năm trang với bảy độ rộng không tràn ngang hoặc mất ảnh cục bộ. Đây là bằng chứng của phiên bản cụ thể, không phải kết luận đã nghiệm thu sản xuất. Docker Engine local chưa hoạt động ở thời điểm bắt đầu viết lại báo cáo nên thao tác WebView2 cùng dữ liệu thật của mốc mới còn chờ; PostgreSQL integration đã chạy qua CI.
+Tại merge commit `8169ac7`, [CI run 40707553547](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40707553547) đạt 5/5 job. Log của run ghi Core 300/300, Insight 121/121 unit/HTTP và 17/17 integration, frontend 191/191, Web E2E 18/18. Job Windows tạo gói cài đặt nhưng không tự chứng minh thao tác trong WebView2. Ngày 29/10, bản EXE local build sau commit UI `23b90ba` đạt 18/18 E2E với PostgreSQL test cô lập; lượt này có mốc và hash riêng, không phải CI của commit bàn giao. Ảnh chi tiết sách chụp web local trên `23b90ba`; ảnh nghiệp vụ trong EXE và ảnh E2E cũ được ghi nguồn riêng. Các sửa đổi sau merge cần một run CI mới.
 
 **Từ khóa:** thư viện; Catalog; PostgreSQL; JDBC; Prisma; Tauri; kiểm kê; giữ chỗ; kiểm thử.
 
@@ -77,9 +77,9 @@ Tài liệu thành viên giao Tuan phần nền tảng, frontend và tích hợp
 
 ## 2.1. Tác nhân, use case và quyền
 
-`READER` tra cứu công khai, quản lý đóng góp và giao dịch của mình. `LIBRARIAN` biên mục, thao tác ở quầy, kiểm kê và xem báo cáo. `ADMIN` có các quyền nhân viên cùng chức năng quản lý tài khoản, xử lý báo cáo đánh giá và quyết định no-show. Nguồn metadata và email là hệ thống ngoài, không có quyền ghi Catalog. Quyền phải được Core/Insight kiểm tại request; ẩn nút trong UI chỉ giảm thao tác nhầm. [Hình 2](#fig-2) chỉ vẽ nhóm use case hiện có trong route/API.
+`READER` tra cứu công khai, quản lý đóng góp và giao dịch của mình. `LIBRARIAN` biên mục, thao tác ở quầy, kiểm kê và xem báo cáo. `ADMIN` có các quyền nhân viên cùng chức năng quản lý tài khoản, xử lý báo cáo đánh giá và quyết định no-show. Nguồn metadata và email là hệ thống ngoài, không có quyền ghi Catalog. Quyền phải được Core/Insight kiểm tại request; ẩn nút trong UI chỉ giảm thao tác nhầm. [Hình 2](#fig-2) dùng actor, ellipse, association và biên hệ thống để biểu diễn phần Khách/Người đọc. Phần Thủ thư/Quản trị viên ở [Hình 20](#fig-20).
 
-![Hình 2. Tác nhân và nhóm use case đang triển khai](hinh/use-cases.png)
+![Hình 2. Use case của khách và người đọc](hinh/use-cases.png)
 
 ## 2.2. Câu chuyện người dùng
 
@@ -111,9 +111,9 @@ Bảng 4. Câu chuyện người dùng US16–US29.
 |---|---|---|
 | US16 | Là người đọc, tôi muốn chấm điểm sách từ một đến năm. | Tổng và trung bình lấy từ review đang hiển thị. |
 | US17 | Là thủ thư, tôi muốn ghi nhận một lượt mượn. | Chỉ bản sẵn có được mượn; retry cùng request không nhân đôi. |
-| US18 | Là thủ thư, tôi muốn trả hoặc gia hạn lượt mượn. | Copy/Hold đổi cùng giao dịch; xử lý theo policy. |
-| US19 | Là người đọc, tôi muốn gửi yêu cầu giữ chỗ. | Hàng chờ và hạn nhận do server quyết định. |
-| US20 | Là thủ thư, tôi muốn quét mã và xử lý kiểm kê. | Snapshot, sáu loại bất thường và xác nhận có version. |
+| US18 | Là thủ thư, tôi muốn nhận trả đúng lượt mượn. | Loan/Copy/Hold đổi cùng giao dịch; retry không nhân đôi. |
+| US19 | Là người mượn hoặc thủ thư, tôi muốn gia hạn lượt mượn hợp lệ. | Chặn khi quá hạn, hết lượt hoặc có người chờ phù hợp. |
+| US20 | Là người đọc, tôi muốn giữ chỗ tác phẩm tại chi nhánh nhận. | Hàng chờ và hạn nhận do server quyết định. |
 | US21 | Là người đọc, tôi muốn xem lượt mượn của mình. | Không đọc lịch sử của người khác; staff có bộ lọc riêng. |
 | US22 | Là nhân viên, tôi muốn xem và xuất báo cáo lưu thông. | Khoảng ngày hợp lệ; CSV không lộ danh tính và chống formula. |
 | US23 | Là thành viên, tôi muốn chọn giao diện dễ đọc và lưu lựa chọn. | Khách lưu local; tài khoản lưu Core, revision ngăn ghi đè. |
@@ -128,21 +128,41 @@ Bảng 4. Câu chuyện người dùng US16–US29.
 
 Các yêu cầu quan trọng là quyền ở server, bất biến khi hai người thao tác cùng Copy, giới hạn payload/phân trang, xử lý lỗi mạng trung thực, giao diện dùng bàn phím và alt text cho ảnh. Hệ thống lưu ISBN, review và quyết định quản trị nên phải xét truy cập chéo tài khoản, SQL injection, CSV formula injection và SSRF. Số đo local không thay SLA của pilot. [Bảng 5](#tbl-5) nối story với nơi thực thi và bài kiểm chứng; AC chi tiết của US01–US22 ở tài liệu gốc [3].
 
-Bảng 5. Ma trận truy vết nhu cầu, mã, dữ liệu và kiểm thử.
+Bảng 5. Truy vết từng câu chuyện người dùng tại baseline `8169ac7`.
 
-| Story | UI và API hiện có | Dữ liệu và bài kiểm chứng |
+| Mã / UC / ưu tiên | API, service và UI | Dữ liệu, bài kiểm chứng và kết quả |
 |---|---|---|
-| US01–05 | Auth/Profile/Member; `/auth/*`, `/me/profile`, `/members` | `users`, `refresh_tokens`; Auth/Member integration, AuthFlow, MemberFlow. |
-| US06–10 | Catalog/Directory/StaffCatalog; Catalog API | `books`, `editions`, `book_copies`; Book/Edition/InventoryCatalog integration, CatalogFlow. |
-| US11–13 | MetadataHistory/Media; Insight history và Core media API | `metadata_lookups`, `catalog_media_references`; history integration, MediaIntegrationTest. |
-| US14–16,24 | MyLibrary/ReviewReports; favorites, reviews, moderation API | `favorites`, `reviews`, `review_reports`; Review/Favorite integration, LibraryFlow. |
-| US17–22,28–29 | ReaderLoans/StaffCirculation/Inventory/Report; loan, hold, inventory, report API | V16–V21/V30, receipt/outbox; Hold/Loan/Inventory integration, CSV test, Web E2E. |
-| US23 | AppearancePage; `/me/ui-preferences` | V31 `user_ui_preferences`; UiPreferencesIntegrationTest, AppearanceProvider test. |
-| US25 | AdminAccountsPage; account admin API | V26–V28; AccountCenterIntegrationTest, E2E Admin. |
-| US26 | NotificationsPage; Inbox API | Core outbox, Insight notices/inbox; notification integration, Web E2E. |
-| US27 | AcquisitionPage; Core facts, Insight recommendations/CSV | Insight recommendation/decision; score unit, integration, Web E2E. |
+| US01 / UC01 / P1 | POST `/auth/register`; Core `AuthService`; RegisterPage. | `users`, `user_roles`; AuthIntegrationTest; Core CI PASS. |
+| US02 / UC02 / P1 | POST `/auth/login`, `/auth/refresh`; Core `AuthService`; LoginPage. | `users`, `refresh_tokens`; AuthIntegrationTest, AuthFlow; Core/Web E2E CI PASS. |
+| US03 / UC03 / P1 | POST `/auth/logout`; Core `AuthService`; AuthProvider. | `refresh_tokens`; AuthIntegrationTest, client test; Core/frontend CI PASS. |
+| US04 / UC04 / P1 | GET `/me/profile`; Core `MemberService`; ProfilePage. | `users`; MemberIntegrationTest; Core CI PASS. |
+| US05 / UC05 / P1 | GET `/members`; Core `MemberService`; MemberListPage. | `users`; MemberIntegrationTest, MemberFlow; Core CI PASS. |
+| US06 / UC06 / P1 | GET `/books`; Core `PublicCatalogService`; CatalogPage. | `books`, `book_authors`, `book_categories`; PublicCatalogIntegrationTest; Core CI PASS. |
+| US07 / UC07 / P1 | GET `/books/{id}`, `/books/{id}/editions`; Core `PublicCatalogService`; BookDetailPage. | `books`, `editions`; EditionIntegrationTest, CatalogFlow; Core CI PASS. |
+| US08 / UC08 / P2 | GET `/authors/{id}`, `/books?authorId`; Core `AuthorService`/Catalog; AuthorDetailPage. | `authors`, `book_authors`; AuthorIntegrationTest; Core CI PASS. |
+| US09 / UC09 / P1 | Catalog CRUD; Core `BookService`, `EditionService`; StaffCatalogPage. | `authors`, `categories`, `books`, `editions`; Catalog integration; Core CI PASS. |
+| US10 / UC10 / P1 | Branch/Shelf/Copy APIs; Core `BranchService`, `ShelfService`, `BookCopyService`; StaffCatalogPage. | `branches`, `shelves`, `book_copies`; InventoryCatalogIntegrationTest; Core CI PASS. |
+| US11 / UC11 / P2 | GET `/metadata/books/{isbn13}`; Insight `MetadataService`; MediaEditor. | Không lưu payload provider; metadata.spec, metadata-guard.spec; Node CI PASS. |
+| US12 / UC12 / P2 | `/catalog-media/{kind}/{id}`; Core `MediaService`; MediaEditor. | `catalog_media_references`; MediaIntegrationTest; Core CI PASS. |
+| US13 / UC13 / P1 | `/metadata/history`; Insight `HistoryService`; MetadataHistory. | `metadata_lookups`; history.integration và history.spec; Node CI PASS. |
+| US14 / UC14 / P1 | `/me/favorites`; Core `FavoriteService`; MyLibraryPage. | `favorites`; FavoriteIntegrationTest, LibraryFlow; Core/Web E2E CI PASS. |
+| US15 / UC15 / P1 | `/books/{id}/reviews`; Core `ReviewService`; ReviewSection. | `reviews`; ReviewIntegrationTest, ReviewConcurrencyTest; Core CI PASS. |
+| US16 / UC16 / P1 | Review mutation/summary; Core `RatingService`; RatingInput. | Rating nằm trong `reviews`; ReviewIntegrationTest; Core CI PASS. |
+| US17 / UC17 / P1 | POST `/loans`; Core `LoanCommandService`; StaffCirculationPage. | `loans`, `circulation_requests`; LoanCommandIntegrationTest; Core CI PASS. |
+| US18 / UC18 / P1 | POST `/loans/{id}/return`; Core `LoanCommandService`, `HoldAllocationService`; StaffCirculationPage. | `loans`, `book_copies`, `holds`; LoanCommand/HoldIntegrationTest; Core CI PASS. |
+| US19 / UC19 / P1 | POST `/loans/{id}/renew`; Core `LoanRenewalService`; Reader/Staff circulation. | `loan_extensions`; HoldIntegrationTest; Core CI PASS. |
+| US20 / UC20 / P1 | `/holds`, `/holds/{id}/cancel`; Core `HoldService`, `HoldAllocationService`; HoldCreatePage. | `holds`, `hold_changes`; HoldIntegrationTest; Core CI PASS. |
+| US21 / UC21 / P1 | GET `/me/loans`, `/loans`; Core `LoanHistoryService`; ReaderLoansPage. | `loans`; LoanHistoryIntegrationTest; Core CI PASS. |
+| US22 / UC22 / P1 | GET `/reports/circulation(.csv)`; Core `CirculationReportService`, `LoanCsvExporter`; CirculationReportPage. | `loans`; LoanHistoryIntegrationTest, LoanCsvExporterTest; Core CI PASS. |
+| US23 / UC23 / P1 | GET/PUT `/me/ui-preferences`; Core UiPreferencesController; AppearancePage. | `user_ui_preferences`; UiPreferencesIntegrationTest, AppearanceProvider.test; Core/frontend CI PASS. |
+| US24 / UC24 / P1 | Review report/moderation API; Core `ReviewModerationService`; ReviewSection/Admin moderation. | `review_reports`, `review_moderation_audit`; ReviewModerationIntegrationTest; Core CI PASS. |
+| US25 / UC25 / P1 | Admin account API; Core `AdminAccountService`; AdminAccountsPage. | `users`, `account_admin_audit`; AdminAccountIntegrationTest; Core CI PASS. |
+| US26 / UC26 / P1 | Insight Inbox API; `NotificationProcessor`; NotificationsPage. | `reader_notifications`, Core outbox; notification integration; Node CI PASS. |
+| US27 / UC27 / P2 | Core facts/Insight recommendation API; `AcquisitionFactsService`, workflow Insight; AcquisitionPage. | `acquisition_recommendations`, `acquisition_decisions`; recommendation integration; Node CI PASS. |
+| US28 / UC28 / P2 | No-show decision API; Core `HoldNoShowService`; HoldReliabilityPanel. | `hold_no_show_decisions`; HoldIntegrationTest; Core CI PASS. |
+| US29 / UC29 / P2 | Inventory scan API; Core `InventorySessionService`; InventorySessionPage camera/queue. | `inventory_scans`; InventorySessionIntegrationTest, E2E; Core/Web E2E CI PASS. |
 
-Đường dẫn source chỉ chứng minh có implementation. Chương 7 ghi kết quả theo đúng SHA; những AC chưa có bài chạy trực tiếp được nêu riêng.
+Actor, nội dung và điều kiện chấp nhận của từng mã nằm ở Bảng 3–4; P1/P2 là thứ tự ưu tiên của báo cáo, UC01–UC22 theo tài liệu yêu cầu gốc, UC23–UC29 là chỉ mục bổ sung của báo cáo. Cột kết quả chỉ khẳng định job chứa bộ test đã PASS ở [CI run 40707553547](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40707553547), không khẳng định từng AC đã được E2E độc lập hoặc người dùng thật nghiệm thu. Mã nguồn đã triển khai và test suite đạt tại `8169ac7`; phần kiểm thủ công vẫn là FOLLOW-UP.
 
 # Chương 3. Phân tích đối tượng và dữ liệu
 
@@ -154,13 +174,13 @@ Bảng 5. Ma trận truy vết nhu cầu, mã, dữ liệu và kiểm thử.
 
 ## 3.2. Cấu trúc lớp UML
 
-[Hình 3](#fig-3) mô tả 12 kiểu miền có thật: danh tính, Catalog, Loan, Hold, địa điểm và bằng chứng kiểm kê. Các đường nối chỉ các quan hệ chính; thuộc tính `readerId`, `bookId`, `editionId` và `branchId` cho biết những tham chiếu còn lại. `BookRepository.list/search`, `HoldAllocationService.allocateBook` và `InventorySessionService.start/scan/close` là lớp xử lý bên ngoài hình này, không phải bảng dữ liệu. Core dùng `JdbcTemplate` ánh xạ dòng vào record/DTO, không dùng JPA entity; Insight dùng Prisma model và Client. DTO kiểm biên HTTP, service giữ bất biến, repository thực hiện SQL trong transaction.
+[Hình 3](#fig-3) thể hiện các Java record miền quan trọng bằng lớp UML, thuộc tính thật và hai phương thức `Loan.active/overdueAt`, `Hold.active`. Nét đứt biểu thị tham chiếu UUID được service/repository giải quyết, không phải JPA association. `Book` chứa `RelatedItem`, không chứa đối tượng `Author` hay `Category`; các bảng nối ở ERD mới thể hiện quan hệ nhiều-nhiều. `HoldAllocationService` và `InventorySessionService` là lớp xử lý bên ngoài hình. Core dùng `JdbcTemplate` ánh xạ dòng vào record/DTO; Insight dùng Prisma model và Client. DTO kiểm biên HTTP, service giữ bất biến, repository thực hiện SQL trong transaction.
 
 ![Hình 3. Cấu trúc lớp và quan hệ miền chính](hinh/class-diagram.png)
 
 ## 3.3. ERD và vòng đời schema
 
-Flyway Core có V1–V31; V31 tạo `user_ui_preferences` với khóa người dùng, revision và JSONB preset. Prisma Insight có migration độc lập cho `metadata_lookups`, `acquisition_recommendations`/`acquisition_decisions`, notices và Inbox. [Hình 4](#fig-4) vẽ 16 bảng Core tiêu biểu từ migration; nó không thay thế danh sách bảng và constraint đầy đủ ở phụ lục/data dictionary. Các bảng dự kiến `search_documents`, `media_assets` hay `system_policies` không có trong ERD thực thi. [Hình 5](#fig-5) tách bảng Insight và ghi rõ UUID Book/Branch/User không có FK tới Core.
+Flyway Core có V1–V31; V31 tạo `user_ui_preferences` với khóa người dùng, revision và JSONB preset. Prisma Insight có migration độc lập cho `metadata_lookups`, `acquisition_recommendations`/`acquisition_decisions`, notices và Inbox. [Hình 4](#fig-4) là ERD có khóa và Crow's Foot của đường Book–Edition–Copy–Loan/Hold. Chỉ vẽ các bảng cần giải thích luồng lưu thông để đọc được khi in A4; khóa/constraint khác xem migration và data dictionary. Các bảng dự kiến `search_documents`, `media_assets` hay `system_policies` không có trong ERD thực thi. [Hình 5](#fig-5) tách Insight; chỉ `acquisition_decisions.recommendation_id` là FK vật lý trong các quan hệ được vẽ. UUID Book/Branch/User chỉ là tham chiếu logic tới Core.
 
 ![Hình 4. ERD rút gọn của Core theo migration](hinh/erd-core.png)
 
@@ -251,31 +271,32 @@ Public có landing, Catalog, tác giả/thể loại, chi tiết sách, login/re
 
 ![Hình 10. Wireframe workspace người đọc và nhân viên](hinh/wireframe.png)
 
-![Hình 11. Phần đầu Landing trong Web E2E ở 1440 px](hinh/landing-excerpt.png)
+![Hình 11. Chi tiết sách có bìa đã duyệt ở 1440 px](../minh-chung-giao-dien/23b90ba/book-approved-viewport-1440.png)
 
-![Hình 12. Phần đầu Catalog trong Web E2E ở 1440 px](hinh/catalog-excerpt.png)
+![Hình 12. Chi tiết sách dùng bìa chữ ở 390 px](../minh-chung-giao-dien/23b90ba/book-fallback-viewport-390.png)
 
-Các ảnh ở [Hình 11](#fig-11) và [Hình 12](#fig-12) là phần đầu được cắt để in từ bản chụp toàn trang Web E2E trên `0ef4007`, có dữ liệu test. Ảnh gốc, không chỉnh sửa, lưu trong hồ sơ minh chứng. [Hình 13](#fig-13) là màn người đọc xem mượn/giữ chỗ; [Hình 14](#fig-14) và [Hình 15](#fig-15) là màn nhân viên. Các trang CRUD khác dùng component và token chung nhưng không được nhận là đã có screenshot cho từng trạng thái.
+[Hình 11](#fig-11) và [Hình 12](#fig-12) là viewport chụp web local trên UI commit `23b90ba`: một Book có tham chiếu bìa đã duyệt, một Book chưa có ảnh và dùng bìa chữ. Core/Insight/PostgreSQL demo đang chạy, không mock API. [Hình 13](#fig-13) là màn người đọc từ Web E2E tại `0ef4007`. [Hình 14](#fig-14) và [Hình 15](#fig-15) được chụp trong WebView2 của EXE local với database test cô lập; nội dung ảnh không gồm khung Windows. Bộ 50 ảnh web mới cho 25 route có manifest riêng; một ảnh chỉ chứng minh trạng thái đã chụp, không thay kiểm toàn bộ CRUD.
 
 ![Hình 13. Người đọc xem mượn và giữ chỗ](../minh-chung-giao-dien/pr31/reader-circulation-1440.png)
 
-![Hình 14. Nhân viên thao tác quầy lưu thông](../minh-chung-giao-dien/pr31/staff-circulation-1440.png)
+![Hình 14. Nhân viên thao tác quầy lưu thông trong EXE](../minh-chung-giao-dien/23b90ba/desktop-e2e/staff-circulation-1440.png)
 
-![Hình 15. Phiên kiểm kê của nhân viên](../minh-chung-giao-dien/pr31/inventory-1440.png)
+![Hình 15. Phiên kiểm kê có scan và snapshot trong EXE](../minh-chung-giao-dien/23b90ba/desktop-e2e/inventory-1440.png)
 
 ## 5.3. Chiến lược media, fallback và trợ năng
 
 Ba ảnh biên tập Pexels nằm ở landing/Catalog/directory; chín ảnh khác minh họa nhóm thể loại. Nguồn, tác giả và giấy phép ở `tai-lieu/06-giao-dien/nguon-anh.md` [5]. Chúng là ảnh chủ đề, không phải bìa của từng Book hoặc chân dung tác giả. Ảnh tác giả/ấn bản chỉ được xem là media của bản ghi khi có tham chiếu đã duyệt; khi thiếu hoặc URL hỏng, UI dùng bìa chữ/visual có nhãn. Bộ tám bìa Standard Ebooks đã đối chiếu là ứng viên cho demo và có script duyệt có kiểm ID/Edition; danh sách ứng viên không đồng nghĩa database đã duyệt. Không đưa ảnh ngẫu nhiên vào bản ghi để trang trông đầy.
 
-Ảnh cục bộ có alt text theo nội dung; card có focus visible, trạng thái tải/rỗng/lỗi và thao tác bàn phím. Responsive đã được kiểm ở 390, 768, 1024, 1366, 1440, 1536 và 1920 px trên năm route public/settings, không có cuộn ngang hoặc lỗi tải ảnh cục bộ. Bài kiểm 35 trường hợp này chưa phải audit WCAG toàn diện hay nghiệm thu cảm nhận với người dùng thật. Bản WebView2 của head có artifact build Windows, nhưng chưa có ảnh thao tác tay trên máy này khi Docker Engine còn tắt.
+Ảnh cục bộ có alt text theo nội dung; card có focus visible, trạng thái tải/rỗng/lỗi và thao tác bàn phím. Lượt chụp local trên `23b90ba` đã mở 25 route theo vai trò ở 390, 768, 1024, 1366, 1440, 1536 và 1920 px: 175 lượt trả HTTP 200, không phát hiện tràn ngang; 50 ảnh lưu ở 390 và 1440 px. Script chỉ kiểm status, chiều rộng và ảnh trạng thái; kết quả không phải audit WCAG, kiểm mọi chức năng hay nghiệm thu WebView2.
 
 Bảng 9. Phân biệt loại hình trong báo cáo và nguồn kiểm chứng.
 
 | Loại hình | Ví dụ | Có thể kết luận | Không thể kết luận |
 |---|---|---|---|
 | Wireframe | Hình 10, sinh từ bố cục thiết kế | Vị trí và thứ bậc thao tác dự kiến | Dữ liệu/API chạy đúng. |
-| Screenshot CI | Hình 11–15, artifact Web E2E | UI ở trạng thái test trên SHA `0ef4007` | WebView2 hay mọi trạng thái nghiệp vụ. |
-| Screenshot local | Hình 9, Chromium/Vite | Trang settings không backend ở 1440 px | API lưu theo tài khoản đã chạy local. |
+| Screenshot CI | Hình 13 và 19, artifact Web E2E cũ | UI ở trạng thái test trên SHA `0ef4007` | Mã UI hoặc WebView2 mới. |
+| Screenshot local | Hình 11–12 và 50 ảnh kèm manifest tại `23b90ba` | Giao diện và dữ liệu demo qua Core/Insight ở các route, viewport đã chụp | Runtime EXE hoặc mọi chuyển trạng thái. |
+| Screenshot EXE E2E | Hình 14, 15, 18, 25; database test cô lập | Trạng thái test trong WebView2 với giao dịch thật | Cài/gỡ installer hoặc vận hành production. |
 | Ảnh biên tập | Pexels trong UI | Minh họa không gian/chủ đề theo license | Danh tính tác giả hoặc bìa ấn bản. |
 
 # Chương 6. Cài đặt, thuật toán và xử lý lỗi
@@ -332,24 +353,24 @@ Bảng 10. Các trường hợp thành công và thất bại ở ranh giới ng
 
 Unit kiểm quy tắc thuần hoặc service với dependency giả. PostgreSQL/Testcontainers kiểm migration, ràng buộc, transaction, quyền và tranh chấp thật. Contract validator đối chiếu OpenAPI. React/Vitest kiểm state, form, error và chuyển phiên. Playwright Web E2E chạy trình duyệt, hai API và dữ liệu tạm; build Windows chỉ chứng minh bundle/installer tạo được, không tự chứng minh thao tác WebView2. Mỗi kết quả dưới đây ghi môi trường và SHA để không gộp số của những lần khác nhau.
 
-Bảng 11. Bằng chứng kiểm thử tại mốc `0ef4007ac95fc4704e56527569fb0c1399a56e0d`.
+Bảng 11. Bằng chứng tại merge commit `8169ac75629306db8a12d1f2667abb1b81991d82` và phần chưa kiểm.
 
 | Mã | Kiểm tra | Kỳ vọng | Kết quả quan sát và nguồn |
 |---|---|---|---|
-| T01 | Frontend Vitest | Không có bài hỏng | 190/190 PASS local; 32 file test. |
-| T02 | Frontend lint/typecheck/build | Không có lỗi | PASS local; Vite có cảnh báo chunk trên 500 kB, không phải lỗi build. |
-| T03 | Responsive/ảnh cục bộ | 5 trang × 7 độ rộng không tràn/404 asset | 35/35 PASS local, 390–1920 px; chưa thay audit trợ năng. |
-| T04 | Appearance/account switch | Không áp phản hồi cũ sang tài khoản mới | `AppearanceProvider.test.tsx` PASS local. |
-| T05 | Core PostgreSQL/migration | Test suite đạt trên database CI | Job `core` PASS trong run 40690841710. |
-| T06 | Node apps | Test/build Insight và Node script | Job `node-apps` PASS trong cùng run. |
-| T07 | API contract | OpenAPI hợp lệ | Job `api-contracts` PASS. |
-| T08 | Web E2E | Hành trình chính không hồi quy | Job `web-e2e` PASS; artifact có 32 PNG `test-results`. |
-| T09 | Desktop Windows | Build/packaging thành công | Job `desktop-windows` PASS; artifact `lams-windows-x64`. |
-| T10 | WebView2 thao tác tay trên máy viết báo cáo | Cửa sổ và luồng nghiệp vụ chạy cùng API | CHƯA CHẠY cho SHA này vì Docker Engine local chưa sẵn sàng lúc khảo sát. |
+| T01 | Frontend Vitest | Không có bài hỏng | 191/191 PASS, 33 file; log job `node-apps` của run 40707553547. |
+| T02 | Frontend lint/typecheck/build | Không có lỗi | Các bước trong job `node-apps` PASS; build có cảnh báo kích thước chunk. |
+| T03 | Responsive theo vai trò | 25 route × 7 độ rộng, HTTP 200 và không tràn ngang | 175/175 PASS local ở UI commit `23b90ba`; manifest của bộ 50 ảnh ghi kết quả, chưa phải kiểm chức năng từng route. |
+| T04 | Appearance/account switch | Không áp phản hồi cũ sang tài khoản mới | File test nằm trong 191 bài frontend PASS; chưa kiểm nhiều tab thủ công ở merge commit. |
+| T05 | Core PostgreSQL/migration | Test suite đạt trên database CI | 300/300 PASS, 0 fail/skip; log job `core` của run 40707553547. |
+| T06 | Insight/Prisma | Unit/HTTP và integration đạt | 121/121 và 17/17 PASS; log job `node-apps` của run 40707553547. |
+| T07 | API contract | OpenAPI hợp lệ | Job `api-contracts` PASS trong cùng run. |
+| T08 | Web E2E | Hành trình chính không hồi quy | 18/18 PASS; log job `web-e2e` trong cùng run. |
+| T09 | Desktop Windows | Build/packaging thành công | Job `desktop-windows` PASS; chưa đủ để kết luận runtime EXE. |
+| T10 | EXE/WebView2 E2E local | Cửa sổ và luồng nghiệp vụ chạy cùng API, database test cô lập | 18/18 PASS ngày 29/10 sau UI commit `23b90ba`; process 13328, window handle 985062. Chưa kiểm cài/gỡ installer hoặc máy khác. |
 
-Nguồn của T05–T09 là [CI run 40690841710](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40690841710). T09 không thay T10. Hai mốc trước `46c1916` và `504499b` có CI riêng trong mô tả PR #31; chúng là lịch sử, không là bằng chứng cho thay đổi UI và report sau đó. Khi tài liệu này được commit, CI phải chạy lại tại head mới; kết quả bảng trên vẫn được ghi đúng mốc nguồn.
+Nguồn T01–T02, T04–T09 là [CI run 40707553547](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40707553547) gắn đúng merge SHA; T03 là lượt kiểm local sau sửa UI, có [manifest riêng](../minh-chung-giao-dien/23b90ba/manifest.json). Frontend của commit `23b90ba` còn đạt typecheck, lint, build và 191/191 Vitest local. T10 dùng EXE local SHA-256 `A593B0D91643BD4D27F22D7D6B339FA51B190E9065D0FB30CF268E93FBA1EAFE`; bộ cài NSIS được tạo có SHA-256 `3E49853D8A30BCDD2383D0A9C2FB54D6F99AF8B99428FEDC6BA769CDF84FB9CC`. Lượt chạy đầu đạt 17/18 vì Nest watcher của phiên demo cũ chiếm lại cổng 3000, khiến ca Phase 7 truy vấn nhầm database; sau khi dừng watcher và kiểm lại tiến trình backend, lượt chạy mới đạt 18/18. Không coi lượt đầu là PASS. Khi tài liệu và UI vòng này được commit, CI phải chạy lại tại head mới; bảng CI trên vẫn là bằng chứng của baseline đã merge.
 
-Sau khi thêm ba ảnh thể loại và sửa fallback, commit mã nguồn `5c3a898` đạt 5/5 job trong [CI run 40701157891](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40701157891). Local chạy 3/3 test liên quan, lint và build với Node 22 đều đạt. Ảnh chụp ở Chương 5 vẫn thuộc `0ef4007`, không được gán cho commit này; commit tài liệu tiếp theo cần kiểm CI riêng tại PR head.
+Head PR #31 `9d4931e` cũng đạt 5/5 job ở [run 40703278402](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40703278402). Head và merge là hai SHA khác nhau. Chương 5 ghi riêng ảnh Web E2E `0ef4007` và ảnh local UI `23b90ba`, không chuyển kết quả CI của merge sang commit mới.
 
 ## 7.2. Bảng ca kiểm thử nghiệp vụ và cạnh tranh
 
@@ -374,9 +395,9 @@ Tên file test trong bảng là chỉ dẫn tới nơi kiểm; kết quả CI kh
 
 ## 7.3. Giao diện, hiệu năng và phục hồi
 
-Artifact `web-e2e-results` của T08 có ảnh Public, Reader, Staff, Admin tại SHA nêu trên; README trong `ho-so-nop-bai/minh-chung-giao-dien/pr31/` chỉ rõ nguồn từng ảnh. [Hình 18](#fig-18) là báo cáo lưu thông ở staff; [Hình 19](#fig-19) là tài khoản admin trên bài E2E. Hai ảnh chụp một trạng thái, không bao phủ mọi chuyển đổi role hay toàn bộ CRUD.
+Artifact `web-e2e-results` cũ có ảnh Public, Reader, Staff, Admin tại `0ef4007`; README trong `ho-so-nop-bai/minh-chung-giao-dien/pr31/` chỉ rõ nguồn. [Hình 18](#fig-18) là báo cáo lưu thông có một lượt mượn và một lượt đã trả trong lượt EXE E2E mới; [Hình 19](#fig-19) là tài khoản admin từ Web E2E cũ. [Hình 25](#fig-25) ở phụ lục ghi đề xuất đã duyệt nội bộ với bằng chứng và quyết định. Các ảnh chỉ chụp trạng thái fixture, không bao phủ mọi chuyển đổi role hay toàn bộ CRUD.
 
-![Hình 18. Báo cáo lưu thông trong Web E2E](../minh-chung-giao-dien/pr31/circulation-report-1440.png)
+![Hình 18. Báo cáo lưu thông có dữ liệu trong EXE E2E](../minh-chung-giao-dien/23b90ba/desktop-e2e/circulation-report-1440.png)
 
 ![Hình 19. Màn thành viên trong phiên admin Web E2E](../minh-chung-giao-dien/pr31/members-admin.png)
 
@@ -415,13 +436,13 @@ Không dùng ảnh chân dung sai người để làm đầy card; fallback ph�
 
 ## 9.1. Kết quả thực tế
 
-LAMS có mô hình Book/Edition/Copy, nghiệp vụ tài khoản, Catalog, reader contribution, lưu thông, giữ chỗ, kiểm kê, tìm kiếm từ vựng, báo cáo và đề xuất nội bộ trên hai dịch vụ. Web và Tauri chia sẻ UI. PR #31 bổ sung tài khoản/email, thông báo, xử lý đánh giá/no-show, camera kiểm kê, cải thiện tìm kiếm, preset giao diện và ảnh biên tập có nguồn. CI của SHA `0ef4007` đạt 5/5; bản báo cáo này đã đối chiếu code, migration, test và ảnh của đúng mốc đó. Nhóm có đủ đường trình diễn phát triển, nhưng chưa chứng minh sẵn sàng vận hành dữ liệu thật trên Internet.
+LAMS có mô hình Book/Edition/Copy, nghiệp vụ tài khoản, Catalog, đánh giá, lưu thông, giữ chỗ, kiểm kê, tìm kiếm, báo cáo và đề xuất nội bộ trên hai dịch vụ. Web và Tauri chia sẻ UI. PR #31 bổ sung tài khoản/email, thông báo, xử lý đánh giá/no-show, camera kiểm kê, cải thiện tìm kiếm, preset giao diện và ảnh biên tập có nguồn. CI của merge commit `8169ac7` đạt 5/5; ảnh Web E2E cũ và ảnh local UI mới được ghi đúng mốc riêng. Nhóm có đủ đường trình diễn phát triển, nhưng chưa chứng minh sẵn sàng vận hành dữ liệu thật trên Internet.
 
 ## 9.2. Giới hạn cần xác nhận trước nộp và vận hành
 
-Bìa/portrait theo từng bản ghi chưa có bộ ảnh được duyệt đầy đủ; sáu nhóm thể loại có ảnh minh họa, nhóm khác có visual fallback. Tám bìa demo đã đối chiếu chỉ được gắn qua thao tác duyệt trên đúng database demo. Chưa có ảnh thao tác WebView2 của head mới trên máy viết báo cáo khi Docker chưa sẵn sàng; CI Windows mới chứng minh build. Cần kiểm màn admin quản lý tài khoản, dashboard và nhiều trạng thái CRUD bằng ảnh riêng nếu muốn minh chứng trực quan cho từng màn. Widget ẩn/hiện nhưng chưa kéo thả sắp xếp. Trợ năng mới có kiểm focus/alt/reduced motion ở mức mã và các bài liên quan, chưa có audit WCAG với thiết bị hỗ trợ.
+Bìa/portrait theo từng bản ghi chưa có bộ ảnh được duyệt đầy đủ; chín nhóm thể loại có ảnh minh họa, nhóm khác có visual fallback. Tám bìa demo đã đối chiếu chỉ được gắn qua thao tác duyệt trên đúng database demo. EXE mới đã qua E2E local, nhưng chưa có bằng chứng cài/gỡ installer hoặc thử trên máy Windows thứ hai; ảnh Chương 5 là web, không giả làm ảnh WebView2. Bộ ảnh local mới có admin/dashboard và các route chính nhưng chưa bao phủ mọi trạng thái CRUD, lỗi hoặc xác nhận thao tác nghiệp vụ. Widget ẩn/hiện nhưng chưa kéo thả sắp xếp. Trợ năng mới có kiểm focus/alt/reduced motion ở mức mã và các bài liên quan, chưa có audit WCAG với thiết bị hỗ trợ.
 
-Tên trường, học phần, giảng viên, sinh viên, lớp, phân công cá nhân, ngày nộp và mẫu bìa chính thức còn phải xác nhận. Video demo và kiểm trên máy Windows thứ hai chưa có bằng chứng của SHA này. Trước pilot cần chốt HTTPS, secret, backup/restore, retention và kiểm lại dependency/container advisory. Chỉ sau khi PR #31 được review/merge, một commit trên `main` mới có thể được gọi là mốc bàn giao chính thức; không gán CI của nhánh cho merge SHA chưa tạo.
+Tên trường/khoa, giảng viên, logo, địa điểm, ngày nộp, phân công và tỷ lệ cá nhân còn phải xác nhận; lớp học phần và thông tin hai thành viên đã có trong README LAMS. Video demo và kiểm trên máy Windows thứ hai chưa có bằng chứng. Trước pilot cần chốt HTTPS, secret, backup/restore, retention và kiểm lại dependency/container advisory. PR #31 đã merge; các sửa đổi vòng này chỉ có giá trị bàn giao mới sau khi PR tiếp theo được kiểm thử, review và merge.
 
 ## 9.3. Kết luận
 
@@ -475,8 +496,70 @@ Theo `tai-lieu/08-van-hanh/chay-local.md`, máy Windows cần PowerShell 7, Java
 
 ## Phụ lục C. Ảnh và nguồn sơ đồ
 
-Ảnh CI và local ở `ho-so-nop-bai/minh-chung-giao-dien/pr31/`; README ghi rõ SHA và nguồn. `scripts/report_figures.py` tạo sơ đồ từ route, migration và service đã đối chiếu. Wireframe là thiết kế; ảnh UI là runtime.
+Ảnh Web E2E cũ ở `ho-so-nop-bai/minh-chung-giao-dien/pr31/`; ảnh web local và EXE E2E mới ở `23b90ba/`, mỗi bộ có README ghi nguồn. Use Case, Class và các ERD có nguồn PlantUML trong `ho-so-nop-bai/bao-cao/so-do/`, dựng bằng `scripts/render-report-uml.ps1`; các hình bối cảnh, component và wireframe còn do `scripts/report_figures.py` dựng. Hình 3 mô tả Java record chứ không phải JPA entity; Hình 4 chỉ lấy bảng liên quan lưu thông để không thu nhỏ toàn schema. Wireframe là thiết kế, ảnh UI là runtime.
+
+![Hình 20. Use case của thủ thư và quản trị viên](hinh/use-cases-staff.png)
+
+Catalog tách `Book` và `Edition`; `Book.RelatedItem` chỉ là bản chiếu id/tên từ quan hệ tác giả hoặc thể loại. [Hình 21](#fig-21) bổ sung các record này để Hình 3 không phải nén mọi lớp vào một trang. [Hình 22](#fig-22) phân biệt record bằng chứng kiểm kê với bảng Copy sống; anomaly chứa bản chụp/current/scan tùy trường hợp.
+
+![Hình 21. Các Java record miền Catalog và bản chiếu tác giả thể loại](hinh/class-catalog.png)
+
+![Hình 22. Các record và bằng chứng trong xử lý kiểm kê](hinh/class-inventory.png)
+
+[Hình 23](#fig-23) vẽ RBAC và preferences theo V2/V31. `refresh_tokens` tham chiếu users; một user có tối đa một hàng preferences. [Hình 24](#fig-24) vẽ phiên kiểm kê, bản chụp, scan, anomaly và resolution theo V20/V21. `inventory_snapshots.copy_id` và `inventory_anomalies.copy_id` cố ý không có FK tới Copy sống, để bằng chứng không mất khi dữ liệu tài sản thay đổi.
+
+![Hình 23. ERD danh tính vai trò và thiết lập giao diện Core](hinh/erd-identity.png)
+
+![Hình 24. ERD phiên kiểm kê và bằng chứng Core](hinh/erd-inventory.png)
+
+Ảnh dưới đây là nội dung WebView2 trong lượt E2E EXE local, không phải giao diện dựng lại. Điểm 58,8 là kết quả của fixture 1 giữ chỗ và 1 lượt mượn; quyết định chỉ là duyệt nội bộ, không đặt mua sách.
+
+![Hình 25. Đề xuất đã duyệt nội bộ và bằng chứng nguồn trong EXE](../minh-chung-giao-dien/23b90ba/desktop-e2e/acquisition-approved-1440.png)
 
 ## Phụ lục D. Đóng góp và điều kiện bàn giao
 
 Đối chiếu đóng góp theo `ho-so-nop-bai/bao-cao-nguon.md` và lịch sử PR; nhóm xác nhận alias, tên, mã sinh viên, lớp, giảng viên và tỷ lệ đóng góp. Khi nộp, bổ sung SHA/CI cuối, video demo, quyền ảnh và ngày kiểm chứng.
+
+## Phụ lục E. Mười use case nghiệp vụ trọng tâm
+
+Các mô tả dưới đây dùng cùng mã UC với Bảng 5. Chúng nêu đường thành công và lỗi có thể kiểm tra, còn mã lỗi cụ thể phải đối chiếu OpenAPI và bài kiểm thử ở phiên bản nộp cuối. Dịch vụ ngoài hoặc dữ liệu ảnh không được coi là tin cậy chỉ vì có URL.
+
+## UC02. Đăng nhập
+
+**Actor và mục đích:** thành viên vào vùng đúng vai trò bằng email hoặc mã thành viên. **Tiền điều kiện:** tài khoản tồn tại, không bị khóa; form có định danh và mật khẩu. **Luồng chính:** gửi thông tin qua Auth API; `AuthService` kiểm hash và trạng thái, cấp access token và refresh cookie; frontend lấy principal rồi điều hướng. **Hậu điều kiện:** phiên hợp lệ, cache của tài khoản cũ không hiển thị. **Luồng thay thế/ngoại lệ:** định danh hoặc mật khẩu sai và tài khoản khóa bị từ chối; lỗi mạng không được báo đăng nhập thành công. **Quy tắc và AC:** refresh token được lưu dạng hash, logout thu hồi family; US02 đạt khi thử đúng, sai, khóa và reload theo `AuthIntegrationTest`/AuthFlow. Reset mật khẩu tự phục vụ chưa có API; màn đăng nhập hướng dẫn liên hệ thư viện.
+
+## UC17. Ghi nhận mượn sách
+
+**Actor và mục đích:** thủ thư cho thành viên mượn đúng bản vật lý. **Tiền điều kiện:** thủ thư còn quyền, thành viên hợp lệ, Copy sẵn có tại chi nhánh, request có khóa retry. **Luồng chính:** quét barcode, xác nhận người mượn và Copy; `LoanCommandService` kiểm quota/chính sách, khóa và ghi Loan, đổi trạng thái Copy, lưu receipt/audit/outbox trong transaction. **Hậu điều kiện:** một Loan đang mở cho Copy, biên nhận có thể tra lại. **Luồng thay thế/ngoại lệ:** retry cùng key trả kết quả cũ; cùng key khác nội dung hoặc version cũ trả xung đột; lỗi giao dịch rollback toàn bộ. **AC/test:** US17, unique partial index `uq_loans_active_copy`, `LoanCommandIntegrationTest` với PostgreSQL; UI không tự kết luận thành công trước response.
+
+## UC18. Nhận trả sách
+
+**Actor và mục đích:** thủ thư kết thúc Loan và xử lý bản sách vừa trả. **Tiền điều kiện:** Loan còn mở, đúng chi nhánh và version; tài khoản người mượn bị khóa vẫn được nhận trả. **Luồng chính:** tra Loan theo barcode, xác nhận trả; Core ghi `returnedAt`, Copy/audit/receipt/outbox và thử phân bổ Hold trong cùng transaction. **Hậu điều kiện:** Loan đóng; Copy AVAILABLE hoặc ON_HOLD theo kết quả phân bổ. **Luồng thay thế/ngoại lệ:** Loan đã trả, sai chi nhánh hoặc version cũ bị từ chối; retry cùng request lấy biên nhận cũ. **AC/test:** US18, `LoanCommandIntegrationTest` và `HoldIntegrationTest`; nếu Kafka chậm, giao dịch vẫn đúng nhưng Inbox có thể đến sau.
+
+## UC19. Gia hạn
+
+**Actor và mục đích:** chủ Loan hoặc thủ thư gia hạn khi chính sách cho phép. **Tiền điều kiện:** Loan còn mở, chưa quá hạn, còn lượt, không có Hold WAITING phù hợp. **Luồng chính:** gọi renew, Core kiểm actor và policy rồi tính hạn mới từ hạn cũ, tăng count/version, lưu `loan_extensions`. **Hậu điều kiện:** hạn và lịch sử chính sách cập nhật một lần. **Luồng thay thế/ngoại lệ:** hết lượt, quá hạn, có người chờ hoặc renew/return tranh chấp bị từ chối; retry không tăng lần nữa. **AC/test:** US19, `HoldIntegrationTest` và phép kiểm phiên Reader/staff ở Web E2E.
+
+## UC20. Giữ chỗ
+
+**Actor và mục đích:** người đọc yêu cầu một Book tại chi nhánh nhận, có thể chọn Edition cụ thể. **Tiền điều kiện:** tài khoản ACTIVE, Book/Edition/chi nhánh hợp lệ; không có Hold WAITING/READY khác cho cùng Book. **Luồng chính:** tạo Hold, ghi thứ tự `queuedAt,id`; khi Copy phù hợp trở lại, `HoldAllocationService` khóa và chuyển yêu cầu đầu tiên đủ điều kiện sang READY với hạn nhận. **Hậu điều kiện:** tối đa một READY cho Copy, người đọc thấy trạng thái của mình. **Luồng thay thế/ngoại lệ:** Edition không phù hợp, yêu cầu trùng, hủy hoặc quá hạn đi theo nhánh riêng; ETA là ước tính có điều kiện, không tạo quyền nhận sách. **AC/test:** US20, các index unique của V18, `HoldIntegrationTest` và `HoldExpiryJobTest`.
+
+## UC29. Kiểm kê bản sách
+
+**Actor và mục đích:** thủ thư đối chiếu Copy ở một chi nhánh/kệ với dữ liệu tại lúc mở phiên. **Tiền điều kiện:** phạm vi hợp lệ và không có phiên OPEN xung đột tại chi nhánh. **Luồng chính:** `InventorySessionService` chụp snapshot, nhận scan theo `clientScanId`, chốt phiên và sinh sáu loại bất thường; nhân viên xem bằng chứng rồi xác nhận xử lý. **Hậu điều kiện:** snapshot bất biến, resolution có người thực hiện và thời điểm. **Luồng thay thế/ngoại lệ:** scan retry cùng ID trả biên nhận cũ; barcode lạ/quét trùng được ghi thành bằng chứng; Copy đổi version trước resolution trả 409, không tự ghi đè. **AC/test:** US29, V20–V21, `InventorySessionIntegrationTest`. Camera chỉ hỗ trợ nhập mã, không tự xác nhận xử lý.
+
+## UC09. Biên mục
+
+**Actor và mục đích:** thủ thư tạo/sửa Book, Edition, Copy và vị trí. **Tiền điều kiện:** còn quyền staff; dữ liệu đáp ứng độ dài, ID tham chiếu và phạm vi chi nhánh. **Luồng chính:** nhập Book, gắn tác giả/thể loại, tạo Edition, thêm Copy với barcode duy nhất; Core kiểm ràng buộc và ghi từng thao tác theo API. **Hậu điều kiện:** public Catalog đọc được dữ liệu đã commit. **Luồng thay thế/ngoại lệ:** ISBN sai, barcode trùng, shelf khác branch hoặc version cũ trả lỗi; form giữ dữ liệu và chỉ báo thành công sau response. **AC/test:** US09–US10, `Catalog`/`InventoryCatalogIntegrationTest` và StaffCatalogPage.
+
+## UC12. Duyệt ảnh
+
+**Actor và mục đích:** thủ thư gắn ảnh đúng Edition hoặc Author cùng nguồn và quyền sử dụng. **Tiền điều kiện:** bản ghi tồn tại; URL, MIME, kích thước và căn cứ định danh/giấy phép được kiểm. **Luồng chính:** tìm ứng viên, xem chứng cứ, nhập attribution và duyệt thủ công; Core lưu tham chiếu media/revision. **Hậu điều kiện:** public chỉ hiển thị media đã duyệt của đúng ID. **Luồng thay thế/ngoại lệ:** ảnh lỗi hoặc bị thu hồi chuyển sang bìa chữ/visual fallback; nguồn sai, stale revision hoặc URL không an toàn bị từ chối. **AC/test:** US12, `MediaInspectorTest`, `MediaIntegrationTest`, `BookCover.test.tsx`. Không lấy ảnh ngẫu nhiên để giả làm chân dung tác giả.
+
+## UC27. Đề xuất bổ sung
+
+**Actor và mục đích:** nhân viên xem tín hiệu nhu cầu trước khi đề nghị mua sách. **Tiền điều kiện:** Book, chi nhánh và time window hợp lệ. **Luồng chính:** Core tạo read facts trong snapshot; Insight tính score/confidence có version và lưu evidence; nhân viên xem, duyệt hoặc bác kèm lý do. **Hậu điều kiện:** recommendation và decision được lưu, CSV đọc lại được. **Luồng thay thế/ngoại lệ:** tín hiệu chưa triển khai được ghi là thiếu, không điền 0; dữ liệu Core không sẵn sàng hoặc version stale thì không ghi quyết định giả. **AC/test:** US27, `AcquisitionFactsIntegrationTest` và recommendation integration; điểm số không tự phê duyệt mua.
+
+## UC25. Quản trị tài khoản
+
+**Actor và mục đích:** ADMIN khóa/mở tài khoản hoặc thay vai trò có dấu vết. **Tiền điều kiện:** ADMIN còn quyền hiện hành, target và version hợp lệ. **Luồng chính:** xem tài khoản, nhập lý do/đổi trạng thái hoặc role; Core kiểm self-protection và version, ghi `account_admin_audit`. **Hậu điều kiện:** quyền mới được áp ở server, bảng audit còn quyết định. **Luồng thay thế/ngoại lệ:** Reader/Librarian gọi API trả 403; version cũ trả 409; không được ẩn lỗi bằng trạng thái UI lạc quan. **AC/test:** US25, `AdminAccountIntegrationTest` và AdminAccountsPage.

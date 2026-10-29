@@ -1,0 +1,77 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+hide circle
+entity "books" as books {
+  * id : UUID <<PK>>
+  --
+  * title : TEXT
+}
+entity "editions" as editions {
+  * id : UUID <<PK>>
+  --
+  * book_id : UUID <<FK>>
+  publisher_id : UUID <<FK, nullable>>
+  isbn13 : VARCHAR(13) <<nullable>>
+}
+entity "book_copies" as copies {
+  * id : UUID <<PK>>
+  --
+  * edition_id : UUID <<FK>>
+  * shelf_id : UUID <<FK>>
+  * barcode : VARCHAR(100) <<UQ>>
+  * status : VARCHAR(20)
+  * version : BIGINT
+}
+entity "branches" as branches {
+  * id : UUID <<PK>>
+  --
+  * code : VARCHAR(30) <<UQ>>
+}
+entity "shelves" as shelves {
+  * id : UUID <<PK>>
+  --
+  * branch_id : UUID <<FK>>
+  * code : VARCHAR(30) <<UQ with branch_id>>
+}
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  * member_code : VARCHAR(20) <<UQ>>
+}
+entity "loans" as loans {
+  * id : UUID <<PK>>
+  --
+  * copy_id : UUID <<FK>>
+  * edition_id : UUID <<FK>>
+  * reader_id : UUID <<FK>>
+  * branch_id : UUID <<FK>>
+  returned_at : TIMESTAMPTZ <<nullable>>
+}
+entity "holds" as holds {
+  * id : UUID <<PK>>
+  --
+  * reader_id : UUID <<FK>>
+  * book_id : UUID <<FK>>
+  edition_id : UUID <<FK, nullable>>
+  * branch_id : UUID <<FK>>
+  copy_id : UUID <<FK, nullable>>
+}
+books ||--o{ editions : book_id
+editions ||--o{ copies : edition_id
+branches ||--o{ shelves : branch_id
+shelves ||--o{ copies : shelf_id
+copies ||--o{ loans : copy_id
+users ||--o{ loans : reader_id
+users ||--o{ holds : reader_id
+books ||--o{ holds : book_id
+branches ||--o{ holds : branch_id
+note bottom of loans
+  Partial UNIQUE(copy_id) WHERE returned_at IS NULL.
+end note
+note bottom of holds
+  Partial UNIQUE(reader_id, book_id) khi WAITING/READY;
+  FK(book_id, edition_id) -> editions(book_id, id).
+end note
+@enduml

@@ -1,0 +1,37 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+hide circle
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  * member_code : VARCHAR(20) <<UQ>>
+  * email_normalized : VARCHAR(320) <<UQ>>
+  * status : VARCHAR(16)
+}
+entity "roles" as roles {
+  * code : VARCHAR(20) <<PK>>
+}
+entity "user_roles" as user_roles {
+  * user_id : UUID <<PK, FK>>
+  * role_code : VARCHAR(20) <<PK, FK>>
+}
+entity "refresh_tokens" as refresh {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * token_hash : CHAR(64) <<UQ>>
+  revoked_at : TIMESTAMPTZ <<nullable>>
+}
+entity "user_ui_preferences" as prefs {
+  * user_id : UUID <<PK, FK>>
+  --
+  * revision : INTEGER
+  * preferences : JSONB
+}
+users ||--o{ user_roles : user_id
+roles ||--o{ user_roles : role_code
+users ||--o{ refresh : user_id
+users ||--o| prefs : user_id
+@enduml

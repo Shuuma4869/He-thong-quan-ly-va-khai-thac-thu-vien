@@ -48,6 +48,11 @@ class PilotAuthSecurityTest {
     @Autowired MockMvc mvc;
 
     @Test
+    void disabledEmailDoesNotRequireSmtpForOverallHealth() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    }
+
+    @Test
     void browserPreflightAllowsOnlyConfiguredOriginsAndHeaders() throws Exception {
         mvc.perform(options("/api/v1/auth/login").header("Origin", "https://tauri.localhost")
                 .header("Access-Control-Request-Method", "POST")

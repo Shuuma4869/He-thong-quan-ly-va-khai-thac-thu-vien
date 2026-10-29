@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Menu, SlidersHorizontal } from 'lucide-react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { LibrarySidebar } from './LibrarySidebar';
 import { SearchCommand } from '../../features/catalog/SearchCommand';
@@ -9,6 +9,7 @@ import { BackToTop } from './BackToTop';
 export function StaffLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -27,7 +28,7 @@ export function StaffLayout() {
           <span className="library-topbar-user">{auth.user?.fullName}</span>
           <button className="library-topbar-action" type="button" onClick={() => void signOut()}>Đăng xuất</button>
         </header>
-        <main className="library-main staff-main"><Outlet /></main><BackToTop/>
+        <main key={location.pathname} className="route-enter library-main staff-main"><Outlet /></main><BackToTop/>
       </div>
     </div>
   );

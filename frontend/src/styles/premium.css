@@ -65,6 +65,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .book-card-favorite { color: #09658f; border-color: #c8e5ef; }
 .book-card-favorite:hover { background: #e8f7fd; }
 .book-detail-hero, .directory-hero, .category-heading { border-color: #dfedf2; background: linear-gradient(125deg,#f9fdff,#e7f6fb); }
+.book-detail-cover-area { align-self: stretch; align-content: start; }
+.book-detail-cover-stage {
+  position: relative; display: grid; place-items: center; width: 100%; min-height: 510px;
+  overflow: hidden; isolation: isolate; border: 1px solid rgba(255,255,255,.7);
+  border-radius: 1.25rem; padding: clamp(1.2rem, 3vw, 2rem);
+  background: linear-gradient(145deg, rgba(16,48,61,.28), rgba(4,24,35,.72)),
+    url('../assets/img/editorial/reading-corner.jpg') center / cover;
+  box-shadow: inset 0 1px rgba(255,255,255,.6), 0 24px 42px rgba(20,49,61,.15);
+}
+.book-detail-cover-stage::before {
+  content: ''; position: absolute; z-index: -1; inset: 8% 7%; border: 1px solid rgba(255,255,255,.28);
+  border-radius: 1.1rem; background: linear-gradient(130deg, rgba(255,255,255,.21), rgba(255,255,255,.03));
+  backdrop-filter: blur(6px);
+}
+.book-detail-cover-stage::after {
+  content: ''; position: absolute; z-index: -1; left: 12%; right: 12%; bottom: 5%; height: 11%;
+  border-radius: 50%; background: rgba(2,20,29,.38); filter: blur(18px);
+}
+.book-detail-cover-stage .book-detail-cover { width: min(100%, 310px); filter: drop-shadow(10px 18px 14px rgba(2,21,30,.42)); }
+.book-detail-cover-stage .book-cover-wrap, .book-detail-cover-stage .book-placeholder.book-cover { min-width: 0; }
+.book-detail-cover-stage .book-placeholder-center strong { overflow-wrap: anywhere; }
+.book-detail-cover-stage .book-placeholder-author { overflow-wrap: anywhere; }
+@media (max-width: 760px) { .book-detail-cover-stage { min-height: 380px; } }
+@media (max-width: 480px) { .book-detail-cover-stage { min-height: 330px; } }
 .book-detail-quick-facts { border-color: #dcebf1; background: #dcebf1; }
 .book-detail-quick-facts > div { background: #fff; }
 .book-detail-quick-facts strong { color: #203d4c; }

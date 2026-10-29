@@ -154,11 +154,13 @@ function ScanForm({ owner, session, blocked, onPendingChange }: {
 function CloseForm({ owner, session, blocked, onPendingChange }: {
   owner: string; session: InventorySession; blocked: boolean; onPendingChange: (pending: boolean) => void;
 }) {
+  const client = useQueryClient();
   const [mode, setMode] = useState<'finalize' | 'cancel'>('finalize');
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const command = useInventoryCommand(owner, JSON.stringify([session.id, session.version, mode, reason]),
-    requestId => closeSession(session.id, session.version, reason, requestId, mode === 'cancel'));
+    requestId => closeSession(session.id, session.version, reason, requestId, mode === 'cancel'),
+    value => client.setQueryData(['inventory', owner, 'session', session.id], value));
   const locked = command.busy || command.uncertain;
   useEffect(() => { onPendingChange(locked); }, [locked, onPendingChange]);
   return <form className="editorial-card my-6" onSubmit={event => {

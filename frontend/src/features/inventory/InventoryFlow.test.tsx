@@ -40,6 +40,11 @@ function response(url: string, init: RequestInit) {
     session = { ...session, status: 'FINALIZED', version: session.version + 1, closedAt: time, closedBy: staffId };
     return Response.json(session);
   }
+  if (path.endsWith(`/inventory-sessions/${sessionId}/cancel`) && init.method === 'POST') {
+    session = { ...session, status: 'CANCELLED', version: session.version + 1, closedAt: time, closedBy: staffId,
+      closeReason: JSON.parse(init.body as string).reason };
+    return Response.json(session);
+  }
   if (path.endsWith(`/inventory-sessions/${sessionId}/anomalies/${anomalyId}/resolution`) && init.method === 'POST') {
     const resolution = { id: scanId, anomalyId, action: 'MOVE_TO_SCANNED_SHELF', reason: 'Đã kiểm tra kệ thực tế',
       copyVersionSeen: 0, copyVersionAfter: 1, resolvedBy: staffId, resolvedAt: time };
@@ -173,6 +178,24 @@ it('Reader không tải API kiểm kê', async () => {
   role = 'READER'; app('/nhan-vien/kiem-ke');
   await screen.findByRole('heading', { name: '403 · Không có quyền truy cập' });
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/inventory-sessions'))).toBe(false);
+});
+
+it('Admin hủy phiên nhận biên nhận thì kết thúc ngay dù tải lại dữ liệu còn chờ', async () => {
+  role = 'ADMIN';
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (session.status === 'CANCELLED' && init.method === 'GET' && url.includes('/inventory-sessions'))
+      return new Promise(() => {});
+    return Promise.resolve(response(url, init));
+  });
+  app(); await screen.findByText(/1 bản trong snapshot/);
+  fireEvent.click(screen.getByRole('radio', { name: 'Hủy phiên' }));
+  fireEvent.change(screen.getByLabelText('Lý do hủy (bắt buộc)'), { target: { value: 'Mở nhầm phạm vi kiểm kê' } });
+  fireEvent.click(screen.getByLabelText(/Đã kiểm tra các lượt quét/));
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy phiên' }));
+  expect(await screen.findByText('Đã hủy')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Đang đóng phiên…' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Ghi nhận scan' })).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.filter(([url, init]) => url.endsWith('/cancel') && init.method === 'POST')).toHaveLength(1);
 });
 
 it('mở danh sách có phiên thật và điều hướng vào chi tiết', async () => {

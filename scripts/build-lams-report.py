@@ -12,6 +12,7 @@ from pathlib import Path
 from PIL import Image
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.section import WD_SECTION_START
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -33,16 +34,6 @@ section.bottom_margin = Cm(2)
 section.left_margin = Cm(2.6)
 section.right_margin = Cm(2)
 section.header.paragraphs[0].text = ''
-footer = section.footer.paragraphs[0]
-footer.text = ''
-footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-footer.add_run('Trang ')
-for fld in ('PAGE',):
-    begin = OxmlElement('w:fldChar'); begin.set(qn('w:fldCharType'), 'begin')
-    code = OxmlElement('w:instrText'); code.set(qn('xml:space'), 'preserve'); code.text = fld
-    sep = OxmlElement('w:fldChar'); sep.set(qn('w:fldCharType'), 'separate')
-    end = OxmlElement('w:fldChar'); end.set(qn('w:fldCharType'), 'end')
-    run = footer.add_run(); run._r.extend([begin, code, sep, end])
 
 for name, size, bold in [('Normal', 13, False), ('Title', 22, True), ('Heading 1', 16, True), ('Heading 2', 14, True), ('Heading 3', 13, True)]:
     style = doc.styles[name]
@@ -84,6 +75,7 @@ def table_from_lines(rows: list[str]):
     table = doc.add_table(rows=0, cols=len(data[0]))
     table.autofit = False
     if data[0] == ['Nhóm', 'Bảng đang có trong migration', 'Vai trò']: widths = [3.1, 8.7, 4.4]
+    elif data[0][0] == 'Mã / UC / ưu tiên': widths = [2.7, 6.5, 7.0]
     elif len(data[0]) == 3 and data[0][0] == 'Mã': widths = [2.0, 8.0, 6.2]
     elif len(data[0]) == 3: widths = [4.5, 6.5, 5.2]
     else: widths = [16.2 / len(data[0])] * len(data[0])
@@ -124,22 +116,61 @@ def table_from_lines(rows: list[str]):
     tblPr.append(borders)
     doc.add_paragraph()
 
-cover = [
-    ('[TÊN TRƯỜNG / KHOA — NHÓM XÁC NHẬN]', 14, True),
-    ('[HỌC PHẦN — NHÓM XÁC NHẬN]', 13, False),
-    ('BÁO CÁO TIỂU LUẬN', 21, True),
-    ('HỆ THỐNG QUẢN LÍ VÀ KHAI THÁC THƯ VIỆN', 19, True),
-    ('LAMS Library Access and Management System', 13, False),
-    ('Nhóm hai thành viên', 13, False),
-    ('Giảng viên, sinh viên, mã số và lớp: [nhóm tự điền]', 11, False),
-    ('[Địa điểm], 2026', 12, False),
-]
-for idx, (content, size, bold) in enumerate(cover):
+def cover_line(content, size, bold=False, before=0, after=0):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(60 if idx == 2 else 12)
-    run = p.add_run(content); run.font.name = 'Times New Roman'; run.font.size = Pt(size); run.bold = bold; run.font.color.rgb = RGBColor(30, 30, 30)
-doc.add_page_break()
+    p.paragraph_format.space_before = Pt(before)
+    p.paragraph_format.space_after = Pt(after)
+    p.paragraph_format.keep_with_next = True
+    run = p.add_run(content)
+    run.font.name = 'Times New Roman'; run.font.size = Pt(size); run.bold = bold
+    run.font.color.rgb = RGBColor(27, 54, 94) if bold else RGBColor(40, 45, 52)
+    return p
+
+cover_line('[TÊN TRƯỜNG – CHỜ NHÓM XÁC NHẬN]', 14, True, after=3)
+cover_line('[TÊN KHOA / ĐƠN VỊ – CHỜ NHÓM XÁC NHẬN]', 12, True, after=10)
+cover_line('HỌC PHẦN THIẾT KẾ WEB NÂNG CAO', 12, before=2)
+cover_line('Lớp học phần: Thiết kế Web nâng cao-1-1-26(N01)', 11, after=14)
+logo_note = cover_line('[LOGO TRƯỜNG – BỔ SUNG SAU KHI XÁC NHẬN]', 10, before=12, after=20)
+logo_note.runs[0].font.color.rgb = GRAY
+cover_line('BÁO CÁO TIỂU LUẬN', 21, True, before=15, after=14)
+cover_line('HỆ THỐNG QUẢN LÍ VÀ KHAI THÁC THƯ VIỆN', 18, True, after=8)
+cover_line('LAMS – Library Access and Management System', 12, after=28)
+
+members = doc.add_table(rows=0, cols=2)
+members.autofit = False
+members.columns[0].width = Cm(5)
+members.columns[1].width = Cm(10.5)
+for label, value in [
+    ('Giảng viên hướng dẫn', '[Chờ nhóm xác nhận]'),
+    ('Nhóm thực hiện', 'Nguyễn Trọng Tuấn – 23010690; Vũ Đức Toàn – 23010062'),
+    ('Lớp học phần', 'Thiết kế Web nâng cao-1-1-26(N01)'),
+]:
+    row = members.add_row()
+    row.cells[0].text = label
+    row.cells[1].text = value
+    for cell in row.cells:
+        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        for p in cell.paragraphs:
+            p.paragraph_format.space_after = Pt(6)
+            for run in p.runs: run.font.size = Pt(11)
+    for run in row.cells[0].paragraphs[0].runs: run.bold = True
+cover_line('[Địa điểm – chờ nhóm xác nhận], 2026', 11, before=40)
+
+section = doc.add_section(WD_SECTION_START.NEW_PAGE)
+section.footer.is_linked_to_previous = False
+section.header.is_linked_to_previous = False
+section.header.paragraphs[0].text = ''
+footer = section.footer.paragraphs[0]
+footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+footer.add_run('Trang ')
+begin = OxmlElement('w:fldChar'); begin.set(qn('w:fldCharType'), 'begin')
+code = OxmlElement('w:instrText'); code.set(qn('xml:space'), 'preserve'); code.text = ' PAGE '
+sep = OxmlElement('w:fldChar'); sep.set(qn('w:fldCharType'), 'separate')
+end = OxmlElement('w:fldChar'); end.set(qn('w:fldCharType'), 'end')
+footer.add_run()._r.extend([begin, code, sep, end])
+page_numbering = OxmlElement('w:pgNumType'); page_numbering.set(qn('w:start'), '1')
+section._sectPr.append(page_numbering)
 
 lines = SOURCE.read_text(encoding='utf-8').splitlines()
 figure_titles = [re.match(r'!\[(Hình \d+\. [^]]+)\]', s).group(1)
@@ -175,6 +206,7 @@ def list_items(items, kind):
         add_field(p, f'PAGEREF {kind}-{number} \\h')
 
 table_rows = []
+in_use_case_appendix = False
 def flush_table():
     global table_rows
     if table_rows: table_from_lines(table_rows); table_rows = []
@@ -196,7 +228,10 @@ for line in lines:
             path = (SOURCE.parent / match.group(2)).resolve()
             if not path.is_file(): raise FileNotFoundError(path)
             with Image.open(path) as img: width, height = img.size
-            picture_width = min(16.2, 12 * width / height)
+            diagram = path.name in {'use-cases.png', 'use-cases-staff.png', 'class-diagram.png', 'class-catalog.png', 'class-inventory.png',
+                                   'erd-core.png', 'erd-insight.png', 'erd-identity.png', 'erd-inventory.png'}
+            max_height = 10.5 if path.name == 'use-cases.png' else (15.5 if diagram else 12)
+            picture_width = min(16.2, max_height * width / height)
             p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.keep_with_next = True
             p.add_run().add_picture(str(path), width=Cm(picture_width))
@@ -208,12 +243,19 @@ for line in lines:
         continue
     if stripped.startswith('# '):
         doc.add_paragraph(stripped[2:], 'Heading 1')
-    elif stripped.startswith('## '): doc.add_paragraph(stripped[3:], 'Heading 2')
+    elif stripped.startswith('## '):
+        if stripped.startswith('## Phụ lục E.'): in_use_case_appendix = True
+        doc.add_paragraph(stripped[3:], 'Heading 2')
     else:
         p = doc.add_paragraph(style='Normal')
         add_rich(p, stripped)
+        if in_use_case_appendix:
+            p.paragraph_format.line_spacing = 1.1
+            p.paragraph_format.space_after = Pt(1)
+            for run in p.runs:
+                if run.font.name != 'Consolas': run.font.size = Pt(12)
 flush_table()
 doc.core_properties.title = 'Báo cáo bài tập lớn Hệ thống quản lí và khai thác thư viện LAMS'
-doc.core_properties.subject = 'Bản làm việc của PR #31; đối chiếu CI theo SHA trong báo cáo'
+doc.core_properties.subject = 'Bản làm việc; bằng chứng kiểm thử được đối chiếu theo SHA trong báo cáo'
 doc.save(OUT)
 print(OUT)

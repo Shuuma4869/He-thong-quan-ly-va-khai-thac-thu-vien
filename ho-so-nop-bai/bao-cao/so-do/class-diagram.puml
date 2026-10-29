@@ -1,0 +1,81 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam classAttributeIconSize 0
+hide empty members
+class IdentityUser <<Java record>> {
+  +id: UUID
+  +memberCode: String
+  +status: UserStatus
+  +roles: List<RoleCode>
+}
+class Book <<Java record>> {
+  +id: UUID
+  +title: String
+  +authors: List<RelatedItem>
+  +categories: List<RelatedItem>
+}
+class Edition <<Java record>> {
+  +id: UUID
+  +bookId: UUID
+  +isbn13: String
+  +publisherId: UUID
+}
+class BookCopy <<Java record>> {
+  +id: UUID
+  +editionId: UUID
+  +shelfId: UUID
+  +barcode: String
+  +status: String
+  +version: long
+}
+class Branch <<Java record>> {
+  +id: UUID
+  +code: String
+  +status: String
+}
+class Shelf <<Java record>> {
+  +id: UUID
+  +branchId: UUID
+  +code: String
+}
+class Loan <<Java record>> {
+  +id: UUID
+  +copyId: UUID
+  +readerId: UUID
+  +dueAt: Instant
+  +returnedAt: Instant
+  +active(): boolean
+  +overdueAt(now: Instant): boolean
+}
+class Hold <<Java record>> {
+  +id: UUID
+  +readerId: UUID
+  +bookId: UUID
+  +editionId: UUID
+  +branchId: UUID
+  +status: String
+  +active(): boolean
+}
+class InventorySession <<Java record>> {
+  +id: UUID
+  +branchId: UUID
+  +shelfId: UUID
+  +status: String
+  +version: long
+}
+Book "1" ..> "0..*" Edition : bookId
+Edition "1" ..> "0..*" BookCopy : editionId
+Branch "1" ..> "0..*" Shelf : branchId
+Shelf "1" ..> "0..*" BookCopy : shelfId
+BookCopy "1" ..> "0..*" Loan : copyId
+IdentityUser "1" ..> "0..*" Loan : readerId
+IdentityUser "1" ..> "0..*" Hold : readerId
+Book "1" ..> "0..*" Hold : bookId
+Branch "1" ..> "0..*" InventorySession : branchId
+note bottom
+  Nét đứt: tham chiếu UUID giữa các Java record;
+  không phải JPA association. Multiplicity theo schema Core.
+end note
+@enduml

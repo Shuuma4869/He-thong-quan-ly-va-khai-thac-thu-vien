@@ -100,6 +100,8 @@ try {
     $core = Start-Process @launchCore
     $launched += @{ pid = $core.Id; ticks = $core.StartTime.ToUniversalTime().Ticks }
     Wait-TestHttp "http://127.0.0.1:$CorePort/api/v1/health"
+    $core.Refresh()
+    if ($core.HasExited) { throw "Core E2E đã thoát; xem $logs\core.err.log. Cổng có thể đã bị tiến trình khác chiếm." }
     Push-Location (Join-Path $projectRoot 'backend\insight-service')
     try {
         if ($UseExistingPrismaClient) {
@@ -123,6 +125,8 @@ try {
     $insight = Start-Process @launchInsight
     $launched += @{ pid = $insight.Id; ticks = $insight.StartTime.ToUniversalTime().Ticks }
     Wait-TestHttp "http://127.0.0.1:$InsightPort/api/v1/health"
+    $insight.Refresh()
+    if ($insight.HasExited) { throw "Insight E2E đã thoát; xem $logs\insight.err.log. Cổng có thể đã bị tiến trình khác chiếm." }
     if ($Desktop) {
         $desktopProcess = Start-Process -FilePath $desktopExe -WorkingDirectory (Split-Path $desktopExe) -WindowStyle Normal -PassThru
         $launched += @{ pid = $desktopProcess.Id; ticks = $desktopProcess.StartTime.ToUniversalTime().Ticks }
@@ -146,6 +150,8 @@ try {
     $frontend = Start-Process @launchFrontend
     $launched += @{ pid = $frontend.Id; ticks = $frontend.StartTime.ToUniversalTime().Ticks }
     Wait-TestHttp "http://127.0.0.1:$FrontendPort/"
+    $frontend.Refresh()
+    if ($frontend.HasExited) { throw "Frontend E2E đã thoát; xem $logs\frontend.err.log. Cổng có thể đã bị tiến trình khác chiếm." }
     }
     Push-Location (Join-Path $projectRoot 'frontend')
     try {

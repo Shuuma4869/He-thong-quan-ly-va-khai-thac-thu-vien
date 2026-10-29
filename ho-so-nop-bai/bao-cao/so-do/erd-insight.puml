@@ -1,0 +1,42 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+hide circle
+entity "metadata_lookups" as lookup {
+  * id : UUID <<PK>>
+  --
+  * owner_id : UUID <<Core logical ref>>
+  * isbn13 : VARCHAR(13)
+  * created_at : TIMESTAMPTZ
+}
+entity "acquisition_recommendations" as recommendation {
+  * id : UUID <<PK>>
+  --
+  * book_id : UUID <<Core logical ref>>
+  * branch_id : UUID <<Core logical ref>>
+  * score : DECIMAL(5,1)
+  * state : VARCHAR(8)
+  * version : INTEGER
+}
+entity "acquisition_decisions" as decision {
+  * id : UUID <<PK>>
+  --
+  * recommendation_id : UUID <<FK>>
+  * actor_id : UUID <<Core logical ref>>
+  * version : INTEGER
+}
+entity "reader_notifications" as inbox {
+  * id : UUID <<PK>>
+  --
+  * reader_id : UUID <<Core logical ref>>
+  * aggregate_id : UUID <<Core logical ref>>
+  read_at : TIMESTAMPTZ <<nullable>>
+}
+recommendation ||--o{ decision : recommendation_id
+note bottom
+  Chỉ đường liền là FK vật lý trong PostgreSQL Insight.
+  UUID tới User, Book, Branch và Loan/Hold của Core
+  được xác thực qua API/event, không có FK xuyên database.
+end note
+@enduml

@@ -29,6 +29,12 @@ async function navigate(page: Page, path: string) {
   await page.goto(desktopEndpoint ? `http://tauri.localhost/#${path}` : path);
 }
 
+async function captureFullPage(page: Page, options: Parameters<Page['screenshot']>[0]) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.screenshot({ ...options, animations: 'disabled' });
+}
+
 const core = process.env.LAMS_E2E_CORE_URL;
 const container = process.env.LAMS_E2E_CONTAINER;
 const owner = process.env.LAMS_E2E_OWNER;
@@ -96,7 +102,7 @@ test('Phase 2.5 lịch sử ISBN lưu thật, reload và xóa theo owner', async
     await page.keyboard.press('Tab');
     // ISBN rỗng sau reload: submit disabled, Tab chuyển tới bộ lọc.
     await expect(page.getByLabel('Lọc lịch sử theo đầu ISBN')).toBeFocused();
-    await page.screenshot({path:`test-results/history-${viewport.width}.png`,fullPage:true});
+    await captureFullPage(page, {path:`test-results/history-${viewport.width}.png`,fullPage:true});
   }
   const staff=await login('HISTORY');
   const list=await request.get(`${insight}/metadata/history`,{headers:{Authorization:`Bearer ${staff}`}});
@@ -133,7 +139,7 @@ test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', a
   expect(refreshCookie?.httpOnly).toBe(true);
   expect(refreshCookie?.sameSite).toBe('Lax');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.screenshot({ path: 'test-results/profile-mobile.png', fullPage: true });
+  await captureFullPage(page, { path: 'test-results/profile-mobile.png', fullPage: true });
   await navigate(page, '/nhan-vien/thanh-vien');
   await expect(page.getByRole('heading', { name: /403/ })).toBeVisible();
   await navigate(page, '/ho-so');
@@ -169,7 +175,7 @@ for (const role of ['LIBRARIAN', 'ADMIN']) {
     await page.goBack();
     await expect(page.getByText('Trang 1 / 3', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/members-${role.toLowerCase()}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/members-${role.toLowerCase()}.png`, fullPage: true });
     if (role === 'ADMIN') await page.getByRole('button', { name: 'Mở menu nhân viên' }).click();
     await page.getByRole('link', { name: 'Hồ sơ', exact: true }).filter({ visible: true }).click();
     await expect(page.getByText(accounts[role].email, { exact: true })).toBeVisible();
@@ -259,7 +265,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/reviews-${viewport.width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/reviews-${viewport.width}.png`, fullPage: true });
   }
   await navigate(page, `/sach?query=${encodeURIComponent(book.title)}`);
   const reviewCard = page.locator('.book-card').filter({ hasText: book.title });
@@ -326,7 +332,7 @@ test('Phase 2 Reader: lọc server, nhiều ấn bản, Author, reload và chặ
   await expect(page.getByRole('heading',{name:`Author ${suffix}`})).toBeVisible();
   await expect(page.getByRole('link',{name:`Catalog ${suffix}`,exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.screenshot({path:'test-results/catalog-author-mobile.png',fullPage:true});
+  await captureFullPage(page, {path:'test-results/catalog-author-mobile.png',fullPage:true});
   const readerLogin=await request.post(`${core}/auth/login`,{data:{identifier:accounts.READER.email,password}});
   const readerToken=(await readerLogin.json()).accessToken;
   const forbidden=await request.post(`${core}/books`,{headers:{Authorization:`Bearer ${readerToken}`},data:{title:'Forbidden',authorIds:[],categoryIds:[]}});
@@ -383,6 +389,10 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   expect(readerLogin.status()).toBe(200); const reader = await readerLogin.json();
   const readerHeaders = { Authorization: `Bearer ${reader.accessToken}` };
   await loginCatalog(page, 'READER'); await navigate(page, `/sach/${book.id}`);
+  await page.getByRole('button', { name: 'Xem ấn bản và giữ chỗ' }).click();
+  await expect(page).toHaveURL(new RegExp(`/sach/${book.id}$`));
+  await expect(page.getByRole('heading', { name: 'Các ấn bản' })).toBeFocused();
+  await captureFullPage(page, { path: 'test-results/book-detail-glass.png', fullPage: true });
   await page.getByRole('link', { name: 'Giữ chỗ ấn bản này' }).click();
   await expect(page.getByRole('checkbox')).not.toBeChecked();
   await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
@@ -419,7 +429,7 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   const eta = await estimate.json(); expect(eta.reason).toBe('CONDITIONAL'); expect(Date.parse(eta.estimatedAt)).toBe(Date.parse(renewedBody.dueAt));
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/hold-eta-${viewport.width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/hold-eta-${viewport.width}.png`, fullPage: true });
   }
   await page.getByRole('button', { name: 'Hủy giữ chỗ', exact: true }).click();
   await page.getByRole('button', { name: 'Xác nhận hủy giữ chỗ' }).click();
@@ -428,7 +438,7 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/reader-circulation-${viewport.width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/reader-circulation-${viewport.width}.png`, fullPage: true });
   }
   expect((await request.post(`${core}/loans/${borrowed.loanId}/return`, { headers, data: { requestId: randomUUID(), version: renewedBody.version, branchId: branch.id } })).status()).toBe(200);
   await page.reload(); await expect(loans).toContainText('Đã trả');
@@ -465,7 +475,7 @@ test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua g
   await expect(history).toContainText('Đã gia hạn 1 lần');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/staff-circulation-${viewport.width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/staff-circulation-${viewport.width}.png`, fullPage: true });
   }
   await history.getByRole('button', { name: 'Nhận trả', exact: true }).click();
   await history.getByRole('button', { name: 'Xác nhận nhận trả' }).click();
@@ -490,12 +500,12 @@ test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua g
   const output = `test-results/circulation-${suffix}.csv`; await download.saveAs(output);
   const csv = await readFile(output, 'utf8'); expect(csv.charCodeAt(0)).toBe(0xfeff); expect(csv).toContain(branch.name);
   expect(csv).not.toContain(accounts.READER.email); expect(csv).not.toContain(accounts.READER.name);
-  await page.reload(); await expect(page.getByRole('heading', { name: 'Báo cáo mượn theo chi nhánh' })).toBeVisible();
   if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/circulation-report-${viewport.width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/circulation-report-${viewport.width}.png`, fullPage: true });
   }
+  await page.reload(); await expect(page.getByRole('heading', { name: 'Báo cáo mượn theo chi nhánh' })).toBeVisible();
 });
 
 test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thật', async ({ page, request }) => {
@@ -523,7 +533,7 @@ test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thậ
   await page.getByLabel('Mã vạch').fill(`STALE-${suffix}`);await page.getByRole('button',{name:'Lưu thông tin'}).click();
   await expect(page.getByRole('alert')).toContainText('Bản sách đã được cập nhật');await expect(page.getByRole('button',{name:'Lưu thông tin'})).toBeDisabled();
   await page.getByRole('button',{name:'Hủy chỉnh sửa'}).click();await expect(page.getByRole('row').filter({hasText:`UPDATED-${suffix}`})).toBeVisible();
-  await page.screenshot({path:'test-results/catalog-staff-copy.png',fullPage:true});
+  await captureFullPage(page, {path:'test-results/catalog-staff-copy.png',fullPage:true});
 });
 
 test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận chuyển Copy', async ({ page, request }) => {
@@ -569,9 +579,89 @@ test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận ch
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/inventory-${width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/inventory-${width}.png`, fullPage: true });
   }
   if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
+});
+
+for (const role of ['READER', 'LIBRARIAN', 'ADMIN'] as const) {
+test(`Ảnh danh mục phủ khung, menu và quay lại hoạt động (${role})`, async ({ page, request }) => {
+  test.setTimeout(60_000);
+  const headers = await staffApi(request);
+  await createCatalog(request, headers, '/categories', { name: `A0 Chuyên mục ${role} ${suffix}` });
+    await loginCatalog(page, role);
+    await navigate(page, role === 'READER' ? '/the-loai' : '/nhan-vien/bang-dieu-khien');
+    await expect(page.locator('.appearance-loading')).toHaveCount(0);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const collapse = page.getByRole('button', { name: 'Thu gọn thanh điều hướng' });
+    await collapse.click();
+    await expect(page.locator('.library-sidebar-desktop')).toHaveClass(/is-collapsed/);
+    const expand = page.getByRole('button', { name: 'Mở rộng thanh điều hướng' });
+    await expect(expand).toBeEnabled();
+    await expand.click();
+    await expect(page.locator('.library-sidebar-desktop')).not.toHaveClass(/is-collapsed/);
+    await captureFullPage(page, { path: `test-results/glass-${role}.png`, fullPage: true });
+    await page.setViewportSize({ width: 390, height: 900 });
+    const roleMenu = page.getByRole('button', { name: role === 'READER' ? 'Mở menu thư viện' : 'Mở menu nhân viên' });
+    await roleMenu.click();
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).not.toBeVisible();
+    await expect(roleMenu).toBeFocused();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    for (const path of ['/tac-gia', '/the-loai']) {
+      await navigate(page, path);
+      const hero = page.locator('.directory-hero');
+      await expect(hero).toBeVisible();
+      await expect.poll(() => hero.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+      const bounds = await hero.boundingBox();
+      const photo = await hero.locator('img').boundingBox();
+      expect(Math.abs(bounds!.width - photo!.width)).toBeLessThan(3);
+      if (path === '/the-loai') {
+        await expect(page.locator('.directory-card .directory-visual img').first()).toBeVisible();
+        expect(await page.locator('.directory-card .directory-visual-fallback').count()).toBe(0);
+      }
+      if (role === 'READER') await captureFullPage(page, { path: `test-results/hero-${path.slice(1)}.png`, fullPage: true });
+    }
+    await page.setViewportSize({ width: 390, height: 900 });
+    const trigger = page.getByRole('button', { name: 'Mở menu thư viện' });
+    await trigger.click();
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).toBeVisible();
+    await page.getByRole('button', { name: 'Đóng menu', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  await navigate(page, '/the-loai');
+  // Điều hướng trong cùng ứng dụng để kiểm tra nút quay lại, kể cả HashRouter.
+  await page.evaluate((desktop) => {
+    if (desktop) location.hash = '/duong-dan-khong-ton-tai';
+    else { history.pushState({ idx: (history.state?.idx ?? 0) + 1 }, '', '/duong-dan-khong-ton-tai'); dispatchEvent(new PopStateEvent('popstate')); }
+  }, !!desktopEndpoint);
+  await expect(page.getByRole('heading', { name: 'Không tìm thấy trang' })).toBeVisible();
+  await page.getByRole('button', { name: 'Quay lại' }).click();
+  await expect(page.getByRole('heading', { name: /Thể loại|Khám phá sách/, exact: true })).toBeVisible();
+});
+}
+
+test('Admin hủy phiên kiểm kê và tải lại vẫn giữ biên nhận đã hủy', async ({ page, request }) => {
+  const headers = await staffApi(request);
+  const branch = await createCatalog(request, headers, '/branches', { code: `H-${suffix}`, name: `Chi nhánh hủy ${suffix}` });
+  await loginCatalog(page, 'ADMIN');
+  await navigate(page, '/nhan-vien/kiem-ke');
+  await page.getByRole('button', { name: 'Chọn chi nhánh', exact: true }).click();
+  await page.getByRole('radio', { name: new RegExp(branch.code) }).click();
+  await page.getByRole('button', { name: 'Mở phiên kiểm kê' }).click();
+  await expect(page.getByRole('heading', { name: 'Phiên kiểm kê', exact: true })).toBeVisible();
+  await page.getByRole('radio', { name: 'Hủy phiên' }).check();
+  await page.getByLabel('Lý do hủy (bắt buộc)').fill('Đã kiểm tra và hủy phiên thử nghiệm');
+  await page.getByLabel(/Đã kiểm tra các lượt quét/).check();
+  await page.getByRole('button', { name: 'Hủy phiên', exact: true }).click();
+  await expect(page.getByText('Đã hủy', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Đã hủy', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ghi nhận scan' })).toHaveCount(0);
+  await captureFullPage(page, { path: 'test-results/admin-cancelled-session.png', fullPage: true });
 });
 
 test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang ổn định', async ({ page, request }) => {
@@ -652,7 +742,7 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và sáu m�
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/landing-${width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/landing-${width}.png`, fullPage: true });
   }
   await page.getByPlaceholder('Bạn muốn đọc gì?').fill(suffix);
   await page.getByRole('button', { name: 'Tìm sách' }).click();
@@ -663,7 +753,7 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và sáu m�
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `test-results/catalog-${width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/catalog-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 390, height: 900 });
   const trigger = page.getByRole('button', { name: 'Mở menu thư viện' });
@@ -695,7 +785,7 @@ test('Phase 7: reader bị chặn, nhân viên thấy trạng thái chưa có ng
   await expect(page.getByText(/Chưa có đề xuất phù hợp/)).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: 'test-results/acquisition-empty-390.png', fullPage: true });
+  await captureFullPage(page, { path: 'test-results/acquisition-empty-390.png', fullPage: true });
 });
 
 test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên PostgreSQL thật', async ({ page, request }) => {
@@ -779,6 +869,7 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
   await page.getByRole('button', { name: 'Xem số liệu và điểm nhu cầu' }).click();
   await expect(page.getByLabel('Kết quả phân tích')).toContainText('Điểm 58.8/100');
   await expect(page.getByLabel('Kết quả phân tích')).toContainText('1 lượt mượn trong kỳ');
+  await captureFullPage(page, { path: 'test-results/acquisition-analysis-1440.png', fullPage: true });
   await page.getByRole('button', { name: 'Lưu đề xuất chờ duyệt' }).click();
   await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('Chờ duyệt');
 
@@ -799,6 +890,7 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
   await page.getByLabel('Lý do quyết định').fill('Đã đối chiếu số bản, lượt mượn và hàng chờ.');
   await page.getByRole('button', { name: 'Duyệt nội bộ' }).click();
   await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('Đã duyệt nội bộ');
+  await captureFullPage(page, { path: 'test-results/acquisition-approved-1440.png', fullPage: true });
   const approved = await request.get(`${insight}/acquisition/recommendations/${draft.id}`, { headers: staffHeaders });
   expect((await approved.json())).toMatchObject({ state: 'APPROVED', version: 1,
     decisions: [{ action: 'APPROVED', version: 1 }] });

@@ -37,3 +37,11 @@ Lượt kiểm tra local ngày 27/10/2026 dùng cùng Core và dữ liệu Catal
 Web và EXE E2E chạy 17 ca trên PostgreSQL cô lập; bài test Search kiểm phím tắt, gợi ý thật, điều hướng hash, sidebar và back-to-top khi bật reduced motion. Đây không phải chứng nhận WCAG: screen reader, tương phản mọi trạng thái và toàn bộ form nhân viên ở mức zoom cao chưa được nghiệm thu.
 
 Mặc định dùng câu tiếng Việt ngắn, nút có động từ và trạng thái trống giải thích được nguyên nhân. Dữ liệu chưa có nguồn được ghi là chưa có, không tạo số liệu hoặc ảnh giả để làm đầy giao diện.
+
+## Điều hướng ấn bản và phản hồi thao tác
+
+Nút “Xem ấn bản và giữ chỗ” cuộn và chuyển focus tới danh sách ấn bản trong cùng trang. Không dùng neo `href="#..."` ở đây vì bản desktop dùng HashRouter. Mỗi ấn bản dẫn tới form giữ chỗ và chọn chi nhánh nhận; thao tác cho mượn thực hiện tại quầy. Tác phẩm tham khảo chưa có ấn bản vật lý phải hiển thị đúng trạng thái thiếu dữ liệu, không tạo tồn kho giả.
+
+Khi đóng hoặc hủy phiên kiểm kê, giao diện cập nhật trạng thái từ biên nhận máy chủ trước khi tải lại các danh sách liên quan. Yêu cầu mất phản hồi vẫn giữ cùng mã để thử lại an toàn. Tải lại dữ liệu chậm không được giữ nút ở trạng thái đang xử lý sau khi đã nhận kết quả thành công.
+
+Nền ứng dụng phối hồng nhạt và xanh, các panel kính có viền sáng và bóng đổ để tách lớp nội dung. Banner tác giả và thể loại dùng ảnh phủ toàn khung với lớp tối phía chữ. Sidebar thu gọn phản hồi ngay, sau đó lưu thiết lập; nếu lưu thất bại thì khôi phục trạng thái trước đó. Drawer giữ trong DOM để chạy được cả hiệu ứng mở và đóng, nhưng ở trạng thái đóng có `inert` và `aria-hidden`. Chuyển trang dùng opacity và translate ngắn; thiết lập giảm chuyển động của ứng dụng và hệ điều hành vẫn được ưu tiên.

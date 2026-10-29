@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { LogIn, Menu, SlidersHorizontal } from 'lucide-react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
 import { LibrarySidebar } from './LibrarySidebar';
@@ -10,6 +10,7 @@ import { BackToTop } from './BackToTop';
 export function ReaderLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -30,7 +31,7 @@ export function ReaderLayout() {
             <button className="library-topbar-action" type="button" onClick={() => void signOut()}>Đăng xuất</button></>
             : <Link className="library-topbar-action" to="/dang-nhap"><LogIn size={16}/> Đăng nhập</Link>}
         </header>
-        <main className="library-main"><Outlet /></main><BackToTop/>
+        <main key={location.pathname} className="route-enter library-main"><Outlet /></main><BackToTop/>
       </div>
     </div>
   );
