@@ -1,6 +1,6 @@
 # LAMS — Hệ thống quản lí và khai thác thư viện
 
-Bản nguồn nội dung báo cáo học phần. Chưa có mẫu chính thức của trường để xác nhận định dạng. Lớp học phần, họ tên và mã sinh viên lấy từ README LAMS; tên trường/khoa, giảng viên, logo, địa điểm và ngày nộp còn chờ nhóm xác nhận. Không suy thông tin của LAMS từ bìa báo cáo dự án tham khảo hoặc alias Git.
+Tài liệu đối chiếu nội dung dự án. Bản nộp cá nhân hiện tại là báo cáo của Nguyễn Trọng Tuấn (23010690), gồm phần chung của nhóm và chương đóng góp cá nhân. Bìa dùng bố cục và logo từ báo cáo Hệ thống đăng ký môn học do tác giả cung cấp; học phần được đổi sang Thiết kế Web nâng cao. Giảng viên để trống để tác giả điền; dòng cuối ghi Hà Nội, năm học 2026 - 2027 theo thông tin tác giả xác nhận.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -35,6 +35,8 @@ Giao diện có trang cho người đọc, danh mục, My Library, mượn và g
 [Security matrix](../tai-lieu/07-kiem-thu/security-matrix.md) liên kết threat/control/test/residual risk. JWT access trong memory; refresh HttpOnly; principal lấy qua Core; owner không từ body. Không thể kết luận “không có lỗ hổng” từ npm audit hoặc CI. “XORs” chờ giảng viên xác nhận.
 
 ## 9. Kiểm thử và kết quả
+
+Baseline của bản tiểu luận ngày 29/10/2026 là `d0ba0158bd875a3da6ef812045d5d268e7dbf1a1`, sau khi PR #31, #33 và #32 merge. [CI run 40880637621](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40880637621) đạt 5/5: Core 317/317, Insight 121 unit/HTTP và 17 integration, frontend 193/193, Web E2E 22/22, build Windows thành công. Báo cáo hoạt động giữ chỗ/CSV của Toàn ở PR #33 đã có API và test nhưng chưa có màn frontend riêng. Các mốc bên dưới là bằng chứng lịch sử; không gán kết quả EXE hoặc installer cũ cho baseline mới.
 
 [Chiến lược](../tai-lieu/07-kiem-thu/test-strategy.md) và [ma trận AC](../tai-lieu/07-kiem-thu/story-test-matrix.md) phân biệt unit/integration/contract/frontend/E2E. [Ảnh và SHA kiểm UI](minh-chung-giao-dien/README.md) có nguồn rõ. Tại `ee929cd`, CI run `39907400703` đạt năm job; E2E Windows local có 8/8 bài trong EXE/WebView2 cho history. Đây là bằng chứng của bản Phase 2.5. Ở head PR #27 `63d1508`, [CI run `40544635046`](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40544635046) đạt năm job. Lượt E2E Phase 5–7 riêng ở máy phát triển đạt 18/18 Web và 18/18 EXE trên database tạm; kết quả này không tự động là kết quả EXE tại merge commit `41c4c89`. Build installer không thay kiểm WebView2.
 

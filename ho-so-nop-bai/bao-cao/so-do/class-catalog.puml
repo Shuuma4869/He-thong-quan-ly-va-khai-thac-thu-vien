@@ -2,6 +2,9 @@
 skinparam shadowing false
 skinparam dpi 180
 skinparam defaultFontName "Arial"
+skinparam defaultFontSize 16
+skinparam nodesep 60
+skinparam ranksep 65
 skinparam classAttributeIconSize 0
 class Book <<Java record>> {
   +id: UUID
@@ -37,12 +40,12 @@ class BookCopy <<Java record>> {
   +barcode: String
   +version: long
 }
-Book *-- "0..*" RelatedItem : authors/categories
-Book "1" ..> "0..*" Edition : bookId
-Edition "1" ..> "0..*" BookCopy : editionId
-Publisher "0..1" ..> "0..*" Edition : publisherId
-RelatedItem ..> Author : có thể biểu diễn
-RelatedItem ..> Category : có thể biểu diễn
+Book *-- "0..*" RelatedItem
+Book "1" -- "0..*" Edition
+Edition "1" -- "0..*" BookCopy
+Publisher "0..1" -- "0..*" Edition
+RelatedItem -- Author : có thể biểu diễn
+RelatedItem -- Category : có thể biểu diễn
 note bottom
   RelatedItem là bản chiếu id/name trong Book; không chứa Author/Category object.
   Quan hệ nhiều-nhiều vật lý nằm ở book_authors và book_categories.

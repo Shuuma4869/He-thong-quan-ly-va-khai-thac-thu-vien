@@ -13,6 +13,7 @@ from PIL import Image
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.section import WD_SECTION_START
+from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -44,6 +45,37 @@ for name, size, bold in [('Normal', 13, False), ('Title', 22, True), ('Heading 1
     style.paragraph_format.space_after = Pt(3 if name == 'Normal' else 8)
     if name == 'Normal': style.paragraph_format.line_spacing = 1.3
     else: style.paragraph_format.keep_with_next = True
+
+doc.styles['Caption'].font.name = 'Times New Roman'
+doc.styles['Caption'].font.size = Pt(10.5)
+doc.styles['Caption'].font.color.rgb = RGBColor(45, 45, 45)
+doc.styles['Normal'].paragraph_format.widow_control = True
+for name in ('TOC 1', 'TOC 2'):
+    style = doc.styles.add_style(name, 1) if name not in doc.styles else doc.styles[name]
+    style.font.name = 'Times New Roman'
+    style.font.size = Pt(11.5)
+    style.paragraph_format.line_spacing = 1.05
+    style.paragraph_format.space_after = Pt(2)
+
+def page_orientation(landscape=False):
+    section = doc.add_section(WD_SECTION_START.NEW_PAGE)
+    section.orientation = WD_ORIENT.LANDSCAPE if landscape else WD_ORIENT.PORTRAIT
+    section.page_width = Cm(29.7 if landscape else 21)
+    section.page_height = Cm(21 if landscape else 29.7)
+    section.top_margin = Cm(1.4 if landscape else 2)
+    section.bottom_margin = Cm(1.4 if landscape else 2)
+    section.left_margin = Cm(1.6 if landscape else 2.6)
+    section.right_margin = Cm(1.6 if landscape else 2)
+    # The section-break paragraph must not spill alone after a full table.
+    boundary = doc.paragraphs[-1]
+    boundary.paragraph_format.space_before = Pt(0)
+    boundary.paragraph_format.space_after = Pt(0)
+    boundary.paragraph_format.line_spacing = Pt(1)
+    boundary.paragraph_format.keep_with_next = False
+    boundary.add_run().font.size = Pt(1)
+    # Section changes must continue page numbering after the cover.
+    for element in section._sectPr.findall(qn('w:pgNumType')):
+        section._sectPr.remove(element)
 
 def add_rich(paragraph, text: str):
     chunks = re.split(r'(\[[^]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`)', text)
@@ -78,6 +110,13 @@ def table_from_lines(rows: list[str]):
     elif data[0][0] == 'Mã / UC / ưu tiên': widths = [2.7, 6.5, 7.0]
     elif len(data[0]) == 3 and data[0][0] == 'Mã': widths = [2.0, 8.0, 6.2]
     elif len(data[0]) == 3: widths = [4.5, 6.5, 5.2]
+    elif len(data[0]) >= 6:
+        widths = {
+            6: [3.0, 3.8, 4.2, 4.5, 3.9, 5.7],
+            7: [1.2, 2.5, 4.0, 4.3, 3.6, 4.9, 4.6],
+            8: [1.2, 3.7, 1.8, 1.8, 4.2, 3.7, 4.2, 4.5],
+        }[len(data[0])]
+        widths = [width * 26.5 / sum(widths) for width in widths]
     else: widths = [16.2 / len(data[0])] * len(data[0])
     for j, width in enumerate(widths): table.columns[j].width = Cm(width)
     for index, values in enumerate(data):
@@ -91,7 +130,8 @@ def table_from_lines(rows: list[str]):
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER if j == 0 and data[0][0] == 'Mã' else WD_ALIGN_PARAGRAPH.LEFT
                 p.paragraph_format.first_line_indent = Pt(0)
                 p.paragraph_format.left_indent = Pt(0)
-                p.paragraph_format.space_after = Pt(3)
+                p.paragraph_format.space_after = Pt(1 if len(data[0]) >= 6 else 3)
+                p.paragraph_format.line_spacing = 1.05
                 p.paragraph_format.keep_with_next = index == 0
                 p.paragraph_format.keep_together = True
                 for run in p.runs: run.font.size = Pt(10.5)
@@ -100,7 +140,8 @@ def table_from_lines(rows: list[str]):
             tcPr.append(shd)
             mar = OxmlElement('w:tcMar')
             for side in ('top', 'left', 'bottom', 'right'):
-                el = OxmlElement('w:' + side); el.set(qn('w:w'), '100'); el.set(qn('w:type'), 'dxa'); mar.append(el)
+                padding = '60' if len(data[0]) >= 6 and side in ('top', 'bottom') else '100'
+                el = OxmlElement('w:' + side); el.set(qn('w:w'), padding); el.set(qn('w:type'), 'dxa'); mar.append(el)
             tcPr.append(mar)
             for run in cells[j].paragraphs[0].runs:
                 if index == 0: run.font.bold = True; run.font.color.rgb = RGBColor(255, 255, 255)
@@ -114,7 +155,11 @@ def table_from_lines(rows: list[str]):
     for side in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
         e = OxmlElement('w:' + side); e.set(qn('w:val'), 'single'); e.set(qn('w:sz'), '4'); e.set(qn('w:color'), 'D9D9D9'); borders.append(e)
     tblPr.append(borders)
-    doc.add_paragraph()
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.line_spacing = Pt(1)
+    p.add_run().font.size = Pt(1)
 
 def cover_line(content, size, bold=False, before=0, after=0):
     p = doc.add_paragraph()
@@ -127,35 +172,51 @@ def cover_line(content, size, bold=False, before=0, after=0):
     run.font.color.rgb = RGBColor(27, 54, 94) if bold else RGBColor(40, 45, 52)
     return p
 
-cover_line('[TÊN TRƯỜNG – CHỜ NHÓM XÁC NHẬN]', 14, True, after=3)
-cover_line('[TÊN KHOA / ĐƠN VỊ – CHỜ NHÓM XÁC NHẬN]', 12, True, after=10)
-cover_line('HỌC PHẦN THIẾT KẾ WEB NÂNG CAO', 12, before=2)
-cover_line('Lớp học phần: Thiết kế Web nâng cao-1-1-26(N01)', 11, after=14)
-logo_note = cover_line('[LOGO TRƯỜNG – BỔ SUNG SAU KHI XÁC NHẬN]', 10, before=12, after=20)
-logo_note.runs[0].font.color.rgb = GRAY
-cover_line('BÁO CÁO TIỂU LUẬN', 21, True, before=15, after=14)
-cover_line('HỆ THỐNG QUẢN LÍ VÀ KHAI THÁC THƯ VIỆN', 18, True, after=8)
-cover_line('LAMS – Library Access and Management System', 12, after=28)
-
+cover_line('ĐẠI HỌC PHENIKAA', 18, True, before=8, after=3)
+cover_line('TRƯỜNG CÔNG NGHỆ THÔNG TIN', 18, True, after=4)
+cover_line('HỌC PHẦN: THIẾT KẾ WEB NÂNG CAO', 14, after=3)
+cover_line('-----***-----', 14, after=10)
+logo = doc.add_paragraph()
+logo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+logo.paragraph_format.space_before = Pt(10)
+logo.paragraph_format.space_after = Pt(16)
+logo.add_run().add_picture(str(SOURCE.parent / 'hinh/logo-phenikaa.png'), width=Cm(8.2))
+band = cover_line('BÁO CÁO BÀI TẬP LỚN', 22, True, after=8)
+shade = OxmlElement('w:shd'); shade.set(qn('w:fill'), '1B365E')
+band._p.get_or_add_pPr().append(shade)
+band.runs[0].font.color.rgb = RGBColor(255,255,255)
+title = cover_line('HỆ THỐNG QUẢN LÍ VÀ KHAI THÁC THƯ VIỆN', 17, True, after=4)
+borders=OxmlElement('w:pBdr'); bottom=OxmlElement('w:bottom')
+bottom.set(qn('w:val'),'single'); bottom.set(qn('w:sz'),'12'); bottom.set(qn('w:color'),'F58220')
+borders.append(bottom); title._p.get_or_add_pPr().append(borders)
+cover_line('LAMS — Báo cáo cá nhân', 12, after=12)
 members = doc.add_table(rows=0, cols=2)
+members.alignment = 1
 members.autofit = False
-members.columns[0].width = Cm(5)
-members.columns[1].width = Cm(10.5)
-for label, value in [
-    ('Giảng viên hướng dẫn', '[Chờ nhóm xác nhận]'),
-    ('Nhóm thực hiện', 'Nguyễn Trọng Tuấn – 23010690; Vũ Đức Toàn – 23010062'),
+members.columns[0].width = Cm(4)
+members.columns[1].width = Cm(9.8)
+for index, (label, value) in enumerate([
+    ('Thông tin', 'Nội dung'),
+    ('Tác giả báo cáo', 'Nguyễn Trọng Tuấn — 23010690'),
     ('Lớp học phần', 'Thiết kế Web nâng cao-1-1-26(N01)'),
-]:
+    ('Giảng viên', ''),
+    ('Nhóm thực hiện', 'Nguyễn Trọng Tuấn — 23010690\nVũ Đức Toàn — 23010062'),
+    ('Phạm vi báo cáo', 'Dự án chung của nhóm và đóng góp cá nhân của Nguyễn Trọng Tuấn'),
+]):
     row = members.add_row()
-    row.cells[0].text = label
-    row.cells[1].text = value
-    for cell in row.cells:
-        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-        for p in cell.paragraphs:
-            p.paragraph_format.space_after = Pt(6)
-            for run in p.runs: run.font.size = Pt(11)
-    for run in row.cells[0].paragraphs[0].runs: run.bold = True
-cover_line('[Địa điểm – chờ nhóm xác nhận], 2026', 11, before=40)
+    for j, value in enumerate((label,value)):
+        cell=row.cells[j]; cell.text=value
+        cell.vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        sh=OxmlElement('w:shd'); sh.set(qn('w:fill'),'214F77' if index==0 else ('DCE6F1' if j==0 else 'F4F7FB'))
+        cell._tc.get_or_add_tcPr().append(sh)
+        for paragraph in cell.paragraphs:
+            paragraph.paragraph_format.space_after=Pt(5)
+            paragraph.paragraph_format.space_before=Pt(3)
+            paragraph.paragraph_format.line_spacing=1.05
+            for run in paragraph.runs:
+                run.font.size=Pt(11); run.bold=(j==0 or index==0)
+                run.font.color.rgb=RGBColor(255,255,255) if index==0 else RGBColor(30,30,30)
+cover_line('Hà Nội, năm học 2026 - 2027', 12, before=24)
 
 section = doc.add_section(WD_SECTION_START.NEW_PAGE)
 section.footer.is_linked_to_previous = False
@@ -195,22 +256,34 @@ def caption(value, kind):
     p = doc.add_paragraph(style='Caption')
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER if kind == 'fig' else WD_ALIGN_PARAGRAPH.LEFT
     p.paragraph_format.keep_with_next = kind == 'tab'
-    p.add_run(value)
-    add_bookmark(p, f'{kind}-{re.search(r"\d+", value).group()}')
+    match = re.match(r'(Hình|Bảng) (\d+)(.*)', value)
+    p.add_run(match.group(1) + ' ')
+    add_field(p, f'SEQ {"Figure" if kind == "fig" else "Table"} \\* ARABIC', match.group(2))
+    add_rich(p, match.group(3))
+    add_bookmark(p, f'{"fig" if kind == "fig" else "tbl"}-{match.group(2)}')
 
 def list_items(items, kind):
     for title in items:
         number = re.search(r'\d+', title).group()
         p = doc.add_paragraph(style='Normal')
-        p.add_run(title + '  ')
-        add_field(p, f'PAGEREF {kind}-{number} \\h')
+        p.paragraph_format.line_spacing = 1.05
+        p.paragraph_format.space_after = Pt(5)
+        add_rich(p, title + '  ')
+        for run in p.runs: run.font.size = Pt(11)
+        add_field(p, f'PAGEREF {"fig" if kind == "fig" else "tbl"}-{number} \\h')
 
 table_rows = []
 in_use_case_appendix = False
+wide_table = False
 def flush_table():
-    global table_rows
-    if table_rows: table_from_lines(table_rows); table_rows = []
-for line in lines:
+    global table_rows, wide_table
+    if table_rows:
+        table_from_lines(table_rows)
+        table_rows = []
+        if wide_table:
+            page_orientation(False)
+            wide_table = False
+for line_index, line in enumerate(lines):
     stripped = line.strip()
     if stripped.startswith('|'): table_rows.append(stripped); continue
     flush_table()
@@ -222,6 +295,8 @@ for line in lines:
         list_items(figure_titles, 'fig'); continue
     if stripped == '<!--LISTTAB-->':
         list_items(table_titles, 'tab'); continue
+    if stripped == '<!--FIGUREPAGE-->':
+        doc.add_page_break(); continue
     if stripped.startswith('!['):
         match = re.match(r'!\[([^]]+)\]\(([^)]+)\)', stripped)
         if match:
@@ -229,8 +304,9 @@ for line in lines:
             if not path.is_file(): raise FileNotFoundError(path)
             with Image.open(path) as img: width, height = img.size
             diagram = path.name in {'use-cases.png', 'use-cases-staff.png', 'class-diagram.png', 'class-catalog.png', 'class-inventory.png',
-                                   'erd-core.png', 'erd-insight.png', 'erd-identity.png', 'erd-inventory.png'}
-            max_height = 10.5 if path.name == 'use-cases.png' else (15.5 if diagram else 12)
+                                   'erd-core.png', 'erd-insight.png', 'erd-identity.png', 'erd-inventory.png',
+                                   'hold-sequence.png', 'inventory-flow.png'}
+            max_height = 10.5 if path.name == 'use-cases.png' else (19 if diagram else 14)
             picture_width = min(16.2, max_height * width / height)
             p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.keep_with_next = True
@@ -238,14 +314,28 @@ for line in lines:
             caption(match.group(1), 'fig')
         continue
     if re.match(r'Bảng \d+\. ', stripped):
+        upcoming = next((s.strip() for s in lines[line_index+1:] if s.strip()), '')
+        if upcoming.startswith('|') and len(upcoming.strip('|').split('|')) >= 6:
+            page_orientation(True)
+            wide_table = True
         caption(stripped, 'tab'); continue
     if stripped.startswith('<!--'):
         continue
     if stripped.startswith('# '):
-        doc.add_paragraph(stripped[2:], 'Heading 1')
+        p = doc.add_paragraph(stripped[2:], 'Heading 1')
+        if stripped[2:] in {'Mục lục', 'Danh mục hình', 'Danh mục bảng', 'Từ viết tắt'} or stripped.startswith('# Chương 1.'):
+            p.paragraph_format.page_break_before = True
+        if not stripped.startswith(('# Chương', '# Tài liệu tham khảo', '# Phụ lục')):
+            p.style = 'Title' if stripped.startswith('# Báo cáo') else 'Subtitle'
+            for run in p.runs:
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(16)
+                run.bold = True
     elif stripped.startswith('## '):
         if stripped.startswith('## Phụ lục E.'): in_use_case_appendix = True
         doc.add_paragraph(stripped[3:], 'Heading 2')
+    elif stripped.startswith('### '):
+        doc.add_paragraph(stripped[4:], 'Heading 3')
     else:
         p = doc.add_paragraph(style='Normal')
         add_rich(p, stripped)
@@ -256,6 +346,7 @@ for line in lines:
                 if run.font.name != 'Consolas': run.font.size = Pt(12)
 flush_table()
 doc.core_properties.title = 'Báo cáo bài tập lớn Hệ thống quản lí và khai thác thư viện LAMS'
-doc.core_properties.subject = 'Bản làm việc; bằng chứng kiểm thử được đối chiếu theo SHA trong báo cáo'
+doc.core_properties.subject = 'Báo cáo cá nhân của Nguyễn Trọng Tuấn về dự án LAMS'
+doc.core_properties.author = 'Nguyễn Trọng Tuấn'
 doc.save(OUT)
 print(OUT)

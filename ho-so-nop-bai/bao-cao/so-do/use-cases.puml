@@ -3,6 +3,9 @@ left to right direction
 skinparam shadowing false
 skinparam dpi 180
 skinparam defaultFontName "Arial"
+skinparam defaultFontSize 16
+skinparam nodesep 20
+skinparam ranksep 25
 skinparam packageStyle rectangle
 skinparam actorStyle stickman
 actor "Khách" as Guest

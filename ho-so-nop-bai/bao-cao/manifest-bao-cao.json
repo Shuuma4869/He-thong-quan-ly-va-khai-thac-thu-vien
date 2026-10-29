@@ -1,0 +1,468 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "author": {
+    "name": "Nguyễn Trọng Tuấn",
+    "student_id": "23010690"
+  },
+  "status": "NEEDS_USER_INPUT",
+  "pending": [
+    "Tên giảng viên được để trống theo yêu cầu tác giả; cần điền trước khi nộp."
+  ],
+  "repository": "https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien",
+  "branch": "Tuan/core-platform",
+  "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+  "report_commit_lookup": "git log -1 -- ho-so-nop-bai/bao-cao/manifest-bao-cao.json",
+  "baseline_ci": {
+    "run_id": 40880637621,
+    "url": "https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40880637621",
+    "conclusion": "success",
+    "jobs": {
+      "core": 123470898246,
+      "node-apps": 123470897902,
+      "api-contracts": 123470898086,
+      "web-e2e": 123470898330,
+      "desktop-windows": 123470897674
+    },
+    "counts": {
+      "core": 317,
+      "insight_unit_http": 121,
+      "insight_integration": 17,
+      "frontend": 193,
+      "web_e2e": 22
+    },
+    "environment": "GitHub Actions Ubuntu for services and Web; Windows for Tauri build.",
+    "limitation": "Windows build success is not installer install/uninstall or WebView2 runtime verification."
+  },
+  "structure": {
+    "pdf_pages_including_cover": 65,
+    "chapters": 10,
+    "user_stories": 29,
+    "detailed_use_cases": 10,
+    "figures": 25,
+    "numbered_tables": 19,
+    "references": 21,
+    "appendices": 5
+  },
+  "artifacts": [
+    {
+      "path": "ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.md",
+      "sha256": "2edc66d924383011ea4127b77b41d518240f651470336e958bea5d19a6ba2ea9",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 111432
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.docx",
+      "sha256": "059cb46d8528a28341038ae44068d51b334f967d3f0fb2eabdfaffe7398b44d7",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 5481490
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.pdf",
+      "sha256": "1a0f5e34b5bca0b3802d4df01d1324257a19088637d7bbdf58dc43f71e4ac998",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 3256826
+    }
+  ],
+  "figures": [
+    {
+      "number": 1,
+      "caption": "Bối cảnh vận hành của LAMS",
+      "path": "ho-so-nop-bai/bao-cao/hinh/system-context.png",
+      "sha256": "2732dc2e28bfe31b6a85465c14b58afc07d3d7d84c017a0dec6ff6fb4ab98fdf",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 67435,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "scripts/report_figures.py"
+    },
+    {
+      "number": 2,
+      "caption": "Use case của khách và người đọc",
+      "path": "ho-so-nop-bai/bao-cao/hinh/use-cases.png",
+      "sha256": "fce44228d6aceb1fd167d480595c1341b9112beefd7243f0bd4d0342fb13e962",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 31364,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/use-cases.puml"
+    },
+    {
+      "number": 3,
+      "caption": "Cấu trúc lớp và quan hệ miền chính",
+      "path": "ho-so-nop-bai/bao-cao/hinh/class-diagram.png",
+      "sha256": "1904a5d117e04b27eeab443e2437612602cca5471f634dc53e3cf7f7cf9a0fa4",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 152473,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/class-diagram.puml"
+    },
+    {
+      "number": 4,
+      "caption": "ERD rút gọn của Core theo migration",
+      "path": "ho-so-nop-bai/bao-cao/hinh/erd-core.png",
+      "sha256": "29bc916726a55f9ea4f0ec2bb86fe4ed09bee4807742782668797647a818952d",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 136046,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/erd-core.puml"
+    },
+    {
+      "number": 5,
+      "caption": "ERD Insight và ranh giới tham chiếu",
+      "path": "ho-so-nop-bai/bao-cao/hinh/erd-insight.png",
+      "sha256": "ef654228c310f41050e75c253818bb819aa731365e5618f1b0cdc48efcb393a2",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 86180,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/erd-insight.puml"
+    },
+    {
+      "number": 6,
+      "caption": "Sơ đồ component và quyền sở hữu dữ liệu",
+      "path": "ho-so-nop-bai/bao-cao/hinh/components.png",
+      "sha256": "de389d607c18b9dea6a6fd089d6a00c665e0ceecd87bfb25a0fc29a8f251d3d2",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 64948,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "scripts/report_figures.py"
+    },
+    {
+      "number": 7,
+      "caption": "Sequence tạo và phân bổ yêu cầu giữ chỗ",
+      "path": "ho-so-nop-bai/bao-cao/hinh/hold-sequence.png",
+      "sha256": "fddd61038f9729969b0a565eda68f496ed1e6f98d8662062a36a47fcb2afc20e",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 134996,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/hold-sequence.puml"
+    },
+    {
+      "number": 8,
+      "caption": "Sơ đồ triển khai local và desktop Windows",
+      "path": "ho-so-nop-bai/bao-cao/hinh/deployment.png",
+      "sha256": "fac1ed262984be3f21f0210192154598dc0e8ec8c7cb9e9ba18f1fa08d9f25aa",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 73069,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "scripts/report_figures.py"
+    },
+    {
+      "number": 9,
+      "caption": "Trang cài đặt giao diện ở 1440 px",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/pr31/appearance-1440.png",
+      "sha256": "fe7c3f1a00fdd9354e679a2a3dee22d4d7245aab4efbed6b7ebac65ff2db88ad",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 297387,
+      "kind": "web-local-settings",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/pr31/README.md",
+      "limitation": "Historical screenshot; source and local state described by its README."
+    },
+    {
+      "number": 10,
+      "caption": "Wireframe workspace người đọc và nhân viên",
+      "path": "ho-so-nop-bai/bao-cao/hinh/wireframe.png",
+      "sha256": "6d303909039cb9475b0e7b5d51f9f3ad13c7d0f376f97d2daff5888055339092",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 52962,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "scripts/report_figures.py"
+    },
+    {
+      "number": 11,
+      "caption": "Chi tiết sách có bìa đã duyệt ở 1440 px",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/book-approved-viewport-1440.png",
+      "sha256": "1449a5bfe9b0064d5ca852f3bf36fd6b2d3ab495474e5975d09ad19a80fd06bd",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 615048,
+      "kind": "web-local",
+      "ui_commit": "23b90ba",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/README.md",
+      "limitation": "Historical evidence; not runtime verification of baseline d0ba015."
+    },
+    {
+      "number": 12,
+      "caption": "Chi tiết sách dùng bìa chữ ở 390 px",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/book-fallback-viewport-390.png",
+      "sha256": "7e625c6248326a9c2c4c6357aab5586989ca36111f4ba37397a191465ad50c3a",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 170820,
+      "kind": "web-local",
+      "ui_commit": "23b90ba",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/README.md",
+      "limitation": "Historical evidence; not runtime verification of baseline d0ba015."
+    },
+    {
+      "number": 13,
+      "caption": "Người đọc xem mượn và giữ chỗ",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/d0ba015/reader-circulation-1440.png",
+      "sha256": "d497a0fa8bd87d2d08a56b3e767bf8ddf9f6ffe5ee58ee5e340db7789b73cf27",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 480532,
+      "kind": "web-e2e",
+      "commit": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/d0ba015/manifest.json"
+    },
+    {
+      "number": 14,
+      "caption": "Nhân viên thao tác quầy lưu thông trong EXE",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/staff-circulation-1440.png",
+      "sha256": "b30e85cf1c0c82d9ef0953da7fd6417f7e8889870fa2f6f00b515c8432c092e2",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 273480,
+      "kind": "exe-webview2-e2e",
+      "ui_commit": "23b90ba",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/README.md",
+      "limitation": "Historical evidence; not runtime verification of baseline d0ba015."
+    },
+    {
+      "number": 15,
+      "caption": "Phiên kiểm kê có scan và snapshot trong EXE",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/inventory-1440.png",
+      "sha256": "f8536f2ca9b02c614370a4198b2e07038098fa2083035b6245931e3845843362",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 248589,
+      "kind": "exe-webview2-e2e",
+      "ui_commit": "23b90ba",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/README.md",
+      "limitation": "Historical evidence; not runtime verification of baseline d0ba015."
+    },
+    {
+      "number": 16,
+      "caption": "Luồng API tới JDBC hoặc Prisma và database",
+      "path": "ho-so-nop-bai/bao-cao/hinh/database-flow.png",
+      "sha256": "29d7ef1f7d38780c80a10e13ab85713a07a05d302fd4a96603a857458e45fc52",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 65538,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "scripts/report_figures.py"
+    },
+    {
+      "number": 17,
+      "caption": "Quy trình chụp và xử lý bất thường kiểm kê",
+      "path": "ho-so-nop-bai/bao-cao/hinh/inventory-flow.png",
+      "sha256": "55fe3a709bae5e198726f416e119571a72edd5a65cfb5a71d051b8d0ddbadf95",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 101139,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/inventory-flow.puml"
+    },
+    {
+      "number": 18,
+      "caption": "Báo cáo lưu thông có dữ liệu trong EXE E2E",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/circulation-report-1440.png",
+      "sha256": "84b40445bdda4821475a48e35b23e7331b1ffa7c689ac21ac534e6d64fe8274c",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 226604,
+      "kind": "exe-webview2-e2e",
+      "ui_commit": "23b90ba",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/README.md",
+      "limitation": "Historical evidence; not runtime verification of baseline d0ba015."
+    },
+    {
+      "number": 19,
+      "caption": "Dashboard quản trị viên trong Web E2E tại main d0ba015",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/d0ba015/glass-ADMIN.png",
+      "sha256": "eacdbd54fbe6e960581f6327484f498ccdffbf766955e3c7145cc7f376a000af",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 513350,
+      "kind": "web-e2e",
+      "commit": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/d0ba015/manifest.json"
+    },
+    {
+      "number": 20,
+      "caption": "Use case của thủ thư và quản trị viên",
+      "path": "ho-so-nop-bai/bao-cao/hinh/use-cases-staff.png",
+      "sha256": "733be723f13350cbc30429c83a419c7148d5faaf7e89a39334b011f876ab3bdb",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 55304,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/use-cases-staff.puml"
+    },
+    {
+      "number": 21,
+      "caption": "Các Java record miền Catalog và bản chiếu tác giả thể loại",
+      "path": "ho-so-nop-bai/bao-cao/hinh/class-catalog.png",
+      "sha256": "3791ab51507db846118c65fb494daa5f0d439626b8c090edc46400a1b0cc46d2",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 98082,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/class-catalog.puml"
+    },
+    {
+      "number": 22,
+      "caption": "Các record và bằng chứng trong xử lý kiểm kê",
+      "path": "ho-so-nop-bai/bao-cao/hinh/class-inventory.png",
+      "sha256": "621d02362c6848b099a9c04d8038fb80c73e4147c214270615b45d4338dda0c4",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 109654,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/class-inventory.puml"
+    },
+    {
+      "number": 23,
+      "caption": "ERD danh tính vai trò và thiết lập giao diện Core",
+      "path": "ho-so-nop-bai/bao-cao/hinh/erd-identity.png",
+      "sha256": "d3cd76e3edafd54b93c3a9b082ce0e484f0542d0b97b3bc29260b3b5f8c23045",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 51774,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/erd-identity.puml"
+    },
+    {
+      "number": 24,
+      "caption": "ERD phiên kiểm kê và bằng chứng Core",
+      "path": "ho-so-nop-bai/bao-cao/hinh/erd-inventory.png",
+      "sha256": "4df7ad624cd2646d84bfb97222499a48e6ddd73fbeea748083a596b98c4709c1",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 106931,
+      "kind": "diagram",
+      "code_baseline": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+      "source": "ho-so-nop-bai/bao-cao/so-do/erd-inventory.puml"
+    },
+    {
+      "number": 25,
+      "caption": "Đề xuất đã duyệt nội bộ và bằng chứng nguồn trong EXE",
+      "path": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/acquisition-approved-1440.png",
+      "sha256": "225f21afb5050fa6baa2b7c2a4e6f239292cc4837b9eeee933876b52ecc7465f",
+      "hash_mode": "raw bytes",
+      "hashed_bytes": 885104,
+      "kind": "exe-webview2-e2e",
+      "ui_commit": "23b90ba",
+      "provenance": "ho-so-nop-bai/minh-chung-giao-dien/23b90ba/desktop-e2e/README.md",
+      "limitation": "Historical evidence; not runtime verification of baseline d0ba015."
+    }
+  ],
+  "sources": [
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/class-catalog.puml",
+      "sha256": "d4bc80aaa32f65f58bff69fcbd16b1a9508c34249e7f45b888c8c7edb1a97281",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1218
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/class-diagram.puml",
+      "sha256": "d958f2c61d03e7afc304a823d926b6d14f447e94ec81b792f4a38ac8780120be",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1844
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/class-inventory.puml",
+      "sha256": "fcd460ca36a6d7584e323275c213e0619b9338b86759c7ac67316e97c9244814",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1309
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/erd-core.puml",
+      "sha256": "f42fe4b2a683ffb3977b654e5b31d85ecba5a1f71f754709cad83327e5b0e406",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1846
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/erd-identity.puml",
+      "sha256": "3b4e2a99c7a218b56feebff7f2925630fc9f5bb7d2c25d66a562eccf86bafc6e",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 921
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/erd-insight.puml",
+      "sha256": "20d10e5a78576f26f7fae9433f02394fd682f37faf07f5e74dcebdca169a800e",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1208
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/erd-inventory.puml",
+      "sha256": "886839f98050272f33c0a58f4625fa4bce32e9dde593e67f14b3518fc4f176b9",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1549
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/hold-sequence.puml",
+      "sha256": "50db467afd89252cee8b4d65bbbed67c5dd9df61e159ac19871e86c6c3e434cf",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1553
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/inventory-flow.puml",
+      "sha256": "ccf5552c10c1764e2f820cdaaf9cd8b9a1b3c27253cf422467f501ba57a8e6fb",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1166
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/use-cases-staff.puml",
+      "sha256": "a68365dd5be32bece9994e45ec5bafb27aa7e148d8db2788d8a02cb333c236be",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 985
+    },
+    {
+      "path": "ho-so-nop-bai/bao-cao/so-do/use-cases.puml",
+      "sha256": "9de3059557f4128ede43e736d895a5bfc29754a9891aa6307b935069f413e0e1",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 767
+    },
+    {
+      "path": "scripts/build-lams-report.py",
+      "sha256": "b9623f0f58a4543b4981a48e0d555954df6a1d5eb59fe43452c78380a736c91c",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 17404
+    },
+    {
+      "path": "scripts/report_figures.py",
+      "sha256": "2dff140f90fa255f9fe8ce5ccbc6ad858d5bbed0aa8455f83276f3856eeecdd1",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 5643
+    },
+    {
+      "path": "scripts/render-report-uml.ps1",
+      "sha256": "9a18137ce1423cffccfa1b8a0b3f2e87220c988012b763d0424021415fd71fcd",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 2482
+    },
+    {
+      "path": "scripts/export-lams-report.ps1",
+      "sha256": "1d3951f2b9bcd1386298417c597c927e3e320ebb1e1dfd64a68a0b5acc19bd2c",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 1679
+    },
+    {
+      "path": "scripts/verify-lams-report.py",
+      "sha256": "43fdd7286832429fee2d5ec04fa0fcc80b89670a68de24dbd567a999c6a17582",
+      "hash_mode": "UTF-8 with LF line endings",
+      "hashed_bytes": 3482
+    }
+  ],
+  "verification": {
+    "structure": "PASS: scripts/verify-lams-report.py",
+    "renderer": "Microsoft Word COM field/TOC update and PDF export; Poppler rasterization at 100 dpi.",
+    "fallback_reason": "The packaged DOCX renderer could not find soffice.exe; Word was used for export.",
+    "visual_review": "All 65 pages inspected at rendered resolution; final changed pages re-inspected, unchanged pages compared pixel-for-pixel.",
+    "contact_sheets": 6,
+    "checks": [
+      "Vietnamese glyphs",
+      "table boundaries and repeated headers",
+      "figure-caption placement",
+      "diagram labels",
+      "TOC/page numbers",
+      "no blank pages",
+      "no Word reference errors"
+    ],
+    "limitations": [
+      "No claim of production security certification or complete WCAG audit.",
+      "Teacher name is intentionally blank."
+    ]
+  }
+}

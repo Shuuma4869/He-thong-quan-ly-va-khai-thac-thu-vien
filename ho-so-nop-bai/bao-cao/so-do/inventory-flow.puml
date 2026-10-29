@@ -1,0 +1,35 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 17
+start
+:Mở phiên theo Branch/Shelf;
+:Lưu snapshot bất biến;
+while (Còn mã cần quét?) is (Có)
+  :Nhận barcode và clientScanId;
+  if (Cùng clientScanId đã có?) then (Có)
+    :Đối chiếu nội dung; trả receipt cũ\nhoặc từ chối nếu nội dung khác;
+  else (Không)
+    :Kiểm quyền, phiên OPEN và phạm vi;\nlưu scan, tăng version;
+  endif
+endwhile (Không)
+:Nhân viên yêu cầu chốt phiên;
+if (Version/phiên còn hợp lệ?) then (Không)
+  :Trả 409; đọc lại trước khi chốt;
+  stop
+else (Có)
+  :Đối chiếu snapshot, scan và Copy hiện tại;\nghi sáu loại anomaly, chuyển FINALIZED;
+endif
+:Nhân viên xem bằng chứng và chọn resolution;
+if (Chỉ ghi nhận đã xem?) then (Có)
+  :Ghi REVIEWED và lý do;
+else (Đề nghị đổi kệ)
+  if (Quyền, vị trí, trạng thái và version hợp lệ?) then (Có)
+    :Đổi kệ + audit + resolution\ntrong cùng transaction;
+  else (Không)
+    :Từ chối/409; không ghi đè Copy;
+  endif
+endif
+stop
+@enduml

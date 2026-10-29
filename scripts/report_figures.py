@@ -76,17 +76,7 @@ arrow(d,(1100,315),(1370,315),"JDBC")
 arrow(d,(1100,750),(1370,750),"Prisma")
 save(im,"components.png")
 
-im,d=canvas("Sequence giữ chỗ", "Chuyển READY trong giao dịch; ETA chỉ là dự đoán")
-actors=[("Reader",85),("Core API",530),("Hold service",975),("PostgreSQL",1420)]
-for label,x in actors:
-    box(d,(x,190,x+370,300),label)
-    d.line((x+185,300,x+185,930),fill=LINE,width=3)
-for y,a,b,label in [
-    (370,270,715,"POST hold"),(475,715,1160,"validate + lock Book"),
-    (580,1160,1605,"insert Hold + outbox"),(685,1605,1160,"commit"),
-    (790,1160,715,"READY khi có Copy"),(895,715,270,"trạng thái / deadline")]:
-    arrow(d,(a,y),(b,y),label)
-save(im,"hold-sequence.png")
+# Sequence giữ chỗ được dựng từ PlantUML để thể hiện transaction/nhánh retry.
 
 im,d=canvas("Triển khai local Windows", "Desktop là cửa sổ riêng nhưng vẫn cần API chạy")
 box(d,(80,290,500,700),"Máy Windows",["Tauri / WebView2", "Core :8080", "Insight :3000", "Web dev :5173"])
@@ -115,15 +105,7 @@ arrow(d,(1210,320),(1440,320),"JDBC")
 arrow(d,(1210,765),(1440,765),"Prisma")
 save(im,"database-flow.png")
 
-im,d=canvas("Thuật toán kiểm kê", "Snapshot bất biến, idempotency và xác nhận của nhân viên")
-steps=["Mở phiên + chụp snapshot Copy", "Nhận barcode + clientScanId",
-       "Retry cùng ID → biên nhận cũ", "Chốt và đối chiếu sáu loại bất thường",
-       "Nhân viên xác nhận + kiểm version", "Ghi kết quả hoặc trả 409"]
-for i,s in enumerate(steps):
-    y=180+i*145
-    box(d,(230,y,1690,y+105),f"{i+1}. {s}",size=29)
-    if i<5: arrow(d,(960,y+105),(960,y+145))
-save(im,"inventory-flow.png")
+# Flowchart kiểm kê có nhánh điều kiện, dựng từ nguồn PlantUML.
 
 # Print-friendly excerpts. The unmodified E2E screenshots remain in
 # minh-chung-giao-dien/pr31 with commit/run provenance.

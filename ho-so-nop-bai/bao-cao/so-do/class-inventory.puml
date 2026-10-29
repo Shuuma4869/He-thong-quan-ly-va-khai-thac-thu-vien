@@ -2,6 +2,9 @@
 skinparam shadowing false
 skinparam dpi 180
 skinparam defaultFontName "Arial"
+skinparam defaultFontSize 16
+skinparam nodesep 70
+skinparam ranksep 75
 skinparam classAttributeIconSize 0
 class InventorySession <<Java record>> {
   +id: UUID
@@ -38,11 +41,11 @@ class InventoryResolution <<Java record>> {
   +reason: String
   +copyVersionSeen: Long
 }
-InventorySession "1" ..> "0..*" Anomaly : sessionId
+InventorySession "1" -- "0..*" Anomaly : sessionId
 Anomaly o-- "0..1" Copy : snapshot
 Anomaly o-- "0..1" Copy : current
 Anomaly o-- "0..1" Scan : scan
-Anomaly "1" ..> "0..1" InventoryResolution : anomalyId
+Anomaly "1" -- "0..1" InventoryResolution : anomalyId
 note bottom
   Copy/Scan ở đây là record bằng chứng, không phải bảng book_copies.
   Resolution là lệnh có xác nhận và kiểm version, không tự sửa từ anomaly.

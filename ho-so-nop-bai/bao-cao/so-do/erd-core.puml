@@ -2,6 +2,9 @@
 skinparam shadowing false
 skinparam dpi 180
 skinparam defaultFontName "Arial"
+skinparam defaultFontSize 16
+skinparam nodesep 20
+skinparam ranksep 25
 hide circle
 entity "books" as books {
   * id : UUID <<PK>>
