@@ -1,0 +1,39 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 180
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 17
+skinparam sequenceMessageAlign center
+hide footbox
+actor Reader
+participant "Core API" as API
+participant "HoldService /\nCommandExecutor" as Hold
+participant "HoldAllocationService" as Allocate
+database "PostgreSQL Core" as DB
+Reader -> API : POST /api/v1/holds\nrequestId, Book, Branch, Edition/anyEdition
+API -> Hold : create(actor, request)
+group Transaction Core
+  Hold -> DB : Khóa request; kiểm quyền hiện hành\nvà receipt theo actor/requestId
+  alt Retry cùng request và cùng nội dung
+    DB --> Hold : Biên nhận đã lưu
+  else Yêu cầu mới hợp lệ
+    Hold -> DB : Khóa reader và Book;\nkiểm Book/Edition/Branch, quota
+    Hold -> DB : INSERT Hold WAITING;\nHOLD_CREATED + outbox
+    Hold -> Allocate : allocateBook(bookId, actor, now)
+    Allocate -> DB : Đọc hàng chờ theo queuedAt, id;\nkiểm tư cách và Copy tương thích
+    alt Có Copy và yêu cầu đủ điều kiện
+      Allocate -> DB : Claim Copy; READY + hạn nhận;\nCopy ON_HOLD, audit/outbox
+    else Chưa có Copy phù hợp
+      Allocate --> Hold : Giữ WAITING
+    end
+    Hold -> DB : Lưu receipt
+  end
+  Hold -> DB : COMMIT (rollback nếu lỗi)
+end
+Hold --> API : Kết quả đã commit
+API --> Reader : WAITING hoặc READY / lỗi hợp đồng
+note over API, DB
+  Kafka không nằm trong transaction này.
+  Publisher gửi outbox sau commit; lỗi broker không đảo Loan/Hold.
+end note
+@enduml

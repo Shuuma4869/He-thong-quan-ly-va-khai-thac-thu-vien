@@ -1,0 +1,42 @@
+{
+  "commit": "d0ba0158bd875a3da6ef812045d5d268e7dbf1a1",
+  "run": 40880637621,
+  "artifactId": 12900651047,
+  "artifact": "web-e2e-results",
+  "job": "web-e2e",
+  "result": "22 passed",
+  "environment": "GitHub Actions Ubuntu, Chromium, PostgreSQL test databases, Core and Insight; not WebView2",
+  "sourcePath": "test-results/",
+  "files": [
+    {
+      "file": "reader-circulation-1440.png",
+      "sha256": "d497a0fa8bd87d2d08a56b3e767bf8ddf9f6ffe5ee58ee5e340db7789b73cf27",
+      "edited": false
+    },
+    {
+      "file": "glass-ADMIN.png",
+      "sha256": "eacdbd54fbe6e960581f6327484f498ccdffbf766955e3c7145cc7f376a000af",
+      "edited": false
+    },
+    {
+      "file": "book-detail-glass.png",
+      "sha256": "f3b3319630bfa29dbf7ac6166e1540231284f34302c711cc323bda9002e638c2",
+      "edited": false
+    },
+    {
+      "file": "hero-tac-gia.png",
+      "sha256": "e87d27a01b906a077557f9d00d38ae3d497c5d9ee64c3281987de298ac90883b",
+      "edited": false
+    },
+    {
+      "file": "hero-the-loai.png",
+      "sha256": "e471a193e6aa7996b8609a1a03b9d01fa149daa5054915ac624eb4fb71bf8c35",
+      "edited": false
+    },
+    {
+      "file": "admin-cancelled-session.png",
+      "sha256": "dd6f0585a8b29d68c2353fa9f725f4de1468378315d874f8ee9702340bdd7f34",
+      "edited": false
+    }
+  ]
+}
