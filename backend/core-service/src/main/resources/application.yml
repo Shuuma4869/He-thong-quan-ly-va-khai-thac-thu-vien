@@ -35,6 +35,9 @@ spring:
       mail.smtp.starttls.enable: ${LAMS_SMTP_STARTTLS:false}
 
 management:
+  health:
+    mail:
+      enabled: ${LAMS_EMAIL_ENABLED:false}
   endpoints:
     web:
       exposure:
