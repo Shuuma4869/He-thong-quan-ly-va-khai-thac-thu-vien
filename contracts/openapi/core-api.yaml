@@ -1956,6 +1956,55 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /reports/hold-activity:
+    get:
+      operationId: getHoldActivityReport
+      tags: [Circulation]
+      summary: Thống kê sự kiện vòng đời giữ chỗ
+      description: >-
+        Chỉ LIBRARIAN/ADMIN. from/to bắt buộc, ISO 8601 có offset, khoảng [from,to), from < to,
+        độ chính xác tối đa microsecond và cửa sổ không quá 6 tháng lịch tính từ from theo UTC.
+        Nhóm theo ngày Asia/Ho_Chi_Minh, chi nhánh và eventType; bookId chỉ là filter, không thuộc khóa nhóm.
+        eventCount đếm dòng lịch sử hold_changes, không phải số Hold duy nhất. Các event ghi bởi luồng hiện tại:
+        HOLD_CREATED, HOLD_READY, HOLD_FULFILLED, HOLD_CANCELLED, HOLD_EXPIRED.
+        Một câu SQL aggregate bảo đảm snapshot statement nhất quán; tối đa 10000 hàng, vượt trả 422.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: bookId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Thống kê sự kiện giữ chỗ, content: { application/json: { schema: { $ref: '#/components/schemas/HoldActivityReport' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /reports/hold-activity.csv:
+    get:
+      operationId: exportHoldActivityReport
+      tags: [Circulation]
+      summary: Xuất CSV thống kê sự kiện giữ chỗ
+      description: >-
+        Cùng quyền, filter, grouping và giới hạn như GET /reports/hold-activity. UTF-8 BOM, CRLF,
+        quote/escape trường CSV và trung hòa prefix công thức sau whitespace/control. File rỗng chỉ có header;
+        vượt giới hạn trả Problem 422, không trả file bị cắt.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: bookId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: CSV đính kèm, Cache-Control no-store
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /loans/{loanId}/return:
     parameters:
       - { name: loanId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -3051,6 +3100,28 @@ components:
                   date: { type: string, format: date }
                   branchId: { type: string, format: uuid }
                   branchName: { type: string }
+    HoldActivityReport:
+      type: object
+      required: [from, to, timezone, branchId, bookId, totalEvents, items]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        timezone: { type: string, enum: [Asia/Ho_Chi_Minh] }
+        branchId: { type: [string, 'null'], format: uuid }
+        bookId: { type: [string, 'null'], format: uuid }
+        totalEvents: { type: integer, format: int64, minimum: 0, description: Tổng eventCount; đây không phải số Hold duy nhất. }
+        items:
+          type: array
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/HoldActivityReportRow' }
+    HoldActivityReportRow:
+      type: object
+      required: [date, branchId, eventType, eventCount]
+      properties:
+        date: { type: string, format: date }
+        branchId: { type: string, format: uuid }
+        eventType: { type: string, minLength: 1, maxLength: 40 }
+        eventCount: { type: integer, format: int64, minimum: 1, description: Số dòng hold_changes thuộc nhóm. }
     LoanCommandResult:
       type: object
       required: [loanId, copyId, readerId, editionId, branchId, borrowedAt, dueAt, returnedAt, renewalCount, version, copyVersion]
