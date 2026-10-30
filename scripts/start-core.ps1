@@ -1,3 +1,5 @@
+param([switch]$UseExistingBuild)
+
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
@@ -13,7 +15,9 @@ $env:CORS_ALLOWED_ORIGINS = (@($origins + 'http://tauri.localhost') | Select-Obj
 $coreRoot = Join-Path $projectRoot 'backend\core-service'
 Push-Location $coreRoot
 try {
-    Invoke-LamsNative '.\mvnw.cmd' @('-DskipTests', 'package') 'Không thể package Core Service'
+    if (-not $UseExistingBuild) {
+        Invoke-LamsNative '.\mvnw.cmd' @('-DskipTests', 'package') 'Không thể package Core Service'
+    }
     $jar = Get-ChildItem -LiteralPath (Join-Path $coreRoot 'target') -Filter 'core-service-*.jar' |
         Where-Object { $_.Name -notlike '*.original' } |
         Select-Object -First 1
