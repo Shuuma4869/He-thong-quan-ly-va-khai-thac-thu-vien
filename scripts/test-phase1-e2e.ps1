@@ -1,8 +1,12 @@
-param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable, [string]$MavenExecutable, [string]$Grep, [switch]$UseExistingPrismaClient)
+param([int]$CorePort = 18081, [int]$FrontendPort = 15174, [int]$InsightPort = 13001, [switch]$Desktop, [int]$DebugPort = 19222, [string]$DesktopExecutable, [string]$MavenExecutable, [string]$CoreServiceDirectory, [string]$Grep, [switch]$UseExistingPrismaClient, [switch]$EnableKafkaNotifications)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 $projectRoot = Get-LamsRoot
-$maven = if ($MavenExecutable) { (Resolve-Path -LiteralPath $MavenExecutable).Path } else { '.\mvnw.cmd' }
+$coreService = if ($CoreServiceDirectory) { (Resolve-Path -LiteralPath $CoreServiceDirectory).Path }
+    else { Join-Path $projectRoot 'backend\core-service' }
+if (-not (Test-Path -LiteralPath (Join-Path $coreService 'pom.xml'))) { throw 'Thư mục Core Service không hợp lệ.' }
+$maven = if ($MavenExecutable) { (Resolve-Path -LiteralPath $MavenExecutable).Path }
+    else { Join-Path $coreService 'mvnw.cmd' }
 if ($Desktop) { $CorePort = 8080; $InsightPort = 3000 }
 $ports = if ($Desktop) { @($CorePort, $InsightPort, $DebugPort) } else { @($CorePort, $InsightPort, $FrontendPort) }
 foreach ($port in $ports) {
@@ -12,10 +16,12 @@ if ((& node --version) -notmatch '^v22\.') { throw 'Cần Node 22 theo version p
 Invoke-LamsNative 'docker' @('info', '--format', '{{.OSType}}') 'Docker chưa sẵn sàng'
 $runId = [guid]::NewGuid().ToString('N')
 $container = "lams-phase1-e2e-$runId"
+$kafkaContainer = "lams-phase1-e2e-kafka-$runId"
 $logs = Join-Path $projectRoot "backend\core-service\target\e2e-runtime-$runId"
 New-Item -ItemType Directory -Path $logs -Force | Out-Null
 $launched = @()
 $created = $false
+$kafkaCreated = $false
 $savedEnvironment = @{}
 $settings = @{
     POSTGRES_PASSWORD = [guid]::NewGuid().ToString('N')
@@ -49,6 +55,17 @@ if ($Desktop) {
     # Test-only debug port and isolated WebView profile; never applied by the app launcher.
     $settings.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$DebugPort"
     $settings.WEBVIEW2_USER_DATA_FOLDER = (Join-Path $logs 'webview-profile')
+}
+if ($EnableKafkaNotifications) {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $listener.Start()
+    $kafkaPort = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
+    $listener.Stop()
+    $settings.KAFKA_BOOTSTRAP_SERVERS = "localhost:$kafkaPort"
+    $settings.OUTBOX_ENABLED = 'true'
+    $settings.OUTBOX_JOB_ENABLED = 'true'
+    $settings.NOTIFICATIONS_ENABLED = 'true'
+    $settings.NOTIFICATIONS_GROUP_ID = "lams-phase1-e2e-$runId"
 }
 function Wait-TestHttp([string]$Url) {
     $deadline = [DateTime]::UtcNow.AddSeconds(90)
@@ -85,14 +102,40 @@ try {
         Start-Sleep -Seconds 1
     }
     if (-not $ready) { throw 'Database kiểm thử chưa sẵn sàng.' }
+    if ($EnableKafkaNotifications) {
+        Invoke-LamsNative 'docker' @('run', '-d', '--name', $kafkaContainer, '--label', "lams.phase1-e2e=$runId",
+            '-p', "127.0.0.1:${kafkaPort}:19092", '-e', 'KAFKA_NODE_ID=1', '-e', 'KAFKA_PROCESS_ROLES=broker,controller',
+            '-e', 'KAFKA_LISTENERS=INTERNAL://:29092,EXTERNAL://:19092,CONTROLLER://:29093',
+            '-e', "KAFKA_ADVERTISED_LISTENERS=INTERNAL://localhost:29092,EXTERNAL://localhost:$kafkaPort",
+            '-e', 'KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL', '-e', 'KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER',
+            '-e', 'KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT',
+            '-e', 'KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:29093', '-e', 'KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1',
+            '-e', 'KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1', '-e', 'KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1',
+            '-e', 'KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0', '-e', 'CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk',
+            'apache/kafka:4.1.2') 'Không tạo được Kafka kiểm thử'
+        $kafkaCreated = $true
+        $brokerReady = $false
+        for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            & docker exec $kafkaContainer /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:29092 --list 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { $brokerReady = $true; break }
+            Start-Sleep -Seconds 1
+        }
+        if (-not $brokerReady) { throw 'Kafka kiểm thử chưa sẵn sàng.' }
+        foreach ($topic in @('lams.circulation.events.v1', 'lams.hold.events.v1')) {
+            Invoke-LamsNative 'docker' @('exec', $kafkaContainer, '/opt/kafka/bin/kafka-topics.sh',
+                '--bootstrap-server', 'localhost:29092', '--create', '--if-not-exists', '--topic', $topic,
+                '--partitions', '1', '--replication-factor', '1') "Không tạo được topic $topic"
+        }
+    }
     Invoke-LamsNative 'docker' @('exec', $container, 'createdb', '-U', 'lams', 'lams_insight_test') 'Không tạo được database Insight tạm'
     $env:INSIGHT_DATABASE_URL = "postgresql://lams:$($env:POSTGRES_PASSWORD)@127.0.0.1:$dbPort/lams_insight_test"
-    Push-Location (Join-Path $projectRoot 'backend\core-service')
+    Push-Location $coreService
     try { Invoke-LamsNative $maven @('-DskipTests', 'package') 'Core package thất bại' }
     finally { Pop-Location }
     $launchCore = @{
-        FilePath = (Get-Command java.exe).Source; ArgumentList = @('-jar', 'target/core-service-0.1.0-SNAPSHOT.jar')
-        WorkingDirectory = (Join-Path $projectRoot 'backend\core-service')
+        FilePath = (Get-Command java.exe).Source
+        ArgumentList = @('-jar', (Join-Path $coreService 'target\core-service-0.1.0-SNAPSHOT.jar'))
+        WorkingDirectory = $coreService
         WindowStyle = 'Hidden'; PassThru = $true
         RedirectStandardOutput = (Join-Path $logs 'core.out.log')
         RedirectStandardError = (Join-Path $logs 'core.err.log')
@@ -125,6 +168,17 @@ try {
     $insight = Start-Process @launchInsight
     $launched += @{ pid = $insight.Id; ticks = $insight.StartTime.ToUniversalTime().Ticks }
     Wait-TestHttp "http://127.0.0.1:$InsightPort/api/v1/health"
+    if ($EnableKafkaNotifications) {
+        $consumerReady = $false
+        for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:$InsightPort/api/v1/health" -TimeoutSec 2
+                if ($health.notifications.enabled -and $health.notifications.connected) { $consumerReady = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 1
+        }
+        if (-not $consumerReady) { throw 'Insight notifications consumer chưa kết nối Kafka.' }
+    }
     $insight.Refresh()
     if ($insight.HasExited) { throw "Insight E2E đã thoát; xem $logs\insight.err.log. Cổng có thể đã bị tiến trình khác chiếm." }
     if ($Desktop) {
@@ -172,6 +226,13 @@ try {
             # Only this run's disposable database; never remove a project volume.
             & docker rm -f -v $container | Out-Null
             if ($LASTEXITCODE -ne 0) { Write-Warning "Cần dọn container kiểm thử $container." }
+        }
+        if ($kafkaCreated) {
+            $label = & docker inspect --format '{{ index .Config.Labels "lams.phase1-e2e" }}' $kafkaContainer
+            if ($LASTEXITCODE -eq 0 -and $label -eq $runId) {
+                & docker rm -f -v $kafkaContainer | Out-Null
+                if ($LASTEXITCODE -ne 0) { Write-Warning "Cần dọn Kafka kiểm thử $kafkaContainer." }
+            }
         }
     }
     foreach ($key in $savedEnvironment.Keys) {

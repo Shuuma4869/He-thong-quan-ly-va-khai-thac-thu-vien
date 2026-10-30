@@ -6,7 +6,7 @@
 | Slice | controller/security/repository riêng lớp | MockMvc, Spring slice |
 | Integration | migration, constraint, query, Redis/Kafka adapter | Testcontainers PostgreSQL/Redis/Kafka |
 | Contract | OpenAPI/AsyncAPI compatibility, provider/consumer | validator + schema test trong CI |
-| E2E | hành trình thật qua UI/API | Playwright cho Auth, Profile, Member, Catalog/Inventory và metadata |
+| E2E | hành trình thật qua UI/API | Playwright cho Auth, Reader/Circulation/Hold, Catalog/Inventory, Admin, Insight notification và metadata |
 | Concurrency | double borrow, hold assignment, expiry race | test đa thread + DB thật |
 | Load | P95/error/resource theo workload | chỉ sau khi có traffic model |
 
@@ -14,11 +14,11 @@ Hiện có test health cho Spring/Nest, kiểm thử Auth/Member/Catalog với P
 
 `scripts/check-quality.ps1` chạy test/build Core, Prisma validate/test/build Insight, typecheck/lint/Vitest/build frontend và kiểm tra cấu hình Compose. CI chạy các bước tương ứng và build Docker image. `scripts/validate-openapi.py` kiểm định đầy đủ hai tài liệu Core/Insight bằng OpenAPI 3.1 validator trong job `api-contracts`; cài dependency từ `contracts/openapi/requirements.txt` vào môi trường Python riêng. Các contract test Java kiểm thêm đường dẫn, quyền và cấu trúc DTO, không thay thế validator này.
 
-E2E chạy riêng bằng `scripts/test-phase1-e2e.ps1`, yêu cầu Docker Linux, Java 21, Node 22/npm 10, dependencies đã cài và Chromium của Playwright (`cd frontend; npx playwright install chromium`). Script tạo PostgreSQL tạm với mật khẩu ngẫu nhiên và cổng loopback riêng, chạy Core/Insight/Vite, rồi dọn đúng container/process do lượt test tạo. Không sử dụng database hoặc volume của môi trường phát triển. Tài khoản staff chỉ được cấp role trong fixture của database tạm; ứng dụng không có API nâng quyền công khai.
+E2E chạy riêng bằng `scripts/test-phase1-e2e.ps1`, yêu cầu Docker Linux, Java 21, Node 22/npm 10, dependencies đã cài và Chromium của Playwright (`cd frontend; npx playwright install chromium`). Script tạo PostgreSQL tạm với mật khẩu ngẫu nhiên và cổng loopback riêng, chạy Core/Insight/Vite, rồi dọn đúng container/process do lượt test tạo. Không sử dụng database hoặc volume của môi trường phát triển. Tài khoản staff chỉ được cấp role trong fixture của database tạm; ứng dụng không có API nâng quyền công khai. Thêm `-EnableKafkaNotifications` để script tạo broker Kafka cô lập, bật Core Outbox/Insight consumer và xác minh thông báo HOLD_READY thật qua API/UI; mặc định Kafka notifications vẫn tắt. Có thể dùng `-CoreServiceDirectory` để build Core từ một bản sao cô lập nếu JAR đang được tiến trình khác sử dụng, và `-Grep` để chạy một kịch bản Playwright cụ thể.
 
 Vitest dùng test doubles ở lớp mạng để kiểm tra các trạng thái lỗi và race condition. E2E dùng API thật, không intercept dữ liệu Member. Kết quả mỗi lượt chạy xem trực tiếp ở terminal/CI; không lưu thêm file báo cáo audit hoặc nội dung PR trong source.
 
-Circulation/Hold: `LoanCommandIntegrationTest` kiểm mượn/trả, quota và retry; `HoldIntegrationTest` kiểm FIFO theo chi nhánh/ấn bản, nhận đúng người, hủy/hết hạn/phân bổ, gia hạn và tranh chấp transaction trên PostgreSQL. Clock điều khiển kiểm đúng deadline mà không chờ thật. Test chờ khóa dùng `pg_blocking_pids`; không dùng thời gian chạy làm bằng chứng khóa. `LoanSchemaTest` kiểm nâng V17 → V18 giữ Loan/receipt cũ và các constraint mới.
+Circulation/Hold: `LoanCommandIntegrationTest` kiểm mượn/trả, quota và retry; `HoldIntegrationTest` kiểm FIFO theo chi nhánh/ấn bản, nhận đúng người, hủy/hết hạn/phân bổ, gia hạn và tranh chấp transaction trên PostgreSQL. Playwright Phase 4 Reader đi qua đăng ký khi còn Copy, giao sách tạo Loan, gia hạn, đăng ký WAITING, nhận trả tại quầy, phân bổ người chờ kế tiếp và (khi bật Kafka) nhận thông báo Insight tương ứng. Clock điều khiển kiểm đúng deadline mà không chờ thật. Test chờ khóa dùng `pg_blocking_pids`; không dùng thời gian chạy làm bằng chứng khóa. `LoanSchemaTest` kiểm nâng V17 → V18 giữ Loan/receipt cũ và các constraint mới.
 
 Maven test tắt timer tự chạy của Hold để Spring context cache không tiếp tục dùng Testcontainer đã đóng. Nghiệp vụ job vẫn được gọi trực tiếp trên PostgreSQL trong `HoldIntegrationTest`; `HoldExpiryJobTest` kiểm con trỏ 100 Book/lượt và retry khi một Book lỗi. Ứng dụng bình thường mặc định bật timer. Bộ test backend này không thay cho E2E giao diện lưu thông hoặc Kafka delivery.
 

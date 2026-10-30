@@ -94,7 +94,8 @@ export function AdminAccountsPage() {
                 {detail.data.roles.includes(role) ? 'Thu hồi' : 'Cấp'} {roleLabels[role]}</button>)}
             </div>
             <h3 className="mt-6">Lịch sử thay đổi</h3>
-            {audit.isPending ? <p>Đang tải lịch sử…</p> : audit.isError ? <p role="alert">Chưa tải được lịch sử.</p>
+            {audit.isPending ? <p role="status">Đang tải lịch sử…</p> : audit.isError
+              ? <MemberRequestError error={audit.error} retry={() => void audit.refetch()}/>
               : audit.data.length === 0 ? <p>Chưa có thay đổi quản trị.</p>
                 : <ul className="mt-3 grid gap-2">{audit.data.map(entry => <li key={entry.id}>
                   {new Date(entry.createdAt).toLocaleString('vi-VN')} · {entry.action} · {entry.beforeValue} → {entry.afterValue}
