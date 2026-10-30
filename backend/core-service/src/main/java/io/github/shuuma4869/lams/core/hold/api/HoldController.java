@@ -35,6 +35,23 @@ public class HoldController {
                                      @RequestParam(required=false) String page,@RequestParam(required=false) String size) {
         return queries.queue(actor(token),bookId,branchId,page,size);
     }
+    @GetMapping("/staff/holds") @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public HoldQueries.StaffHoldPage staffList(JwtAuthenticationToken token,
+            @RequestParam(required=false) String status,@RequestParam(required=false) String reader,
+            @RequestParam(required=false) String book,@RequestParam(required=false) UUID branchId,
+            @RequestParam(required=false) String from,@RequestParam(required=false) String to,
+            @RequestParam(required=false) String expiresBefore,@RequestParam(required=false) String page,
+            @RequestParam(required=false) String size) {
+        return queries.staffList(actor(token),status,reader,book,branchId,from,to,expiresBefore,page,size);
+    }
+    @GetMapping("/staff/holds/summary") @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public HoldQueries.StaffHoldSummary staffSummary(JwtAuthenticationToken token) {
+        return queries.staffSummary(actor(token));
+    }
+    @GetMapping("/staff/holds/{id}") @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public HoldQueries.StaffHoldDetail staffGet(JwtAuthenticationToken token,@PathVariable UUID id) {
+        return queries.staffGet(actor(token),id);
+    }
     @GetMapping("/holds/pickup-branches")
     public HoldQueries.PickupBranches branches(JwtAuthenticationToken token,@RequestParam(required=false) String page,@RequestParam(required=false) String size) {
         return queries.branches(actor(token),page,size);

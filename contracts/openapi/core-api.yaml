@@ -103,6 +103,34 @@ paths:
               schema: { type: array, items: { $ref: '#/components/schemas/PublicBook' } }
         '422': { description: Số lượng hoặc mã sách không hợp lệ }
         '429': { description: Vượt giới hạn tra cứu }
+  /public/catalog/books/availability:
+    get:
+      operationId: getPublicCatalogAvailability
+      tags: [PublicCatalog]
+      summary: Đọc tồn kho gộp cho các thẻ sách trong danh mục
+      description: >-
+        Nhận 1–20 bookId khác nhau và trả đúng thứ tự đầu vào trong một snapshot REPEATABLE READ.
+        Số bản loại trừ WITHDRAWN và chỉ tính Copy tại chi nhánh đang hoạt động; mỗi chi nhánh được
+        tổng hợp một lần, không lặp theo ấn bản. Chi tiết từng ấn bản và số Hold tương thích xem tại
+        /public/catalog/books/{id}/availability. Cùng giới hạn 300 request/phút/IP với Catalog.
+      security: []
+      parameters:
+        - in: query
+          name: bookId
+          required: true
+          description: Lặp tham số để lấy nhiều tác phẩm.
+          schema: { type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: { type: string, format: uuid } }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Tồn kho theo tác phẩm và chi nhánh
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CatalogBookAvailability' } }
+        '404': { description: Không tìm thấy đủ tác phẩm }
+        '422': { description: Số lượng hoặc mã tác phẩm không hợp lệ }
+        '429': { description: Vượt giới hạn tra cứu }
   /public/catalog/books/{id}:
     get:
       operationId: getPublicBook
@@ -144,12 +172,20 @@ paths:
     get:
       operationId: getPublicBookAvailability
       tags: [PublicCatalog]
-      summary: Tình trạng bản sách theo ấn bản và chi nhánh đang hoạt động
+      summary: Tình trạng bản sách theo tác phẩm, ấn bản và chi nhánh đang hoạt động
       description: >-
         Dữ liệu Copy, Loan và Hold được đọc trong một transaction REPEATABLE READ.
-        availableCopies chỉ đếm Copy AVAILABLE không có Loan đang mở hoặc Hold READY.
-        waitingHolds là số yêu cầu WAITING liên quan; số liệu có thể đổi sau checkedAt.
-        Không trả mã vạch, vị trí kệ hoặc dữ liệu người mượn. Tối đa 200 cặp ấn bản/chi nhánh.
+        copies.totalCopies chỉ gồm tài sản ở chi nhánh đang hoạt động, loại trừ WITHDRAWN;
+        copies.withdrawnCopies được báo riêng và không cộng vào tổng đang quản lý.
+        availableCopies loại trừ Copy có Loan chưa trả hoặc Hold READY; borrowedCopies là số Copy
+        có trạng thái ON_LOAN hoặc Loan chưa trả; reservedCopies là số Copy ON_HOLD hoặc được Hold
+        READY phân bổ; unavailableCopies gồm IN_PROCESS, DAMAGED và LOST. readyHolds đếm yêu cầu,
+        còn reservedCopies đếm Copy, nên đây là hai đại lượng khác nhau.
+        waitingHolds tại cấp tác phẩm và branches[].waitingHolds là số Hold WAITING duy nhất.
+        editions[].compatibleWaitingHolds và editions[].branches[].compatibleWaitingHolds gồm cả
+        Hold cụ thể cho ấn bản và anyEdition tương thích; một Hold anyEdition có thể hiện trong
+        nhiều ấn bản nhưng chỉ đếm một lần ở cấp tác phẩm/chi nhánh. Không cộng số tương thích giữa
+        các ấn bản. Không trả mã vạch, vị trí kệ hoặc dữ liệu người mượn. Tối đa 200 cặp ấn bản/chi nhánh.
       security: []
       parameters:
         - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
@@ -2069,6 +2105,7 @@ paths:
         Chi nhánh phải ACTIVE. Hạn mức phát triển 10 yêu cầu đang mở/người, có thể cấu hình.
         Có Copy phù hợp thì phân bổ FIFO theo queuedAt/id trong cùng transaction, response có thể READY.
         Quota mượn đầy vẫn được xếp WAITING; chỉ phân bổ khi đủ điều kiện mượn. Retry cùng key/nội dung trả snapshot gốc 201.
+        Từ chối 409 nếu chi nhánh/ấn bản không có Copy vật lý đang quản lý (WITHDRAWN không được tính là bản đang quản lý).
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -2258,6 +2295,56 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /staff/holds:
+    get:
+      operationId: listStaffHolds
+      tags: [Hold]
+      summary: Nhân viên tìm kiếm và lọc toàn bộ yêu cầu giữ chỗ
+      description: >-
+        Chỉ LIBRARIAN/ADMIN ACTIVE. Count và danh sách cùng snapshot REPEATABLE READ; sort queuedAt giảm dần rồi id.
+        Tìm người đọc theo memberCode/tên, không trả email. Mô hình hiện tại chỉ phân quyền staff theo role và chưa có scope chi nhánh.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [WAITING, READY, FULFILLED, CANCELLED, EXPIRED] } }
+        - { name: reader, in: query, schema: { type: string, maxLength: 150 } }
+        - { name: book, in: query, schema: { type: string, maxLength: 200 } }
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time }, description: Bao gồm thời điểm tạo từ mốc này. }
+        - { name: to, in: query, schema: { type: string, format: date-time }, description: Không bao gồm thời điểm tạo từ mốc này. }
+        - { name: expiresBefore, in: query, schema: { type: string, format: date-time }, description: Chỉ Hold READY chưa quá hạn và đến hạn không muộn hơn mốc này. }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 2147483647, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Trang yêu cầu và dữ liệu quầy cần thiết, content: { application/json: { schema: { $ref: '#/components/schemas/StaffHoldPage' } } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /staff/holds/summary:
+    get:
+      operationId: getStaffHoldSummary
+      tags: [Hold]
+      summary: Số liệu hàng chờ giữ chỗ dành cho work desk
+      description: Chỉ LIBRARIAN/ADMIN ACTIVE; fulfilledLast30Days là số Hold FULFILLED trong 30 ngày gần nhất; needsAttention là READY đã quá hạn nhưng chưa được job đóng.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Số liệu snapshot, content: { application/json: { schema: { $ref: '#/components/schemas/StaffHoldSummary' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /staff/holds/{id}:
+    get:
+      operationId: getStaffHold
+      tags: [Hold]
+      summary: Chi tiết giữ chỗ và lịch sử xử lý tại quầy
+      description: Chỉ LIBRARIAN/ADMIN ACTIVE; trả mã thành viên và tên, không trả email/số điện thoại; history giữ actorId phục vụ đối chiếu audit.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Chi tiết và lịch sử Hold, content: { application/json: { schema: { $ref: '#/components/schemas/StaffHoldDetail' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
   /health:
     get:
       operationId: getCoreHealth
@@ -2815,25 +2902,75 @@ components:
         reason: { type: string }
         targetVersion: { type: integer, minimum: 1 }
         createdAt: { type: string, format: date-time }
-    PublicBookAvailability:
+    CatalogBookAvailability:
       type: object
-      required: [bookId, checkedAt, branches]
+      required: [bookId, copies, branches]
       properties:
         bookId: { type: string, format: uuid }
-        checkedAt: { type: string, format: date-time }
+        copies: { $ref: '#/components/schemas/AvailabilityCopyCounts' }
         branches:
           type: array
           items:
             type: object
-            required: [editionId, branchId, branchCode, branchName, catalogedCopies, availableCopies, waitingHolds]
+            required: [branchId, branchCode, branchName, copies]
             properties:
-              editionId: { type: string, format: uuid }
               branchId: { type: string, format: uuid }
               branchCode: { type: string }
               branchName: { type: string }
-              catalogedCopies: { type: integer, minimum: 0 }
-              availableCopies: { type: integer, minimum: 0 }
-              waitingHolds: { type: integer, minimum: 0 }
+              copies: { $ref: '#/components/schemas/AvailabilityCopyCounts' }
+    PublicBookAvailability:
+      type: object
+      required: [bookId, checkedAt, copies, waitingHolds, readyHolds, branches, editions]
+      properties:
+        bookId: { type: string, format: uuid }
+        checkedAt: { type: string, format: date-time }
+        copies: { $ref: '#/components/schemas/AvailabilityCopyCounts' }
+        waitingHolds: { type: integer, minimum: 0, description: Số Hold WAITING duy nhất của tác phẩm trên mọi chi nhánh. }
+        readyHolds: { type: integer, minimum: 0, description: Số Hold READY duy nhất đã phân bổ của tác phẩm. }
+        branches:
+          type: array
+          items:
+            type: object
+            required: [branchId, branchCode, branchName, copies, waitingHolds, readyHolds]
+            properties:
+              branchId: { type: string, format: uuid }
+              branchCode: { type: string }
+              branchName: { type: string }
+              copies: { $ref: '#/components/schemas/AvailabilityCopyCounts' }
+              waitingHolds: { type: integer, minimum: 0, description: Số Hold WAITING duy nhất tại chi nhánh, không lặp theo ấn bản. }
+              readyHolds: { type: integer, minimum: 0 }
+        editions:
+          type: array
+          items:
+            type: object
+            required: [editionId, copies, compatibleWaitingHolds, readyHolds, branches]
+            properties:
+              editionId: { type: string, format: uuid }
+              copies: { $ref: '#/components/schemas/AvailabilityCopyCounts' }
+              compatibleWaitingHolds: { type: integer, minimum: 0, description: Số Hold phù hợp với ấn bản; không cộng giữa các ấn bản vì anyEdition có thể phù hợp nhiều ấn bản. }
+              readyHolds: { type: integer, minimum: 0 }
+              branches:
+                type: array
+                items:
+                  type: object
+                  required: [branchId, branchCode, branchName, copies, compatibleWaitingHolds, readyHolds]
+                  properties:
+                    branchId: { type: string, format: uuid }
+                    branchCode: { type: string }
+                    branchName: { type: string }
+                    copies: { $ref: '#/components/schemas/AvailabilityCopyCounts' }
+                    compatibleWaitingHolds: { type: integer, minimum: 0, description: Hold WAITING cụ thể cho ấn bản hoặc anyEdition tại chi nhánh này. }
+                    readyHolds: { type: integer, minimum: 0 }
+    AvailabilityCopyCounts:
+      type: object
+      required: [totalCopies, availableCopies, borrowedCopies, reservedCopies, unavailableCopies, withdrawnCopies]
+      properties:
+        totalCopies: { type: integer, minimum: 0, description: Tài sản đang quản lý tại chi nhánh hoạt động; loại trừ WITHDRAWN. }
+        availableCopies: { type: integer, minimum: 0 }
+        borrowedCopies: { type: integer, minimum: 0 }
+        reservedCopies: { type: integer, minimum: 0, description: Số Copy vật lý ON_HOLD hoặc được Hold READY phân bổ. }
+        unavailableCopies: { type: integer, minimum: 0, description: Copy IN_PROCESS, DAMAGED hoặc LOST. }
+        withdrawnCopies: { type: integer, minimum: 0, description: Báo riêng, không cộng vào totalCopies. }
     PublicBook:
       type: object
       required: [id, title, description, authors, categories, cover, averageRating, ratingCount, catalogSource]
@@ -3053,6 +3190,51 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/HoldView' } }
         page: { $ref: '#/components/schemas/PageMetadata' }
+    StaffHoldSummary:
+      type: object
+      required: [waiting, ready, expiringSoon, fulfilledLast30Days, needsAttention]
+      properties:
+        waiting: { type: integer, minimum: 0 }
+        ready: { type: integer, minimum: 0 }
+        expiringSoon: { type: integer, minimum: 0, description: READY hết hạn trong 24 giờ tới. }
+        fulfilledLast30Days: { type: integer, minimum: 0 }
+        needsAttention: { type: integer, minimum: 0, description: READY đã quá hạn nhưng worker chưa đóng. }
+    StaffHoldItem:
+      type: object
+      required: [hold, queuePosition, readerMemberCode, readerName, bookTitle, isbn13, branchCode, branchName, copyBarcode, copyStatus, copyVersion]
+      properties:
+        hold: { $ref: '#/components/schemas/Hold' }
+        queuePosition: { type: [integer, 'null'], minimum: 1 }
+        readerMemberCode: { type: string }
+        readerName: { type: string }
+        bookTitle: { type: string }
+        isbn13: { type: [string, 'null'] }
+        branchCode: { type: string }
+        branchName: { type: string }
+        copyBarcode: { type: [string, 'null'] }
+        copyStatus: { type: [string, 'null'], enum: [IN_PROCESS, AVAILABLE, ON_LOAN, ON_HOLD, LOST, DAMAGED, WITHDRAWN, 'null'] }
+        copyVersion: { type: [integer, 'null'], format: int64, minimum: 0 }
+    StaffHoldPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/StaffHoldItem' } }
+        page: { $ref: '#/components/schemas/PageMetadata' }
+    StaffHoldDetail:
+      type: object
+      required: [item, history]
+      properties:
+        item: { $ref: '#/components/schemas/StaffHoldItem' }
+        history:
+          type: array
+          items:
+            type: object
+            required: [version, eventType, actorId, occurredAt]
+            properties:
+              version: { type: integer, format: int64, minimum: 0 }
+              eventType: { type: string }
+              actorId: { type: [string, 'null'], format: uuid }
+              occurredAt: { type: string, format: date-time }
     LoanHistoryItem:
       allOf:
         - { $ref: '#/components/schemas/LoanCommandResult' }
