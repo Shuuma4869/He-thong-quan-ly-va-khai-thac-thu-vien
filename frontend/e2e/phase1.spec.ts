@@ -118,6 +118,11 @@ test('Tìm kiếm mobile: dialog, bàn phím, focus và 11 cỡ màn hình', asy
       await expect(search).toBeFocused();
       await search.fill(book.title);
       await expect(dialog.getByRole('option').filter({ hasText: book.title })).toBeVisible();
+      for (let step = 0; step < 6; step++) {
+        await page.keyboard.press('Tab');
+        expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+      }
+      await search.focus();
       await search.press('Escape');
       await expect(dialog).not.toBeVisible();
       await expect(trigger).toBeFocused();

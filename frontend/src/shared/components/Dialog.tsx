@@ -23,6 +23,15 @@ export function Dialog({ title, onClose, children, className = '', initialFocus 
     };
   }, [initialFocus]);
   return createPortal(<dialog ref={dialog} className={`app-dialog ${className}`} aria-label={title}
+    onKeyDown={event => {
+      if (event.key !== 'Tab') return;
+      const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex]')]
+        .filter(element => element.tabIndex >= 0 && !element.matches(':disabled') && element.getClientRects().length > 0);
+      const first = controls[0]; const last = controls.at(-1);
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }}
     onCancel={event => { event.preventDefault(); close.current(); }}
     onClick={event => { if (event.target === dialog.current) close.current(); }}>
     <div className="app-dialog-content">
