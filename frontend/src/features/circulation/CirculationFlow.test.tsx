@@ -26,9 +26,21 @@ function result(url: string, init: RequestInit) {
   if (path.endsWith('/auth/refresh')) return Response.json(session);
   if (path.endsWith(`/books/${id}`)) return Response.json(book);
   if (path.endsWith(`/editions/${editionId}`)) return Response.json(edition);
+  if (path.endsWith('/availability')) return Response.json({ bookId: id, checkedAt: time,
+    copies:{totalCopies:2,availableCopies:0,borrowedCopies:1,reservedCopies:1,unavailableCopies:0,withdrawnCopies:0},
+    waitingHolds:1,readyHolds:1,
+    branches:[{branchId,branchCode:'A',branchName:'Chi nhánh A',
+      copies:{totalCopies:2,availableCopies:0,borrowedCopies:1,reservedCopies:1,unavailableCopies:0,withdrawnCopies:0},
+      waitingHolds:1,readyHolds:1}],
+    editions:[{editionId,copies:{totalCopies:2,availableCopies:0,borrowedCopies:1,reservedCopies:1,unavailableCopies:0,withdrawnCopies:0},
+      compatibleWaitingHolds:1,readyHolds:1,
+      branches:[{branchId,branchCode:'A',branchName:'Chi nhánh A',
+        copies:{totalCopies:2,availableCopies:0,borrowedCopies:1,reservedCopies:1,unavailableCopies:0,withdrawnCopies:0},
+        compatibleWaitingHolds:1,readyHolds:1}]}] });
   if (path.endsWith('/holds/pickup-branches')) return Response.json(page([{ id: branchId, code: 'A', name: 'Chi nhánh A' }]));
   if (path.endsWith('/me/loans')) return Response.json({ ...page([loan]), asOf: time });
   if (path.endsWith('/me/holds')) return Response.json(page([{ hold, bookTitle: book.title, branchName: 'Chi nhánh A', queuePosition: hold.status === 'WAITING' ? 1 : null }]));
+  if (path.endsWith(`/holds/${holdId}`)) return Response.json({ hold, bookTitle: book.title, branchName: 'Chi nhánh A', queuePosition: hold.status === 'WAITING' ? 1 : null });
   if (path.endsWith('/renew')) { loan = { ...loan, version: 1, renewalCount: 1, dueAt: '2026-11-14T00:00:00Z' }; return Response.json(loan); }
   if (path.endsWith('/cancel')) { hold = { ...hold, status: 'CANCELLED', version: 1 }; return Response.json(hold); }
   if (path.endsWith('/holds') && init.method === 'POST') return Response.json(hold, { status: 201 });
@@ -58,7 +70,7 @@ it('giữ đúng ấn bản mặc định, chỉ gọi API chi nhánh đọc và
   expect(JSON.parse(commands()[0][1].body)).toMatchObject({ bookId: id, editionId, branchId, anyEdition: false });
   expect(fetchMock.mock.calls.some(([url]) => new URL(url).pathname.endsWith('/branches'))).toBe(false);
   await act(async () => finish(Response.json(hold, { status: 201 })));
-  expect(await screen.findByText(/Đã ghi nhận: Đang chờ/)).toBeInTheDocument();
+  expect(await screen.findByText('Đang chờ')).toBeInTheDocument();
   expect(submit).toBeDisabled();
 });
 
@@ -66,7 +78,7 @@ it('chỉ gửi bất kỳ ấn bản khi bạn đọc chủ động chọn', as
   app(`/giu-cho/${id}/${editionId}`); await chooseBranch();
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: 'Xác nhận giữ chỗ' }));
-  await screen.findByText(/Đã ghi nhận/);
+  await screen.findByText('Đang chờ');
   expect(JSON.parse(commands()[0][1].body)).toMatchObject({ editionId: null, anyEdition: true });
 });
 
@@ -80,7 +92,7 @@ it('mất phản hồi giữ nguyên requestId và khóa sửa phạm vi khi th�
   fireEvent.click(screen.getByRole('button', { name: 'Xác nhận giữ chỗ' }));
   const retry = await screen.findByRole('button', { name: 'Thử lại đúng yêu cầu' });
   expect(screen.getByRole('checkbox')).toBeDisabled();
-  fireEvent.click(retry); await screen.findByText(/Đã ghi nhận/);
+  fireEvent.click(retry);   await screen.findByText('Đang chờ');
   expect(commands()).toHaveLength(2);
   expect(JSON.parse(commands()[0][1].body)).toEqual(JSON.parse(commands()[1][1].body));
 });

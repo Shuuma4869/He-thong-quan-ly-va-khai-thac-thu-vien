@@ -64,13 +64,36 @@ function BookDetail({ id }: { id: string }) {
       <section id="cac-an-ban" className="detail-section" aria-labelledby="editions-heading"><div className="detail-section-heading"><div>
         <p className="eyebrow">Biên mục thư viện</p><h2 id="editions-heading" tabIndex={-1}>Các ấn bản</h2>
         <p>Chọn ấn bản bên dưới để giữ chỗ tại chi nhánh nhận. Khi đến thư viện, thủ thư ghi nhận lượt mượn tại quầy. Bạn có thể theo dõi yêu cầu trong mục Mượn và giữ chỗ.</p></div></div>
-      <div className="my-4" aria-label="Tình trạng bản sách">
+      <section className="availability-panel my-5" aria-labelledby="availability-heading">
+        <div className="detail-section-heading"><div><p className="eyebrow">Tình trạng theo dữ liệu Core</p>
+          <h3 id="availability-heading">Khả dụng tại thư viện</h3></div></div>
         {availability.isPending ? <p role="status">Đang kiểm tra bản sách theo chi nhánh…</p>
           : availability.isError ? <CatalogError error={availability.error} retry={() => void availability.refetch()}/>
-            : <div className="flex flex-wrap items-center gap-3"><p className="text-sm text-muted">Kiểm tra lúc {new Date(availability.data.checkedAt).toLocaleString('vi-VN')}. Tồn kho có thể thay đổi sau mốc này.</p>
-              <button type="button" className="button-secondary" disabled={availability.isFetching}
-                onClick={() => void availability.refetch()}>Tải lại tình trạng</button></div>}
-      </div>
+            : <>
+              <dl className="availability-metrics">
+                <div><dt>Tổng bản đang quản lý</dt><dd>{availability.data.copies.totalCopies}</dd></div>
+                <div><dt>Sẵn sàng</dt><dd>{availability.data.copies.availableCopies}</dd></div>
+                <div><dt>Đang mượn</dt><dd>{availability.data.copies.borrowedCopies}</dd></div>
+                <div><dt>Đã phân bổ giữ chỗ</dt><dd>{availability.data.copies.reservedCopies}</dd></div>
+                <div><dt>Hỏng, mất hoặc xử lý</dt><dd>{availability.data.copies.unavailableCopies}</dd></div>
+                <div><dt>Hold READY</dt><dd>{availability.data.readyHolds}</dd></div>
+                <div><dt>Đang chờ</dt><dd>{availability.data.waitingHolds}</dd></div>
+              </dl>
+              <p className="availability-footnote">Bản thanh lý không nằm trong tổng đang quản lý ({availability.data.copies.withdrawnCopies} bản).
+                Số liệu được chụp lúc {new Date(availability.data.checkedAt).toLocaleString('vi-VN')}; hãy tải lại trước khi quyết định.</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="button" className="button-secondary" disabled={availability.isFetching}
+                  onClick={() => void availability.refetch()}>{availability.isFetching ? 'Đang tải lại…' : 'Tải lại tình trạng'}</button>
+              </div>
+              <div className="availability-branches">
+                {availability.data.branches.map(branch => <article key={branch.branchId} className="availability-branch">
+                  <h4>{branch.branchName} <span>({branch.branchCode})</span></h4>
+                  <p>{branch.copies.availableCopies} sẵn có · {branch.copies.totalCopies} bản đang quản lý · {branch.copies.borrowedCopies} đang mượn
+                    · {branch.copies.reservedCopies} bản được giữ · {branch.waitingHolds} yêu cầu đang chờ</p>
+                </article>)}
+              </div>
+            </>}
+      </section>
       {editions.isPending ? <p role="status">Đang tải ấn bản…</p> : editions.isError ? <CatalogError error={editions.error} retry={() => void editions.refetch()} /> : <>
         {!editions.data.items.length && <p className="editorial-card">{book.data.catalogSource ? 'Thư viện chưa biên mục ấn bản hoặc bản sách vật lý cho tác phẩm tham khảo này.' : 'Tác phẩm chưa có ấn bản ở trang này.'}</p>}
         <div className="edition-grid">{editions.data.items.map(edition => <article key={edition.id} className="editorial-card edition-card">
@@ -78,14 +101,26 @@ function BookDetail({ id }: { id: string }) {
           <h3 className="font-semibold mt-4">{edition.isbn13 ? `ISBN ${edition.isbn13}` : 'Ấn bản không có ISBN'}</h3>
           <dl className="catalog-facts"><dt>Nhà xuất bản</dt><dd>{edition.publisherName ?? 'Chưa có thông tin'}</dd>
             <dt>Năm xuất bản</dt><dd>{edition.publicationYear ?? 'Chưa có thông tin'}</dd><dt>Ngôn ngữ</dt><dd>{edition.language ?? 'Chưa có thông tin'}</dd></dl>
-          {availability.isSuccess && <div className="mt-4 text-sm">
-            {availability.data.branches.filter(branch => branch.editionId === edition.id).length === 0
-              ? <p>Chưa có bản sách vật lý tại chi nhánh đang hoạt động.</p>
-              : <ul className="grid gap-1">{availability.data.branches.filter(branch => branch.editionId === edition.id).map(branch =>
-                <li key={branch.branchId}><strong>{branch.branchName}</strong>: {branch.availableCopies} bản sẵn có
-                  {branch.waitingHolds > 0 ? ` · ${branch.waitingHolds} yêu cầu đang chờ` : ''}</li>)}</ul>}
-          </div>}
-          {user && <Link className="button-secondary mt-4" to={`/giu-cho/${id}/${edition.id}`}>Giữ chỗ ấn bản này <ArrowRight size={16}/></Link>}
+          {availability.isSuccess && (() => {
+            const stock = availability.data.editions.find(item => item.editionId === edition.id);
+            return stock ? <div className="availability-edition mt-4">
+              <p><strong>{stock.copies.availableCopies}</strong> sẵn có trên {stock.copies.totalCopies} bản đang quản lý · {stock.copies.borrowedCopies} đang mượn
+                · {stock.copies.reservedCopies} được giữ · {stock.copies.unavailableCopies} không khả dụng</p>
+              {stock.branches.map(branch => <p key={branch.branchId} className="text-sm">
+                <strong>{branch.branchName}</strong>: {branch.copies.availableCopies} bản sẵn sàng
+                {branch.compatibleWaitingHolds ? ` · ${branch.compatibleWaitingHolds} yêu cầu phù hợp đang chờ` : ''}
+              </p>)}
+            </div> : <p className="availability-edition mt-4">Ấn bản này chưa có bản sách vật lý tại chi nhánh đang hoạt động.</p>;
+          })()}
+          {user && availability.isSuccess && availability.data.editions.some(item =>
+            item.editionId === edition.id && item.copies.totalCopies > 0)
+            && <Link className="button-secondary mt-4" to={`/giu-cho/${id}/${edition.id}`}>
+              {(() => {
+                const stock = availability.data.editions.find(item => item.editionId === edition.id)!;
+                return stock.copies.availableCopies > 0 && stock.compatibleWaitingHolds === 0
+                  ? 'Đăng ký mượn tại quầy' : 'Đặt giữ chỗ';
+              })()} <ArrowRight size={16}/>
+            </Link>}
         </article>)}</div><Pagination page={editions.data.page} onChange={setPage} />
       </>}</section>
       {user && <section className="detail-section detail-reviews"><ReviewSection bookId={id}/></section>}

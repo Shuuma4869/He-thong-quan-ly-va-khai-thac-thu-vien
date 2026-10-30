@@ -85,14 +85,43 @@ export async function getAuthor(id: string, signal?: AbortSignal) { return named
 export async function getEditions(bookId: string, page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(editionSchema), page: pageSchema }).parse(await coreApi.get<unknown>(`/public/catalog/books/${encodeURIComponent(bookId)}/editions?page=${page}&size=20`, true, signal));
 }
+const availabilityCopyCountsSchema = z.object({ totalCopies: z.number().int().nonnegative(),
+  availableCopies: z.number().int().nonnegative(), borrowedCopies: z.number().int().nonnegative(),
+  reservedCopies: z.number().int().nonnegative(), unavailableCopies: z.number().int().nonnegative(),
+  withdrawnCopies: z.number().int().nonnegative() });
+const branchSummarySchema = z.object({ branchId: z.string().uuid(), branchCode: z.string(), branchName: z.string(),
+  copies: availabilityCopyCountsSchema, waitingHolds: z.number().int().nonnegative(),
+  readyHolds: z.number().int().nonnegative() });
+const editionBranchAvailabilitySchema = z.object({ branchId: z.string().uuid(), branchCode: z.string(),
+  branchName: z.string(), copies: availabilityCopyCountsSchema, compatibleWaitingHolds: z.number().int().nonnegative(),
+  readyHolds: z.number().int().nonnegative() });
+const editionAvailabilitySchema = z.object({ editionId: z.string().uuid(), copies: availabilityCopyCountsSchema,
+  compatibleWaitingHolds: z.number().int().nonnegative(), readyHolds: z.number().int().nonnegative(),
+  branches: z.array(editionBranchAvailabilitySchema) });
 const availabilitySchema = z.object({ bookId: z.string().uuid(), checkedAt: z.string().datetime(),
-  branches: z.array(z.object({ editionId: z.string().uuid(), branchId: z.string().uuid(),
-    branchCode: z.string(), branchName: z.string(), catalogedCopies: z.number().int().nonnegative(),
-    availableCopies: z.number().int().nonnegative(), waitingHolds: z.number().int().nonnegative() })) });
+  copies: availabilityCopyCountsSchema, waitingHolds: z.number().int().nonnegative(),
+  readyHolds: z.number().int().nonnegative(), branches: z.array(branchSummarySchema),
+  editions: z.array(editionAvailabilitySchema) });
+const catalogAvailabilitySchema = z.object({ bookId: z.string().uuid(), copies: availabilityCopyCountsSchema,
+  branches: z.array(z.object({ branchId: z.string().uuid(), branchCode: z.string(), branchName: z.string(),
+    copies: availabilityCopyCountsSchema })) });
 export type Availability = z.infer<typeof availabilitySchema>;
+export type CatalogAvailability = z.infer<typeof catalogAvailabilitySchema>;
 export async function getBookAvailability(bookId: string, signal?: AbortSignal) {
   return availabilitySchema.parse(await coreApi.get<unknown>(
     `/public/catalog/books/${encodeURIComponent(bookId)}/availability`, true, signal));
+}
+export async function getCatalogAvailability(bookIds: string[], signal?: AbortSignal) {
+  if (bookIds.length < 1 || bookIds.length > 20 || new Set(bookIds).size !== bookIds.length)
+    throw new Error('Cần từ 1 đến 20 mã tác phẩm khác nhau để tra tồn kho.');
+  const params = new URLSearchParams();
+  for (const id of bookIds) params.append('bookId', z.string().uuid().parse(id));
+  const rows = z.array(catalogAvailabilitySchema).parse(
+    await coreApi.get<unknown>(`/public/catalog/books/availability?${params}`, true, signal));
+  if (rows.length !== bookIds.length || new Set(rows.map(row => row.bookId)).size !== bookIds.length
+      || bookIds.some(id => !rows.some(row => row.bookId === id)))
+    throw new Error('Dữ liệu tồn kho chưa khớp với danh sách tác phẩm. Hãy tải lại.');
+  return rows;
 }
 export function getCatalogPage(resource: 'authors' | 'categories', page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: Named[]; page: Page }>;
 export function getCatalogPage(resource: Resource, page: number, signal?: AbortSignal, bookId?: string, query?: string, size?: number): Promise<{ items: CatalogRecord[]; page: Page }>;

@@ -14,8 +14,17 @@ export const holdSchema = z.object({ id: uuid, readerId: uuid, bookId: uuid, edi
   expiresAt: time.nullable(), closedAt: time.nullable(), copyId: uuid.nullable(), loanId: uuid.nullable(), version,
   policyVersion: z.string(), pickupSeconds: z.number().int().positive() });
 const holdView = z.object({ hold: holdSchema, queuePosition: z.number().int().positive().nullable(), bookTitle: z.string(), branchName: z.string() });
+const staffHoldItemSchema = z.object({ hold: holdSchema, queuePosition: z.number().int().positive().nullable(),
+  readerMemberCode: z.string(), readerName: z.string(), bookTitle: z.string(), isbn13: z.string().nullable(),
+  branchCode: z.string(), branchName: z.string(), copyBarcode: z.string().nullable(), copyStatus: z.string().nullable(),
+  copyVersion: version.nullable() });
+const staffHoldSummarySchema = z.object({ waiting: z.number().int().nonnegative(), ready: z.number().int().nonnegative(),
+  expiringSoon: z.number().int().nonnegative(), fulfilledLast30Days: z.number().int().nonnegative(),
+  needsAttention: z.number().int().nonnegative() });
 export type Loan = z.infer<typeof loanSchema>;
 export type HoldView = z.infer<typeof holdView>;
+export type StaffHoldItem = z.infer<typeof staffHoldItemSchema>;
+export type StaffHoldSummary = z.infer<typeof staffHoldSummarySchema>;
 export type LoanQuery = { page: number; status?: string; from?: string; to?: string; readerId?: string; branchId?: string; copyId?: string };
 export function loanParams(query: LoanQuery) {
   const params = new URLSearchParams({ page: String(query.page), size: '10', sort: 'borrowedAt,desc' });
@@ -29,6 +38,28 @@ export async function getLoans(query: LoanQuery, staff = false, signal?: AbortSi
 export async function getMyHolds(page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(holdView), page: pageSchema })
     .parse(await coreApi.get(`/me/holds?page=${page}&size=10`, true, signal));
+}
+export async function getHold(id: string, signal?: AbortSignal) {
+  return holdView.parse(await coreApi.get(`/holds/${uuid.parse(id)}`, true, signal));
+}
+export type StaffHoldQuery = { page: number; status?: string; reader?: string; book?: string; branchId?: string;
+  from?: string; to?: string; expiresBefore?: string };
+export async function getStaffHoldSummary(signal?: AbortSignal) {
+  return staffHoldSummarySchema.parse(await coreApi.get('/staff/holds/summary', true, signal));
+}
+export async function getStaffHolds(query: StaffHoldQuery, signal?: AbortSignal) {
+  const params = new URLSearchParams({ page: String(query.page), size: '20' });
+  for (const key of ['status', 'reader', 'book', 'branchId', 'from', 'to', 'expiresBefore'] as const) {
+    const value = query[key];
+    if (value) params.set(key, value);
+  }
+  return z.object({ items: z.array(staffHoldItemSchema), page: pageSchema })
+    .parse(await coreApi.get(`/staff/holds?${params}`, true, signal));
+}
+export async function getStaffHold(id: string, signal?: AbortSignal) {
+  return z.object({ item: staffHoldItemSchema,
+    history: z.array(z.object({ version, eventType: z.string(), actorId: uuid.nullable(), occurredAt: time })) })
+    .parse(await coreApi.get(`/staff/holds/${uuid.parse(id)}`, true, signal));
 }
 export async function getPickupBranches(page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(z.object({ id: uuid, code: z.string(), name: z.string() })), page: pageSchema })
