@@ -6,15 +6,15 @@ Báo cáo được thực hiện trong học phần Thiết kế Web nâng cao. 
 
 # Tóm tắt
 
-LAMS giải quyết bài toán tìm tài liệu và quản lý bản sách vật lý tại thư viện. Người đọc tra cứu tác phẩm, xem ấn bản và tình trạng bản sách, lưu sách yêu thích, đánh giá, theo dõi mượn và giữ chỗ. Nhân viên biên mục, xử lý giao dịch tại quầy, kiểm kê và xem báo cáo. Quản trị viên xử lý tài khoản, báo cáo đánh giá và các quyết định cần thẩm quyền cao hơn. Hệ thống tách tác phẩm (`Book`), ấn bản (`Edition`) và bản vật lý (`BookCopy`), vì một nhan đề không tương đương một mã vạch hoặc một số lượng tồn kho.
+LAMS hỗ trợ tìm tài liệu và quản lý bản sách vật lý tại thư viện. Người đọc tra cứu tác phẩm, xem ấn bản, lưu sách yêu thích, đánh giá và theo dõi mượn, giữ chỗ. Nhân viên biên mục, xử lý giao dịch tại quầy, kiểm kê và xem báo cáo. Quản trị viên quản lý tài khoản và các quyết định cần thẩm quyền cao hơn. Hệ thống tách tác phẩm (`Book`), ấn bản (`Edition`) và bản vật lý (`BookCopy`), vì một nhan đề không tương đương một mã vạch hoặc một số lượng tồn kho.
 
-Ứng dụng React/TypeScript chạy trên trình duyệt và trong cửa sổ Tauri/WebView2 Windows. Core Service dùng Spring Boot, JDBC và Flyway để quản lý danh tính, Catalog, lưu thông và kiểm kê. Insight Service dùng NestJS/Prisma để lưu lịch sử tra ISBN, thông báo và đề xuất bổ sung. Mỗi dịch vụ sở hữu một database PostgreSQL. PR #31 bổ sung giao diện sáng, điều hướng nổi, thiết lập giao diện theo tài khoản và ảnh biên tập có ghi nguồn.
+Giao diện React/TypeScript chạy trên trình duyệt và trong ứng dụng Tauri/WebView2 Windows. Core Service dùng Spring Boot, JDBC và Flyway để quản lý danh tính, Catalog, lưu thông và kiểm kê. Insight Service dùng NestJS/Prisma cho lịch sử tra ISBN, thông báo và đề xuất bổ sung. Mỗi dịch vụ sở hữu một database PostgreSQL.
 
-Bản báo cáo lấy mã nguồn `d0ba0158bd875a3da6ef812045d5d268e7dbf1a1` trên `main` làm mốc đối chiếu ngày 29/10/2026. PR #31, #33 và #32 đã tích hợp; PR #33 bổ sung báo cáo hoạt động giữ chỗ do Toàn bàn giao. Trong CI run `40880637621`, Core đạt 317 bài, Insight đạt 121 bài unit/HTTP và 17 bài integration, frontend đạt 193 bài, Web E2E đạt 22 bài. Pipeline đạt đủ 5/5 job; trạng thái và định danh run được lưu trong hồ sơ bằng chứng. Các ảnh và 18 bài EXE E2E local ở `23b90ba` là minh chứng lịch sử, không được gán cho merge commit mới. Việc tạo được bộ cài Windows cũng không thay thế thử cài/gỡ hoặc chạy trên máy thứ hai.
+Mốc hệ thống chung là `d0ba015` trên main ngày 29/10/2026, đã tích hợp PR #31, #32 và #33. Đợt giao diện ngày 30/10 tại `011eb53` bổ sung dashboard theo dữ liệu thật, màn báo cáo giữ chỗ, thông báo và thiết lập cá nhân; các thay đổi được review trong PR #35, chưa merge vào main. API báo cáo giữ chỗ do Toàn bàn giao, phần tích hợp giao diện do tôi thực hiện. Kết quả kiểm thử được trình bày theo từng commit ở Chương 7 và hồ sơ minh chứng, không gán kết quả EXE cũ cho phiên bản mới.
 
-Báo cáo giữ phân tích hệ thống chung của nhóm và dành Chương 9 cho phần việc cá nhân của Nguyễn Trọng Tuấn. Những mục chưa nghiệm thu, như SLA production, kiểm thử trợ năng đầy đủ và chính sách lưu giữ dữ liệu, được nêu cùng giới hạn của bằng chứng. Ô giảng viên trên bìa được để trống theo yêu cầu của tác giả để bổ sung trước khi nộp.
+Các chương 1–8 phân tích hệ thống chung; Chương 9 trình bày phần việc cá nhân của tôi; Chương 10 đánh giá kết quả và giới hạn. LAMS đã có các luồng nghiệp vụ chính và kiểm thử tự động, nhưng chưa nghiệm thu vận hành production, trợ năng đầy đủ hoặc cài đặt trên máy thứ hai.
 
-**Từ khóa:** thư viện; Catalog; PostgreSQL; JDBC; Prisma; Tauri; kiểm kê; giữ chỗ; kiểm thử.
+**Từ khóa:** thư viện; PostgreSQL; JDBC; Prisma; Tauri; kiểm kê; giữ chỗ.
 
 # Mục lục
 
@@ -355,9 +355,13 @@ Public có landing, Catalog, tác giả/thể loại, chi tiết sách, login/re
 
 ![Hình 15. Phiên kiểm kê có scan và snapshot trong EXE](../minh-chung-giao-dien/23b90ba/desktop-e2e/inventory-1440.png)
 
+Ở bản `011eb53`, dashboard có các số đếm danh mục, bản sách, phiên kiểm kê, lượt đang mượn/quá hạn và đề xuất DRAFT. Biểu đồ giữ chỗ tổng hợp sự kiện 30 ngày; không diễn giải thành số Hold đang chờ. Các nguồn đọc độc lập nên màn hình không có tính chất một snapshot toàn hệ thống. Chuông kiểm số chưa đọc mỗi phút khi ở foreground, mở hộp thoại mới tải danh sách; đây là polling, không phải push thời gian thực.
+
+My Library bổ sung tối đa ba lượt mượn và ba yêu cầu gần đây, có hạn trả hoặc hạn nhận sách và liên kết tới danh sách đầy đủ. Appearance giữ bản xem thử khi chuyển route, xử lý phản hồi lưu của phiên cũ và thông báo khi tab khác thay đổi thiết lập. Các nhóm widget có thể ẩn/hiện; chưa có kéo thả thứ tự. Tìm kiếm trên điện thoại dùng hộp thoại riêng, giữ focus và khóa nền trong lúc mở.
+
 ## 5.3. Chiến lược media, fallback và trợ năng
 
-Ảnh biên tập Pexels minh họa landing, Catalog, directory và các nhóm thể loại. Nguồn, tác giả và giấy phép ở `tai-lieu/06-giao-dien/nguon-anh.md` [5]. Chúng là ảnh chủ đề, không phải bìa của từng Book hoặc chân dung tác giả. Ảnh tác giả/ấn bản chỉ được xem là media của bản ghi khi có tham chiếu đã duyệt; khi thiếu hoặc URL hỏng, UI dùng bìa chữ/visual có nhãn. Bộ tám bìa Standard Ebooks đã đối chiếu là ứng viên cho demo và có script duyệt có kiểm ID/Edition; danh sách ứng viên không đồng nghĩa database đã duyệt. Không đưa ảnh ngẫu nhiên vào bản ghi để trang trông đầy.
+Ảnh biên tập Pexels minh họa landing, Catalog, directory và các nhóm thể loại. Nguồn, tác giả và giấy phép ở `tai-lieu/06-giao-dien/nguon-anh.md` [5]. Chúng là ảnh chủ đề, không phải bìa của từng Book hoặc chân dung tác giả. Ảnh tác giả/ấn bản chỉ được xem là media của bản ghi khi có tham chiếu đã duyệt; khi thiếu hoặc URL hỏng, UI dùng bìa chữ/visual có nhãn. Bộ demo có 12/32 bìa Standard Ebooks đã đối chiếu và được ghi qua API duyệt trên máy trình diễn ngày 30/10/2026; máy khác cần chạy script duyệt có kiểm ID/Edition. Danh sách ứng viên không đồng nghĩa database đã duyệt. Ba ảnh minh họa âm nhạc, thiên văn và thể thao được bổ sung có nguồn Pexels; tổng bộ ảnh JPG là 15 ảnh, gồm 12 ảnh chủ đề và ba cảnh đọc. Dữ liệu tác giả vẫn chưa có chân dung được duyệt. Không đưa ảnh ngẫu nhiên vào bản ghi để trang trông đầy.
 
 Ảnh cục bộ có alt text theo nội dung; card có focus visible, trạng thái tải/rỗng/lỗi và thao tác bàn phím. Lượt chụp local trên `23b90ba` đã mở 25 route theo vai trò ở 390, 768, 1024, 1366, 1440, 1536 và 1920 px: 175 lượt trả HTTP 200, không phát hiện tràn ngang; 50 ảnh lưu ở 390 và 1440 px. Script chỉ kiểm status, chiều rộng và ảnh trạng thái; kết quả không phải audit WCAG, kiểm mọi chức năng hay nghiệm thu WebView2.
 
@@ -439,7 +443,13 @@ Unit kiểm quy tắc thuần hoặc service với dependency giả. PostgreSQL/
 
 Bản đối chiếu chính là `d0ba015` sau khi PR #32 merge; [run 40880637621](https://github.com/Shuuma4869/He-thong-quan-ly-va-khai-thac-thu-vien/actions/runs/40880637621) ghi Core 317/317 (0 fail/error/skip), Insight 121/121 và 17/17, frontend 193/193, Web E2E 22/22. Môi trường CI là Ubuntu cho các job dịch vụ/web, Windows cho build Tauri. Bảng dưới giữ kết quả lịch sử để các ảnh và EXE cũ vẫn có đường truy nguyên, không thay số cũ bằng số mới trên cùng dòng.
 
-PR #33 bổ sung API `GET /api/v1/reports/hold-activity` và bản `.csv`, chỉ dành cho LIBRARIAN/ADMIN có quyền hiện hành. Service đọc `hold_changes` nối `holds` trong REPEATABLE READ; nhóm theo ngày Asia/Ho_Chi_Minh, chi nhánh và loại sự kiện, lọc `[from,to)`, tối đa sáu tháng lịch và 10.000 hàng. Mười ba bài integration và ba bài exporter của module đạt trong job Core nêu trên. Đây là báo cáo sự kiện, không phải số Hold đang chờ hoặc dự báo mua. API hiện chưa có màn frontend riêng. Vì các chiều Book/Branch đọc từ Hold hiện tại, sửa trực tiếp những chiều này bằng SQL có thể phân loại lại lịch sử; test đã ghi nhận giới hạn đó.
+PR #33 bổ sung API `GET /api/v1/reports/hold-activity` và bản `.csv`, chỉ dành cho LIBRARIAN/ADMIN có quyền hiện hành. Service đọc `hold_changes` nối `holds` trong REPEATABLE READ; nhóm theo ngày Asia/Ho_Chi_Minh, chi nhánh và loại sự kiện, lọc `[from,to)`, tối đa sáu tháng lịch và 10.000 hàng. Mười ba bài integration và ba bài exporter của module đạt trong job Core nêu trên. Đây là báo cáo sự kiện, không phải số Hold đang chờ hoặc dự báo mua. Tại bản mở rộng `011eb53`, API đã có màn `/nhan-vien/bao-cao-giu-cho` với bộ lọc ngày, chi nhánh, tác phẩm, bảng chia 50 nhóm/trang và tải CSV. Tổng số trên màn hình là số sự kiện, không phải số yêu cầu duy nhất; CSV đọc lại dữ liệu khi tải nên có thể khác bảng vừa xem. Vì các chiều Book/Branch đọc từ Hold hiện tại, sửa trực tiếp những chiều này bằng SQL có thể phân loại lại lịch sử; test đã ghi nhận giới hạn đó.
+
+Đợt kiểm tra local cho `011eb53` chạy lại Core 317 bài, Insight 121 bài unit/HTTP và 17 integration, frontend 214 bài; typecheck, lint, build và hai hợp đồng OpenAPI đạt. Web và EXE/WebView2 mỗi loại đạt 25/25 hành trình trên database PostgreSQL tạm, gồm báo cáo giữ chỗ với sự kiện tạo qua API, quyền Reader bị chặn, CSV và thao tác tìm kiếm ở 11 độ rộng. Bộ ảnh mới nằm trong [minh chứng 011eb53](../minh-chung-giao-dien/011eb53/README.md). Sửa vòng Tab tiếp theo tại `e5c238d` được kiểm riêng bằng bàn phím cho ba vai trò. Kết quả CI của PR #35 cần đọc theo đúng head trong manifest đi kèm; không dùng trạng thái CI cũ để thay cho lần này.
+
+Về hiệu năng, tách lazy các màn phụ giảm JS đầu vào từ 552,29 xuống 499,36 kB, gzip từ 168,52 xuống 154,60 kB. Số này là kết quả build, không phải thời gian tải mạng hay P95. Với báo cáo giữ chỗ, database demo chưa có sự kiện. Phép đo riêng bằng bảng TEMP gồm 100.000 sự kiện tổng hợp cho kỳ bảy ngày ghi nhận 16,571 ms trước index ngày và 3,602 ms sau index; cache và dữ liệu rút gọn giới hạn khả năng suy rộng. Chưa thêm migration index: cần đo thêm kỳ dài, các bộ lọc và chi phí ghi trên dữ liệu đại diện.
+
+Lượt npm audit ngày 30/10/2026 không có advisory frontend; Insight có tám kết quả LOW trong chuỗi tooling chứa deepmerge, còn omit=dev không có advisory. Chưa có bản vá upstream được công bố ở thời điểm kiểm tra; không ép hạ Nest CLI xuống major cũ để xóa cảnh báo. Chi tiết điều kiện áp dụng và giới hạn nằm trong tài liệu nợ kỹ thuật của dự án.
 
 Bảng 14. Bằng chứng tại merge commit `8169ac75629306db8a12d1f2667abb1b81991d82` và phần chưa kiểm.
 
@@ -564,6 +574,8 @@ Tôi xây dựng các khu vực Public, Reader, Staff và Admin trên cùng ứn
 
 Một vấn đề tôi sửa ở trang chi tiết sách là sự cân đối giữa phần bìa và phần thông tin. Bìa cần đủ nổi bật trên desktop nhưng không chiếm hết màn hình nhỏ. Commit `23b90ba` điều chỉnh vùng bìa, chú thích và phần trợ giúp đăng nhập. Tôi kiểm tra 25 route ở bảy độ rộng từ 390 đến 1920 px; lượt kiểm ghi nhận 175 lần truy cập trả HTTP 200 và không tràn ngang theo phép đo của script. Kết quả này kiểm tra bố cục tại các trạng thái đã chụp, còn các thao tác nghiệp vụ được kiểm bằng E2E.
 
+Ở đợt `011eb53`, tôi nối API Hold Activity của Toàn vào màn báo cáo, bổ sung dashboard theo số liệu thực, chuông thông báo và phần mượn/giữ chỗ trong My Library. Tôi sửa việc mất bản xem thử khi chuyển trang và phản hồi lưu đến muộn sau khi đổi tài khoản. Lượt kiểm bàn phím tiếp theo ở `e5c238d` bổ sung vòng Tab trong hộp thoại. Các thay đổi này thuộc phần tích hợp giao diện; không quy phần truy vấn báo cáo của Toàn thành công việc cá nhân.
+
 ## 9.4. Đóng gói ứng dụng Windows và môi trường phát triển
 
 Tôi đưa giao diện React vào Tauri để người dùng có thể mở LAMS bằng cửa sổ riêng. Phần việc gồm cấu hình build, địa chỉ API, điều hướng trong WebView2, hướng dẫn cài công cụ và các script chạy dịch vụ. Bản release chứa frontend; Core, Insight và PostgreSQL vẫn chạy riêng. Đây là điều cần giải thích khi bàn giao để người dùng không hiểu bộ cài EXE là toàn bộ hệ thống độc lập.
@@ -609,7 +621,7 @@ LAMS có mô hình Book/Edition/Copy, nghiệp vụ tài khoản, Catalog, đán
 
 ## 10.2. Giới hạn và điều kiện triển khai
 
-Bìa/portrait theo từng bản ghi chưa có bộ ảnh được duyệt đầy đủ; nhóm thể loại đã nhận diện dùng ảnh chủ đề, nhóm chưa nhận diện dùng ảnh thư viện chung có ghi rõ là minh họa. Tám bìa demo đã đối chiếu chỉ được gắn qua thao tác duyệt trên đúng database demo. EXE ở mốc `23b90ba` đã qua E2E local, nhưng chưa có bằng chứng cài/gỡ installer tại baseline `d0ba015` hoặc thử trên máy Windows thứ hai; nguồn ảnh web và ảnh WebView2 ở Chương 5 được chú thích riêng. Các bộ ảnh có admin/dashboard và những route chính nhưng chưa bao phủ mọi trạng thái CRUD, lỗi hoặc xác nhận thao tác nghiệp vụ. Widget ẩn/hiện nhưng chưa kéo thả sắp xếp. Trợ năng mới có kiểm focus/alt/reduced motion ở mức mã và các bài liên quan, chưa có audit WCAG 2.2 với thiết bị hỗ trợ [19].
+Bìa/portrait theo từng bản ghi chưa có bộ ảnh được duyệt đầy đủ; nhóm thể loại đã nhận diện dùng ảnh chủ đề, nhóm chưa nhận diện dùng ảnh thư viện chung có ghi rõ là minh họa. Mười hai bìa demo đã đối chiếu chỉ được gắn qua thao tác duyệt trên đúng database demo; 20 ứng viên còn lại chưa được chấp thuận. EXE ở mốc `23b90ba` đã qua E2E local, nhưng chưa có bằng chứng cài/gỡ installer tại baseline `d0ba015` hoặc thử trên máy Windows thứ hai; nguồn ảnh web và ảnh WebView2 ở Chương 5 được chú thích riêng. Các bộ ảnh có admin/dashboard và những route chính nhưng chưa bao phủ mọi trạng thái CRUD, lỗi hoặc xác nhận thao tác nghiệp vụ. Widget ẩn/hiện nhưng chưa kéo thả sắp xếp. Đợt `011eb53` bổ sung axe ở 17 màn theo vai trò và kiểm focus hộp thoại bằng bàn phím; các màn đã đo không có vi phạm tự động trong bộ quy tắc được chọn. Chưa có nghiệm thu screen reader hay chứng nhận WCAG 2.2 đầy đủ [19].
 
 Video demo và kiểm trên máy Windows thứ hai chưa có bằng chứng. Trước pilot cần chốt HTTPS, secret, backup/restore, retention và kiểm lại dependency/container advisory. PR #31, #33 và #32 đã merge. Bản báo cáo bổ sung được review ở PR riêng; phần mô tả mã nguồn lấy `d0ba015` làm baseline và không tự tuyên bố đã triển khai pilot.
 
@@ -893,20 +905,18 @@ Các mô tả dưới đây dùng cùng mã UC với Bảng 6. Chúng nêu đư�
 
 ### UC25. Quản trị tài khoản
 
-**Actor và mục đích:** ADMIN khóa/mở tài khoản hoặc thay vai trò có dấu vết.
+**Actor và mục đích:** ADMIN quản lý trạng thái và vai trò tài khoản.
 
-**Tiền điều kiện:** ADMIN còn quyền hiện hành, target và version hợp lệ.
+**Tiền điều kiện:** ADMIN có quyền, tài khoản đích và version hợp lệ.
 
 **Luồng chính:**
 
-1. ADMIN mở tài khoản mục tiêu và xem version hiện hành.
+1. ADMIN chọn tài khoản, xem version và nhập lý do thay đổi.
 
-2. API admin gửi thay đổi cùng lý do tới AdminAccountService.
+2. AdminAccountService kiểm quyền, version và self-protection.
 
-3. Core kiểm quyền và self-protection, cập nhật tài khoản, thu hồi phiên khi cần và ghi audit.
+3. Core cập nhật tài khoản, thu hồi phiên khi cần và ghi audit.
 
-**Hậu điều kiện:** quyền mới được áp ở server, bảng audit còn quyết định.
+**Kết quả và ngoại lệ:** server áp quyền mới và lưu audit. Reader/Librarian nhận 403; version cũ nhận 409. UI giữ thông báo lỗi, không báo thành công.
 
-**Luồng thay thế/ngoại lệ:** Reader/Librarian gọi API trả 403; version cũ trả 409; không được ẩn lỗi bằng trạng thái UI lạc quan.
-
-**AC/test:** US25, `AdminAccountIntegrationTest` và AdminAccountsPage.
+**AC/test:** US25, `AdminAccountIntegrationTest`, AdminAccountsPage.

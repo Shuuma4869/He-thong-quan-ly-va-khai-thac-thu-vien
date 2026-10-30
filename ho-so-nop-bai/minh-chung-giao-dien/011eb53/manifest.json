@@ -1,0 +1,752 @@
+{
+  "sha": "011eb53915a9a5d1fac58b8de2de0282562d3cbb",
+  "captured_on": "2026-10-30",
+  "web_environment": "Chromium Windows, Vite 5173, Core 8080, Insight 3000, PostgreSQL demo; real API, no mock",
+  "desktop_environment": "LAMS Tauri release/WebView2, isolated PostgreSQL and Core/Insight; screenshots show WebView contents, not Windows frame",
+  "web_e2e": 25,
+  "desktop_e2e": 25,
+  "local_demo": {
+    "books": 10013,
+    "copies": 64,
+    "approved_demo_covers": 12,
+    "candidate_demo_covers": 32
+  },
+  "inspection": [
+    {
+      "role": "public",
+      "route": "/",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Cuốn sách tiếp theođang chờ bạn khám phá."
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Cuốn sách tiếp theođang chờ bạn khám phá."
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/sach",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Khám phá sách"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/sach",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Khám phá sách"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/tac-gia",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Tác giả"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/tac-gia",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Tác giả"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/the-loai",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Thể loại"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/the-loai",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Thể loại"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/dang-nhap",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn."
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/dang-nhap",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn."
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/dang-ky",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn."
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "public",
+      "route": "/dang-ky",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Tìm sách nhanh hơn.Quản lý thư viện gọn hơn."
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/thu-vien-cua-toi",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Thư viện của tôi"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/thu-vien-cua-toi",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Thư viện của tôi"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/muon-va-giu-cho",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Mượn và giữ chỗ"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/muon-va-giu-cho",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Mượn và giữ chỗ"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/thong-bao",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Thông báo"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/thong-bao",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Thông báo"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/ho-so",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Hồ sơ của tôi"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/ho-so",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Hồ sơ của tôi"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/cai-dat/giao-dien",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Tùy chỉnh giao diện"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "reader",
+      "route": "/cai-dat/giao-dien",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Tùy chỉnh giao diện"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/bang-dieu-khien",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Bảng điều khiển"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/bang-dieu-khien",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Bảng điều khiển"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/danh-muc",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Danh mục thư viện"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/danh-muc",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Danh mục thư viện"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/thanh-vien",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Thành viên"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/thanh-vien",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Thành viên"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/luu-thong",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Quầy lưu thông"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/luu-thong",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Quầy lưu thông"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/kiem-ke",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Kiểm kê kệ sách"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/kiem-ke",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Kiểm kê kệ sách"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/bao-cao-luu-thong",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Báo cáo mượn theo chi nhánh"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/bao-cao-luu-thong",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Báo cáo mượn theo chi nhánh"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/bao-cao-giu-cho",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Hoạt động giữ chỗ"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/bao-cao-giu-cho",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Hoạt động giữ chỗ"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/de-xuat-bo-sung",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Đề xuất bổ sung sách"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "librarian",
+      "route": "/nhan-vien/de-xuat-bo-sung",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Đề xuất bổ sung sách"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "admin",
+      "route": "/nhan-vien/bang-dieu-khien",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Bảng điều khiển"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "admin",
+      "route": "/nhan-vien/bang-dieu-khien",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Bảng điều khiển"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "admin",
+      "route": "/nhan-vien/tai-khoan",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Tài khoản và phân quyền"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "admin",
+      "route": "/nhan-vien/tai-khoan",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Tài khoản và phân quyền"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "admin",
+      "route": "/nhan-vien/bao-cao-danh-gia",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "heading": [
+        "Báo cáo đánh giá"
+      ],
+      "alerts": [],
+      "errors": []
+    },
+    {
+      "role": "admin",
+      "route": "/nhan-vien/bao-cao-danh-gia",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "heading": [
+        "Báo cáo đánh giá"
+      ],
+      "alerts": [],
+      "errors": []
+    }
+  ],
+  "files": [
+    {
+      "path": "admin--nhan-vien-bang-dieu-khien-1440.png",
+      "sha256": "d376c23b90c94e4a56d7686c3252704b850ad6d7ab5bcb9a5cfb4a0879701eb8"
+    },
+    {
+      "path": "admin--nhan-vien-bang-dieu-khien-390.png",
+      "sha256": "5ca21ad94311aa50c5934a670394b27e9bd242d282290c9c31a1036c41fc0b1e"
+    },
+    {
+      "path": "admin--nhan-vien-bao-cao-danh-gia-1440.png",
+      "sha256": "53759839898344c3bdff48f76a114b9c4537faea454809426f6608fa4aebb1aa"
+    },
+    {
+      "path": "admin--nhan-vien-bao-cao-danh-gia-390.png",
+      "sha256": "54d2d2978df91679749c2b9c24c498ca8fe6a44a0951eea234494ce547fd830a"
+    },
+    {
+      "path": "admin--nhan-vien-tai-khoan-1440.png",
+      "sha256": "ab02ca03e024ab835568dc8fcaaa0c7dfc1ff7cc458c1ef4fa45b9375af01752"
+    },
+    {
+      "path": "admin--nhan-vien-tai-khoan-390.png",
+      "sha256": "6de11e45e9e8ed0e74176d327392e874e0d4f21da672762ea84c31452173fe8a"
+    },
+    {
+      "path": "desktop-e2e/acquisition-approved-1440.png",
+      "sha256": "067e7c6916376944ef73e9341c2fbd8f8be9652f4443d4a2dc73f84eab2fd3ff"
+    },
+    {
+      "path": "desktop-e2e/admin-cancelled-session.png",
+      "sha256": "0be8c3dbd4e4471fd852ebeec110f2742ad0ce1b3b0ced2ba743166034d5c656"
+    },
+    {
+      "path": "desktop-e2e/hold-activity-1440.png",
+      "sha256": "4d9d846ac6c58d77e1d3387b733b8617b6614fbfb9b48af2492ab8ae6fe51642"
+    },
+    {
+      "path": "desktop-e2e/hold-activity-390.png",
+      "sha256": "5d1e13f22e431f13c82ffb7548ab6875175d7059a7def34b7582d947d97c17aa"
+    },
+    {
+      "path": "desktop-e2e/inventory-1440.png",
+      "sha256": "6fe5bee2eff15eb3b797fb7a014c453941e3536ff975cffd2df48ccb1feb2366"
+    },
+    {
+      "path": "desktop-e2e/reader-circulation-1440.png",
+      "sha256": "0773bb4ed759c7efc44553b6024b85b4c9297e92e32afa6cb7500a8e08d5655b"
+    },
+    {
+      "path": "librarian--nhan-vien-bang-dieu-khien-1440.png",
+      "sha256": "c07c664daffb01bd4a8fc7da00c4a4ba0adf6f511d85b49dd3350442981a343f"
+    },
+    {
+      "path": "librarian--nhan-vien-bang-dieu-khien-390.png",
+      "sha256": "4383296ed00b46d7fd3b1e0b10c9844e7db8e8e573bb1ac05f458af17566e8d9"
+    },
+    {
+      "path": "librarian--nhan-vien-bao-cao-giu-cho-1440.png",
+      "sha256": "037388a774cbb7f9c77c9e2e32b904d5683098558b865708ab9351f857d2215e"
+    },
+    {
+      "path": "librarian--nhan-vien-bao-cao-giu-cho-390.png",
+      "sha256": "d3b1c85c9c166ae383f4fe6ec5bc6889e452e4d0ccd2128d13dcc1a40078e0ce"
+    },
+    {
+      "path": "librarian--nhan-vien-bao-cao-luu-thong-1440.png",
+      "sha256": "9202f02e3bd09c68925ca89083c5be16bb76267be120c377cafc61b37439257c"
+    },
+    {
+      "path": "librarian--nhan-vien-bao-cao-luu-thong-390.png",
+      "sha256": "477bbc0260201caf96869901218590b920a0f7a9f9f6a13d4a4ac2e02935e5c5"
+    },
+    {
+      "path": "librarian--nhan-vien-danh-muc-1440.png",
+      "sha256": "cc00c8cafcb7812d5545f9cf7eac3a9980d64d3b7b5067f7ca6409c0ff5e1f74"
+    },
+    {
+      "path": "librarian--nhan-vien-danh-muc-390.png",
+      "sha256": "3a4cae6644a814f8b5d7ce824ac09f152aa93e3eedf28db8518ffa975b0c2644"
+    },
+    {
+      "path": "librarian--nhan-vien-de-xuat-bo-sung-1440.png",
+      "sha256": "bd3675b1d9c6777fb06dafbcfcb157618ee6cda9c6c71743dcc1d15fb286f27a"
+    },
+    {
+      "path": "librarian--nhan-vien-de-xuat-bo-sung-390.png",
+      "sha256": "051079c06a100eeceef5dacc91036b9b07618a02b4f859241d6f819f4154d708"
+    },
+    {
+      "path": "librarian--nhan-vien-kiem-ke-1440.png",
+      "sha256": "dcbc911874ec737ac27a1194f87232515ed662859dafe76ec26ad9153b6e3906"
+    },
+    {
+      "path": "librarian--nhan-vien-kiem-ke-390.png",
+      "sha256": "109892ac52d1e549f10fa615648bcff317238fea3c767c7f92c34bf13e6a8669"
+    },
+    {
+      "path": "librarian--nhan-vien-luu-thong-1440.png",
+      "sha256": "6a7a8419d309cc9682ecfb4a4a94de1e9f011e4cb89f6e012a06acfed414312b"
+    },
+    {
+      "path": "librarian--nhan-vien-luu-thong-390.png",
+      "sha256": "2d5b60115a48eeb036c7cd00f5bc4f6bb112f6d6b3ee31510bb2c7acdeb59e42"
+    },
+    {
+      "path": "librarian--nhan-vien-thanh-vien-1440.png",
+      "sha256": "786ad4df4a08324c97a16fa3f7b9d8fcd6065f8bd9b8682b52530af870b02539"
+    },
+    {
+      "path": "librarian--nhan-vien-thanh-vien-390.png",
+      "sha256": "a009861bdf9ffa93e8d7bc0d8acef212058c4909828e053ec1ab07a4976309e4"
+    },
+    {
+      "path": "public---1440.png",
+      "sha256": "747964caacdf009eebf67edfbacb8733f293c7173408738983c4576bffd37f2c"
+    },
+    {
+      "path": "public---390.png",
+      "sha256": "21096a418263e6ca0b36c21663ec53d7063ad302bfaeb5307ecd16dcb98db044"
+    },
+    {
+      "path": "public--dang-ky-1440.png",
+      "sha256": "ca6166daf8c6b8e813f9fbdd1110cdb5353f4f9df59d58ff3be3609dd5d5a473"
+    },
+    {
+      "path": "public--dang-ky-390.png",
+      "sha256": "b2254b17ead7f0e14bec2408df7f916ba822c7f6ade8fd53a6d43f3cdd83ac72"
+    },
+    {
+      "path": "public--dang-nhap-1440.png",
+      "sha256": "1a2eedc5eeeda4abc9a8dfefca89f35e1b03953fb939d7963f333d5d92a4eaf9"
+    },
+    {
+      "path": "public--dang-nhap-390.png",
+      "sha256": "c6068c361d7b04ce2874f6e2e6017d8a9d339df486a736f5dbf8a1b90b8dc895"
+    },
+    {
+      "path": "public--sach-1440.png",
+      "sha256": "4c92f617893120a43f741668841bbe55f00262627c63ddb4f05338dbdc2d5747"
+    },
+    {
+      "path": "public--sach-390.png",
+      "sha256": "4c49572c24b6f586708a2754a25a41103369f8ee1ec1eb48e95c095cd04f4797"
+    },
+    {
+      "path": "public--tac-gia-1440.png",
+      "sha256": "e6777a813c69d48bf292c9ef57c752cac980baddd17f5fd2a8b734df1d506270"
+    },
+    {
+      "path": "public--tac-gia-390.png",
+      "sha256": "bb7ecdd987ed90c1a7c27e8c4c0772e7961ce834631715ac2a2f193ecc49f847"
+    },
+    {
+      "path": "public--the-loai-1440.png",
+      "sha256": "90cd948ebe13af65ec3e0d820f4b7cf63697708cac248fc96dd6a3474c681301"
+    },
+    {
+      "path": "public--the-loai-390.png",
+      "sha256": "123a2d9e206c570523f5a536ee40ac51725b8280d0ba1053e7d75091f7a142f4"
+    },
+    {
+      "path": "reader--cai-dat-giao-dien-1440.png",
+      "sha256": "9754d409ef86a675e43e8fb16dd71f98e4629514ccf4ac5cace37f2d3864a10b"
+    },
+    {
+      "path": "reader--cai-dat-giao-dien-390.png",
+      "sha256": "a62fffc40ed939dbd822f9d07f3e6644d381dfaaf5625486b57acdb544e46769"
+    },
+    {
+      "path": "reader--ho-so-1440.png",
+      "sha256": "5ee8b7a03461edf1133e3649f9596eef78c17bebf2eb58c0024f2d6ee84d100f"
+    },
+    {
+      "path": "reader--ho-so-390.png",
+      "sha256": "9f3993a63794228ed4c62bef324992ce35d3c8ff35458ba532c916fad53671ac"
+    },
+    {
+      "path": "reader--muon-va-giu-cho-1440.png",
+      "sha256": "61a692d1fe3b3781d324e8b826fe252a3b67bf60f281f423e737d5315ebfb63e"
+    },
+    {
+      "path": "reader--muon-va-giu-cho-390.png",
+      "sha256": "5dbc0686ca68c6cc9277ebd0ed74c8c3c1d3fea482eb65189a30e96535df036b"
+    },
+    {
+      "path": "reader--thong-bao-1440.png",
+      "sha256": "09d826271a034e0337be924de8ea88f43c9ba7006de673adb82f391ba69e933b"
+    },
+    {
+      "path": "reader--thong-bao-390.png",
+      "sha256": "b46e56b574bcab78b20dd26d513d3f8bc51287cd1466c5d3b9f9c4ad1015f967"
+    },
+    {
+      "path": "reader--thu-vien-cua-toi-1440.png",
+      "sha256": "6839e659e4c38fb0fc69c565c410126f54bcdc9997f01282d7d70bba7c30b91f"
+    },
+    {
+      "path": "reader--thu-vien-cua-toi-390.png",
+      "sha256": "1bacdb00ba52c57d6b09e62932c24d22861926dd8844eebcd239a25e9b6e4d71"
+    }
+  ],
+  "limitations": [
+    "Snapshots do not prove all CRUD states.",
+    "No installer install/uninstall or second-machine runtime test.",
+    "Axe incomplete contrast checks still need human review; not WCAG certification.",
+    "Native notification Tab cycle improved later in e5c238d; these images and E2E belong to 011eb53."
+  ]
+}

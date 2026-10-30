@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-10-29",
+  "date": "2026-10-30",
   "author": {
     "name": "Nguyễn Trọng Tuấn",
     "student_id": "23010690"
@@ -35,7 +35,7 @@
     "limitation": "Windows build success is not installer install/uninstall or WebView2 runtime verification."
   },
   "structure": {
-    "pdf_pages_including_cover": 65,
+    "pdf_pages_including_cover": 66,
     "chapters": 10,
     "user_stories": 29,
     "detailed_use_cases": 10,
@@ -47,21 +47,21 @@
   "artifacts": [
     {
       "path": "ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.md",
-      "sha256": "2edc66d924383011ea4127b77b41d518240f651470336e958bea5d19a6ba2ea9",
+      "sha256": "e6b9972c0420729128b2d037e3b3ac9e036d0d920659adfdbab118cb85ba4493",
       "hash_mode": "UTF-8 with LF line endings",
-      "hashed_bytes": 111432
+      "hashed_bytes": 115083
     },
     {
       "path": "ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.docx",
-      "sha256": "059cb46d8528a28341038ae44068d51b334f967d3f0fb2eabdfaffe7398b44d7",
+      "sha256": "50117d767288187dc539e63b0bd5e186f94c68e7905095d48530076b0086c8b4",
       "hash_mode": "raw bytes",
-      "hashed_bytes": 5481490
+      "hashed_bytes": 5483624
     },
     {
       "path": "ho-so-nop-bai/bao-cao/Bao-cao-tieu-luan-LAMS.pdf",
-      "sha256": "1a0f5e34b5bca0b3802d4df01d1324257a19088637d7bbdf58dc43f71e4ac998",
+      "sha256": "46898964186bfe3054b6fb9aef589d56f682364c7688c33668b6babfdad0b499",
       "hash_mode": "raw bytes",
-      "hashed_bytes": 3256826
+      "hashed_bytes": 3265711
     }
   ],
   "figures": [
@@ -447,9 +447,9 @@
   ],
   "verification": {
     "structure": "PASS: scripts/verify-lams-report.py",
-    "renderer": "Microsoft Word COM field/TOC update and PDF export; Poppler rasterization at 100 dpi.",
+    "renderer": "Microsoft Word COM cập nhật trường/TOC và xuất PDF; Poppler rasterization 100 dpi.",
     "fallback_reason": "The packaged DOCX renderer could not find soffice.exe; Word was used for export.",
-    "visual_review": "All 65 pages inspected at rendered resolution; final changed pages re-inspected, unchanged pages compared pixel-for-pixel.",
+    "visual_review": "Đã xem toàn bộ 66 trang từ PDF mới qua Poppler 100 dpi; kiểm bìa, mục lục, bảng, sơ đồ, header/footer, không có trang trống hoặc lỗi tham chiếu Word.",
     "contact_sheets": 6,
     "checks": [
       "Vietnamese glyphs",
@@ -464,5 +464,14 @@
       "No claim of production security certification or complete WCAG audit.",
       "Teacher name is intentionally blank."
     ]
+  },
+  "ui_revision": {
+    "commit": "011eb53915a9a5d1fac58b8de2de0282562d3cbb",
+    "follow_up_commit": "e5c238d2b945306fa3c154bc4625e189d3fda8c9",
+    "pr": 35,
+    "status": "draft; chưa merge vào main",
+    "evidence": "ho-so-nop-bai/minh-chung-giao-dien/011eb53/",
+    "scope": "Giao diện, media, dashboard, báo cáo giữ chỗ, thiết lập cá nhân và kiểm focus hộp thoại.",
+    "limitation": "Kết quả CI/EXE lịch sử được giữ theo SHA riêng; không quy chúng cho follow_up_commit."
   }
 }
