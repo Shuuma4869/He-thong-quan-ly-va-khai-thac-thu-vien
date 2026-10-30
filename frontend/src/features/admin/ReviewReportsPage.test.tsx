@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../app/providers/AppProviders';
@@ -31,9 +31,14 @@ it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đ
   vi.stubGlobal('fetch', fetchMock);
   render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/bao-cao-danh-gia']}><AppRouter/></MemoryRouter></AppProviders>);
   expect(await screen.findByRole('heading', { name: 'Báo cáo đánh giá' })).toBeInTheDocument();
-  expect(await screen.findByText('Nội dung tại lúc báo cáo')).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Lý do quyết định'), { target: { value: 'Có nội dung xúc phạm rõ ràng' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Ẩn đánh giá' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Xem chi tiết' }));
+  const drawer = await screen.findByRole('dialog', { name: 'Chi tiết báo cáo' });
+  expect(await within(drawer).findByText('Nội dung tại thời điểm báo cáo')).toBeInTheDocument();
+  fireEvent.change(within(drawer).getByLabelText('Lý do quyết định'), { target: { value: 'Có nội dung xúc phạm rõ ràng' } });
+  fireEvent.click(within(drawer).getByRole('button', { name: 'Ẩn đánh giá' }));
+  const confirmation = await screen.findByRole('alertdialog', { name: 'Ẩn đánh giá này?' });
+  expect(decided).toBe(false);
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Xác nhận ẩn đánh giá' }));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
     String(url).endsWith(`/admin/review-reports/${report.id}/decisions`) && init.method === 'POST'
       && JSON.parse(String(init.body)).action === 'HIDE'

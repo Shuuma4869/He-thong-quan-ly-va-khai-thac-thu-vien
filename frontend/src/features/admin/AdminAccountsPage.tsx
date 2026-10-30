@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { statusLabels } from '../members/member-api';
@@ -7,8 +7,12 @@ import { MemberRequestError } from '../members/MemberRequestError';
 import { ApiError } from '../../shared/api/client';
 import { changeAccountRole, changeAccountStatus, getAccountAudit, getAccountDetail, listAccounts,
   type AdminRole } from './accounts-api';
+import { AdminDetailDrawer } from './AdminDetailDrawer';
+import { AdminConfirmationDialog } from './AdminConfirmationDialog';
 
 const roleLabels = { READER: 'Người đọc', LIBRARIAN: 'Thủ thư', ADMIN: 'Quản trị viên' };
+type AccountAction = { kind: 'status'; status: 'ACTIVE' | 'LOCKED' }
+  | { kind: 'role'; role: AdminRole; grant: boolean };
 
 export function AdminAccountsPage() {
   const { user, logout } = useAuth();
@@ -21,6 +25,8 @@ export function AdminAccountsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState('');
+  const [confirmation, setConfirmation] = useState<AccountAction | null>(null);
+  const closeDrawer = useCallback(() => setSelected(null), []);
   const accounts = useQuery({ queryKey: ['admin-accounts', query, status, page],
     queryFn: ({ signal }) => listAccounts(query, status, page, signal), retry: false });
   const detail = useQuery({ queryKey: ['admin-account', selected],
@@ -35,16 +41,24 @@ export function AdminAccountsPage() {
       : changeAccountRole(selected, detail.data.version, action.role, action.grant, reason);
   }, onSuccess: async () => {
     setReason(''); setNotice('Đã lưu thay đổi và thu hồi phiên cũ của tài khoản.');
+    setConfirmation(null);
     await Promise.all([client.invalidateQueries({ queryKey: ['admin-accounts'] }),
       client.invalidateQueries({ queryKey: ['admin-account', selected] }),
       client.invalidateQueries({ queryKey: ['admin-account-audit', selected] })]);
     if (selected === user?.id) { await logout(); navigate('/dang-nhap', { replace: true }); }
   }, onError: error => {
     setNotice(error instanceof ApiError ? error.message : 'Chưa lưu được thay đổi. Vui lòng thử lại.');
-    if (error instanceof ApiError && error.status === 409) void detail.refetch();
+    if (error instanceof ApiError && error.status === 409) {
+      setConfirmation(null);
+      void detail.refetch();
+    }
   } });
+  const closeConfirmation = () => {
+    setConfirmation(null);
+    mutation.reset();
+  };
   const submit = (event: FormEvent) => { event.preventDefault(); setPage(0); setQuery(input.trim()); setNotice(''); };
-  const act = (action: Parameters<typeof mutation.mutate>[0]) => { setNotice(''); mutation.mutate(action); };
+  const act = (action: AccountAction) => { setNotice(''); mutation.reset(); setConfirmation(action); };
 
   return <section aria-labelledby="admin-accounts-heading">
     <p className="eyebrow">Quản trị</p><h1 id="admin-accounts-heading" className="page-title">Tài khoản và phân quyền</h1>
@@ -73,7 +87,7 @@ export function AdminAccountsPage() {
             <span>Trang {page + 1}</span><button type="button" className="button-secondary"
               disabled={(page + 1) * 20 >= accounts.data.totalElements} onClick={() => setPage(page + 1)}>Sau</button>
           </nav></>}
-    {selected && <section className="account-panel mt-6" aria-label="Chi tiết tài khoản">
+    {selected && <AdminDetailDrawer title="Hồ sơ quản trị" onClose={closeDrawer}>
       {detail.isPending ? <p>Đang tải chi tiết…</p>
         : detail.isError ? <MemberRequestError error={detail.error} retry={() => void detail.refetch()}/>
           : <><h2>{detail.data.fullName}</h2><p>{detail.data.memberCode} · {detail.data.email}</p>
@@ -97,10 +111,24 @@ export function AdminAccountsPage() {
             {audit.isPending ? <p role="status">Đang tải lịch sử…</p> : audit.isError
               ? <MemberRequestError error={audit.error} retry={() => void audit.refetch()}/>
               : audit.data.length === 0 ? <p>Chưa có thay đổi quản trị.</p>
-                : <ul className="mt-3 grid gap-2">{audit.data.map(entry => <li key={entry.id}>
-                  {new Date(entry.createdAt).toLocaleString('vi-VN')} · {entry.action} · {entry.beforeValue} → {entry.afterValue}
-                  {' — '}{entry.reason}</li>)}</ul>}
+                : <ol className="admin-audit-timeline">{audit.data.map(entry => <li key={entry.id}>
+                  <time dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</time>
+                  <strong>{entry.action === 'STATUS' ? 'Thay đổi trạng thái' : entry.action === 'ROLE_GRANT' ? 'Cấp vai trò' : 'Thu hồi vai trò'}</strong>
+                    <span>{entry.beforeValue} → {entry.afterValue}</span>
+                    <span>Người thực hiện: {entry.actorId}</span><p>{entry.reason}</p></li>)}</ol>}
           </>}
-    </section>}
+    </AdminDetailDrawer>}
+    {confirmation && <AdminConfirmationDialog
+      title={confirmation.kind === 'status'
+        ? confirmation.status === 'LOCKED' ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?'
+        : `${confirmation.grant ? 'Cấp' : 'Thu hồi'} vai trò ${roleLabels[confirmation.role]}?`}
+      description="Thao tác sẽ được ghi lại cùng lý do và có thể thu hồi các phiên đăng nhập hiện tại."
+      confirmLabel={confirmation.kind === 'status'
+        ? confirmation.status === 'LOCKED' ? 'Xác nhận khóa' : 'Xác nhận mở khóa'
+        : `Xác nhận ${confirmation.grant ? 'cấp' : 'thu hồi'}`}
+      busy={mutation.isPending}
+      error={mutation.isError ? notice : ''}
+      onCancel={closeConfirmation}
+      onConfirm={() => mutation.mutate(confirmation)}/>}
   </section>;
 }

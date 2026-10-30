@@ -42,3 +42,41 @@ it('dashboard hiển thị số liệu API thật, không dùng KPI tĩnh', asyn
   expect(screen.getByText('9')).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Quyền truy cập & nội dung' })).not.toBeInTheDocument();
 });
+
+it('quản trị viên nhận dashboard riêng với chỉ số quản trị và liên kết kiểm toán', async () => {
+  const admin = { ...user, roles: ['ADMIN'] };
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/auth/refresh')) return Promise.resolve(Response.json({
+      accessToken: 'admin-access', accessTokenExpiresAt: '2030-01-01T00:00:00Z', user: admin,
+    }));
+    if (url.includes('/public/catalog/books?')) return Promise.resolve(Response.json(page(32)));
+    if (url.includes('/loans?')) return Promise.resolve(Response.json({
+      ...page(17), asOf: '2026-10-30T00:00:00Z',
+    }));
+    if (url.includes('/staff/work-items?')) return Promise.resolve(Response.json({
+      items: [], page: 0, size: 20, totalElements: 4,
+    }));
+    if (url.includes('/inventory-sessions?')) return Promise.resolve(Response.json(page(2)));
+    if (url.includes('/admin/accounts?')) return Promise.resolve(Response.json({
+      items: [], number: 0, size: 20, totalElements: 3,
+    }));
+    if (url.includes('/admin/review-reports?')) return Promise.resolve(Response.json({
+      items: [], page: 0, size: 20, totalElements: 5,
+    }));
+    return Promise.resolve(Response.json({ detail: 'Not found' }, { status: 404 }));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/bang-dieu-khien']}><AppRouter /></MemoryRouter></AppProviders>);
+  expect(await screen.findByRole('heading', { name: 'Quản trị hệ thống' })).toBeInTheDocument();
+  await waitFor(() => {
+    expect(within(screen.getByText('Tài khoản đang khóa').closest('article')!).getByText('3')).toBeVisible();
+    expect(within(screen.getByText('Báo cáo đánh giá chờ xử lý').closest('article')!).getByText('5')).toBeVisible();
+    expect(within(screen.getByText('Giữ chỗ cần xử lý').closest('article')!).getByText('4')).toBeVisible();
+  });
+  expect(screen.getByRole('link', { name: 'Tài khoản, vai trò & nhật ký' })).toHaveAttribute('href', '/nhan-vien/tai-khoan');
+  expect(screen.queryByRole('heading', { name: 'Bảng điều khiển' })).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url]) => {
+    const request = new URL(String(url), 'http://localhost');
+    return request.pathname.endsWith('/admin/accounts') && request.searchParams.get('status') === 'LOCKED';
+  })).toBe(true);
+});
