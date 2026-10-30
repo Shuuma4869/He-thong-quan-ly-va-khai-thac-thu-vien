@@ -6,6 +6,7 @@ import { decideReviewReport, listReviewReports, type ReviewReport } from '../rev
 export function ReviewReportsPage() {
   const [status, setStatus] = useState<'OPEN' | 'RESOLVED'>('OPEN');
   const [page, setPage] = useState(0);
+  const [notice, setNotice] = useState('');
   const client = useQueryClient();
   const queue = useQuery({ queryKey: ['review-reports', status, page],
     queryFn: ({ signal }) => listReviewReports(status, page, signal), retry: false });
@@ -14,14 +15,18 @@ export function ReviewReportsPage() {
     <h1 id="review-reports-heading" className="page-title">Báo cáo đánh giá</h1>
     <p className="mt-2 text-muted">Xem nội dung tại thời điểm báo cáo trước khi quyết định. Mỗi quyết định cần lý do và được lưu lại.</p>
     <label className="field mt-5">Trạng thái<select value={status} onChange={event => {
-      setStatus(event.target.value as 'OPEN' | 'RESOLVED'); setPage(0);
+      setStatus(event.target.value as 'OPEN' | 'RESOLVED'); setPage(0); setNotice('');
     }}><option value="OPEN">Chờ xử lý</option><option value="RESOLVED">Đã xử lý</option></select></label>
+    {notice && <p role="status" className="account-notice">{notice}</p>}
     {queue.isPending ? <p role="status">Đang tải báo cáo…</p> : queue.isError
       ? <LibraryError error={queue.error} retry={() => void queue.refetch()}/>
       : <><p className="my-4 text-sm text-muted">{queue.data.totalElements} báo cáo</p>
         {!queue.data.items.length && <p>Không có báo cáo ở trang này.</p>}
         <ul className="grid gap-4">{queue.data.items.map(item => <li key={item.id} className="editorial-card">
-          <ReportCard report={item} onDone={() => void client.invalidateQueries({ queryKey: ['review-reports'] })}/>
+          <ReportCard report={item} onDone={() => {
+            setNotice('Đã lưu quyết định.');
+            void client.invalidateQueries({ queryKey: ['review-reports'] });
+          }}/>
         </li>)}</ul>
         <nav className="my-5 flex items-center gap-3" aria-label="Phân trang báo cáo">
           <button type="button" className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Trước</button>
@@ -34,9 +39,8 @@ export function ReviewReportsPage() {
 
 function ReportCard({ report, onDone }: { report: ReviewReport; onDone: () => void }) {
   const [reason, setReason] = useState('');
-  const [notice, setNotice] = useState('');
   const decision = useMutation({ mutationFn: (action: 'HIDE' | 'DISMISS') => decideReviewReport(report.id, action, reason.trim()),
-    onSuccess: () => { setNotice('Đã lưu quyết định.'); onDone(); } });
+    onSuccess: onDone });
   const valid = [...reason.trim()].length >= 10 && [...reason.trim()].length <= 500;
   return <>
     <p className="font-semibold">Sách {report.bookId} · {report.ratingSnapshot}/5</p>
@@ -55,6 +59,5 @@ function ReportCard({ report, onDone }: { report: ReviewReport; onDone: () => vo
       </div>
       {decision.isError && <LibraryError error={decision.error} retry={() => decision.reset()}/>}
     </div>}
-    {notice && <p role="status">{notice}</p>}
   </>;
 }

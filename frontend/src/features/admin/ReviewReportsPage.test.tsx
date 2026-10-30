@@ -16,12 +16,18 @@ const report = { id: '6dff85ce-9a56-4cca-845d-a6f5d36cbe32', reviewId: '5a5804a7
 afterEach(() => vi.unstubAllGlobals());
 
 it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đánh giá', async () => {
-  const fetchMock = vi.fn((url: string, init: RequestInit) => Promise.resolve(
-    String(url).endsWith('/auth/refresh') ? Response.json(session)
-      : String(url).includes('/admin/review-reports?') ? Response.json({ items: [report], page: 0, size: 20, totalElements: 1 })
-        : String(url).endsWith(`/admin/review-reports/${report.id}/decisions`) && init.method === 'POST'
-          ? Response.json({ reportId: report.id, action: 'HIDE', reviewStatus: 'HIDDEN', resolvedAt: '2026-10-28T01:00:00Z' })
-          : Response.json({})));
+  let decided = false;
+  const fetchMock = vi.fn((url: string, init: RequestInit) => {
+    if (String(url).endsWith('/auth/refresh')) return Promise.resolve(Response.json(session));
+    if (String(url).includes('/admin/review-reports?')) return Promise.resolve(Response.json({
+      items: decided ? [] : [report], page: 0, size: 20, totalElements: decided ? 0 : 1 }));
+    if (String(url).endsWith(`/admin/review-reports/${report.id}/decisions`) && init.method === 'POST') {
+      decided = true;
+      return Promise.resolve(Response.json({ reportId: report.id, action: 'HIDE', reviewStatus: 'HIDDEN',
+        resolvedAt: '2026-10-28T01:00:00Z' }));
+    }
+    return Promise.resolve(Response.json({}));
+  });
   vi.stubGlobal('fetch', fetchMock);
   render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/bao-cao-danh-gia']}><AppRouter/></MemoryRouter></AppProviders>);
   expect(await screen.findByRole('heading', { name: 'Báo cáo đánh giá' })).toBeInTheDocument();
@@ -32,6 +38,8 @@ it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đ
     String(url).endsWith(`/admin/review-reports/${report.id}/decisions`) && init.method === 'POST'
       && JSON.parse(String(init.body)).action === 'HIDE'
       && JSON.parse(String(init.body)).reason === 'Có nội dung xúc phạm rõ ràng')).toBe(true));
+  expect(await screen.findByRole('status')).toHaveTextContent('Đã lưu quyết định.');
+  expect(await screen.findByText('Không có báo cáo ở trang này.')).toBeInTheDocument();
 });
 
 it('người đọc không tải hàng đợi kiểm duyệt', async () => {

@@ -101,17 +101,26 @@ class HoldIntegrationTest {
     @Test void duplicateActiveBookAcrossBranchesAndAmbiguousEditionAreRejected() {
         var f=fixture(); var hold=service.create(f.reader,request(f,null,true));
         UUID branch=branch();
+        copyAt(f,branch,f.edition,"AVAILABLE");
         failure(409,()->service.create(f.reader,new HoldRequest(UUID.randomUUID(),f.book,branch,f.edition,false)));
         failure(422,()->service.create(user("READER"),request(f,f.edition,true)));
         failure(422,()->service.create(user("READER"),request(f,null,false)));
         failure(422,()->service.create(user("READER"),request(f,UUID.randomUUID(),false)));
         service.cancel(f.reader,hold.id(),version(hold.version()));
-        assertThat(service.create(f.reader,new HoldRequest(UUID.randomUUID(),f.book,branch,f.edition,false)).status()).isEqualTo("WAITING");
+        assertThat(service.create(f.reader,new HoldRequest(UUID.randomUUID(),f.book,branch,f.edition,false)).status()).isEqualTo("READY");
+    }
+
+    @Test void refusesHoldWhenSelectedBranchHasNoManagedPhysicalCopy() {
+        var f=fixture();
+        jdbc.update("UPDATE book_copies SET status='WITHDRAWN' WHERE id=?",f.copy);
+        failure(409,()->service.create(f.reader,request(f,f.edition,false)));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM holds WHERE book_id=?",Integer.class,f.book)).isZero();
     }
 
     @Test void returnAllocatesCompatibleQueueAndCancellationPassesCopyToNextReader() {
         var f=fixture(); var loan=loans.borrow(f.staff,borrow(f,f.reader));
         UUID different=edition(f.book), first=user("READER"), second=user("READER"), third=user("READER");
+        copyAt(f,f.branch,different,"IN_PROCESS");
         var incompatible=service.create(first,request(f,different,false));
         tick(); var a=service.create(second,request(f,f.edition,false));
         tick(); var b=service.create(third,request(f,null,true));
@@ -209,7 +218,9 @@ class HoldIntegrationTest {
         var f=fixture(); var loan=loans.borrow(f.staff,borrow(f,f.reader));
         var a=service.create(user("READER"),request(f,null,true));
         var b=service.create(user("READER"),request(f,null,true));
-        var elsewhere=service.create(user("READER"),new HoldRequest(UUID.randomUUID(),f.book,branch(),null,true));
+        UUID otherBranch=branch();
+        copyAt(f,otherBranch,f.edition,"IN_PROCESS");
+        var elsewhere=service.create(user("READER"),new HoldRequest(UUID.randomUUID(),f.book,otherBranch,null,true));
         UUID expected=jdbc.queryForObject("SELECT id FROM holds WHERE book_id=? AND branch_id=? ORDER BY queued_at,id LIMIT 1",UUID.class,f.book,f.branch);
         loans.returnLoan(f.staff,loan.loanId(),new ReturnRequest(UUID.randomUUID(),f.branch,0L));
         assertThat(holds.assigned(f.copy).orElseThrow().id()).isEqualTo(expected);
@@ -273,8 +284,12 @@ class HoldIntegrationTest {
 
     @Test void renewBlocksCompatibleWaitingHoldButNotDifferentEditionOrBranch() {
         var f=fixture(); var loan=loans.borrow(f.staff,borrow(f,f.reader));
-        service.create(user("READER"),request(f,edition(f.book),false));
-        service.create(user("READER"),new HoldRequest(UUID.randomUUID(),f.book,branch(),null,true));
+        UUID otherEdition=edition(f.book);
+        copyAt(f,f.branch,otherEdition,"IN_PROCESS");
+        service.create(user("READER"),request(f,otherEdition,false));
+        UUID otherBranch=branch();
+        copyAt(f,otherBranch,f.edition,"IN_PROCESS");
+        service.create(user("READER"),new HoldRequest(UUID.randomUUID(),f.book,otherBranch,null,true));
         UUID waiting=user("READER"); var hold=service.create(waiting,request(f,null,true));
         failure(409,()->renewals.renew(f.reader,loan.loanId(),version(0)));
         service.cancel(waiting,hold.id(),version(0));
@@ -390,6 +405,43 @@ class HoldIntegrationTest {
         mvc.perform(post(path).with(owner).contentType("application/json").content(json.writeValueAsString(version(1)))).andExpect(status().isForbidden());
     }
 
+    @Test void staffHoldWorkspaceFiltersExpiredPickupAndReturnsOnlyOperationalReaderData() throws Exception {
+        var f=fixture();
+        var ready=service.create(f.reader,request(f,f.edition,false));
+        UUID waitingReader=user("READER");
+        var waiting=service.create(waitingReader,request(f,f.edition,false));
+        var staff=jwt().jwt(j->j.subject(f.staff.toString())).authorities(new SimpleGrantedAuthority("ROLE_LIBRARIAN"));
+        var reader=jwt().jwt(j->j.subject(f.reader.toString())).authorities(new SimpleGrantedAuthority("ROLE_READER"));
+        String memberCode=jdbc.queryForObject("SELECT member_code FROM users WHERE id=?",String.class,waitingReader);
+
+        var summary=json.readTree(mvc.perform(get("/api/v1/staff/holds/summary").with(staff))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(summary.get("ready").asLong()).isGreaterThanOrEqualTo(1);
+        assertThat(summary.get("waiting").asLong()).isGreaterThanOrEqualTo(1);
+
+        var filtered=json.readTree(mvc.perform(get("/api/v1/staff/holds").with(staff)
+                        .param("status","WAITING").param("reader",memberCode))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(filtered.at("/page/totalElements").asLong()).isEqualTo(1);
+        assertThat(filtered.at("/items/0/hold/id").asText()).isEqualTo(waiting.id().toString());
+        assertThat(filtered.toString()).contains(memberCode).doesNotContain("email","phone");
+
+        var detail=json.readTree(mvc.perform(get("/api/v1/staff/holds/"+ready.id()).with(staff))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(detail.at("/item/hold/id").asText()).isEqualTo(ready.id().toString());
+        assertThat(detail.get("history").isArray()).isTrue();
+        clock.value=ready.expiresAt().plusSeconds(1);
+        service.reconcileBook(f.book);
+        assertThat(holds.find(ready.id()).orElseThrow().status()).isEqualTo("EXPIRED");
+        var soon=json.readTree(mvc.perform(get("/api/v1/staff/holds").with(staff)
+                        .param("status","READY").param("reader",jdbc.queryForObject(
+                                "SELECT member_code FROM users WHERE id=?",String.class,f.reader))
+                        .param("expiresBefore",Instant.now().plus(Duration.ofDays(3)).toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(soon.at("/page/totalElements").asLong()).isZero();
+        mvc.perform(get("/api/v1/staff/holds/summary").with(reader)).andExpect(status().isForbidden());
+    }
+
     @Test void readerCanListOnlyActivePickupBranchesWithoutInventoryAdminAccess() throws Exception {
         var f=fixture(); UUID disabled=branch();
         jdbc.update("UPDATE branches SET status='DISABLED' WHERE id=?",disabled);
@@ -428,6 +480,14 @@ class HoldIntegrationTest {
         jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id) VALUES (?,?,?,?)",copy,edition,copy.toString(),shelf);
         states.change(staff,copy,UUID.randomUUID(),0,"AVAILABLE","Đã kiểm tra nhập kho");
         return new Fixture(staff,reader,book,edition,branch,shelf,copy);
+    }
+    private UUID copyAt(Fixture f,UUID branch,UUID edition,String status) {
+        UUID shelf=UUID.randomUUID(),copy=UUID.randomUUID();
+        jdbc.update("INSERT INTO shelves(id,branch_id,code,label) VALUES (?,?,'S2','Kệ bổ sung')",shelf,branch);
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id) VALUES (?,?,?,?)",copy,edition,copy.toString(),shelf);
+        if(status.equals("AVAILABLE")) states.change(f.staff,copy,UUID.randomUUID(),0,status,"Đã kiểm tra nhập kho");
+        else assertThat(status).isEqualTo("IN_PROCESS");
+        return copy;
     }
     private UUID branch() {
         UUID id=UUID.randomUUID(); jdbc.update("INSERT INTO branches(id,code,name) VALUES (?,?,'Chi nhánh thử')",id,id.toString().substring(0,20)); return id;

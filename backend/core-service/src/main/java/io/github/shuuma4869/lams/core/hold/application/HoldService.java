@@ -60,6 +60,14 @@ public class HoldService {
             if(!branch.getFirst().equals("ACTIVE")) throw new AuthFailure(409,"Chi nhánh không hoạt động.");
             if(request.editionId()!=null && jdbc.queryForObject("SELECT count(*) FROM editions WHERE id=? AND book_id=?",Integer.class,request.editionId(),request.bookId())==0)
                 throw new AuthFailure(422,"Ấn bản không thuộc đầu sách đã chọn.");
+            if(jdbc.queryForObject("""
+                    SELECT count(*) FROM book_copies c
+                    JOIN editions e ON e.id=c.edition_id
+                    JOIN shelves s ON s.id=c.shelf_id
+                    WHERE e.book_id=? AND s.branch_id=? AND c.status<>'WITHDRAWN'
+                      AND (?::uuid IS NULL OR c.edition_id=?)
+                    """,Integer.class,request.bookId(),request.branchId(),request.editionId(),request.editionId())==0)
+                throw new AuthFailure(409,"Chi nhánh chưa có bản sách vật lý đang quản lý cho lựa chọn này.");
             if(jdbc.queryForObject("SELECT count(*) FROM holds WHERE reader_id=? AND status IN ('WAITING','READY')",Integer.class,actor)>=maxHolds)
                 throw new AuthFailure(409,"Bạn đã đạt hạn mức yêu cầu giữ chỗ đang mở.");
             UUID id=UUID.randomUUID(); Instant now=now();

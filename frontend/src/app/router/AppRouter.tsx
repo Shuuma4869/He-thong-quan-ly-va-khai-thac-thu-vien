@@ -24,6 +24,7 @@ const ReaderLoansPage = lazy(() => import('../../features/circulation/ReaderLoan
 const StaffCirculationPage = lazy(() => import('../../features/circulation/StaffCirculationPage').then(value => ({ default: value.StaffCirculationPage })));
 const CirculationReportPage = lazy(() => import('../../features/circulation/CirculationReportPage').then(value => ({ default: value.CirculationReportPage })));
 const HoldActivityReportPage = lazy(() => import('../../features/circulation/HoldActivityReportPage').then(value => ({ default: value.HoldActivityReportPage })));
+const StaffHoldManagementPage = lazy(() => import('../../features/circulation/StaffHoldManagementPage').then(value => ({ default: value.StaffHoldManagementPage })));
 const InventorySessionsPage = lazy(() => import('../../features/inventory/InventorySessionsPage').then(value => ({ default: value.InventorySessionsPage })));
 const InventorySessionPage = lazy(() => import('../../features/inventory/InventorySessionPage').then(value => ({ default: value.InventorySessionPage })));
 const AcquisitionPage = lazy(() => import('../../features/acquisition/AcquisitionPage').then(value => ({ default: value.AcquisitionPage })));
@@ -68,6 +69,7 @@ export function AppRouter() {
         <Route path="thanh-vien" element={<Deferred><MemberListPage /></Deferred>} />
         <Route path="danh-muc" element={<Deferred><StaffCatalogPage /></Deferred>} />
         <Route path="luu-thong" element={<Deferred><StaffCirculationPage /></Deferred>} />
+        <Route path="giu-cho" element={<Deferred><StaffHoldManagementPage /></Deferred>} />
         <Route path="bao-cao-luu-thong" element={<Deferred><CirculationReportPage /></Deferred>} />
         <Route path="bao-cao-giu-cho" element={<Deferred><HoldActivityReportPage /></Deferred>} />
         <Route path="kiem-ke" element={<Deferred><InventorySessionsPage /></Deferred>} />

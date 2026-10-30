@@ -41,6 +41,7 @@ class PublicCatalogIntegrationTest {
         UUID reader = UUID.randomUUID(), waitingReader = UUID.randomUUID();
         UUID free = UUID.randomUUID(), loaned = UUID.randomUUID();
         UUID inconsistentLoan = UUID.randomUUID(), reserved = UUID.randomUUID(), lost = UUID.randomUUID();
+        UUID withdrawn = UUID.randomUUID();
         jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Khả dụng','khả dụng')", book);
         jdbc.update("INSERT INTO editions(id,book_id) VALUES (?,?)", edition, book);
         jdbc.update("INSERT INTO branches(id,code,name) VALUES (?,'ACTIVE-TEST','Chi nhánh mở'),"
@@ -55,8 +56,9 @@ class PublicCatalogIntegrationTest {
                 + "VALUES (?,?,?,?,?,'test-only','ACTIVE',now(),now())", waitingReader,
                 "TV" + waitingReader.toString().substring(0, 16), waitingReader + "@test.invalid",
                 waitingReader + "@test.invalid", "Người chờ");
-        for (var item : java.util.List.of(free, loaned, inconsistentLoan, reserved, lost)) {
+        for (var item : java.util.List.of(free, loaned, inconsistentLoan, reserved, lost, withdrawn)) {
             String state = item.equals(loaned) ? "ON_LOAN" : item.equals(lost) ? "LOST" : "AVAILABLE";
+            if (item.equals(withdrawn)) state = "WITHDRAWN";
             jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status) VALUES (?,?,?,?,?)",
                     item, edition, "BC-" + item, activeShelf, state);
         }
@@ -78,16 +80,66 @@ class PublicCatalogIntegrationTest {
         String path = "/api/v1/public/catalog/books/{id}/availability";
         mvc.perform(get(path, book)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkedAt").exists())
+                .andExpect(jsonPath("$.copies.totalCopies").value(5))
+                .andExpect(jsonPath("$.copies.availableCopies").value(1))
+                .andExpect(jsonPath("$.copies.borrowedCopies").value(2))
+                .andExpect(jsonPath("$.copies.reservedCopies").value(1))
+                .andExpect(jsonPath("$.copies.unavailableCopies").value(1))
+                .andExpect(jsonPath("$.copies.withdrawnCopies").value(1))
+                .andExpect(jsonPath("$.waitingHolds").value(1))
+                .andExpect(jsonPath("$.readyHolds").value(1))
                 .andExpect(jsonPath("$.branches.length()").value(1))
-                .andExpect(jsonPath("$.branches[0].editionId").value(edition.toString()))
-                .andExpect(jsonPath("$.branches[0].availableCopies").value(1))
-                .andExpect(jsonPath("$.branches[0].catalogedCopies").value(5))
+                .andExpect(jsonPath("$.branches[0].copies.totalCopies").value(5))
                 .andExpect(jsonPath("$.branches[0].waitingHolds").value(1))
+                .andExpect(jsonPath("$.editions.length()").value(1))
+                .andExpect(jsonPath("$.editions[0].editionId").value(edition.toString()))
+                .andExpect(jsonPath("$.editions[0].branches[0].copies.availableCopies").value(1))
+                .andExpect(jsonPath("$.editions[0].branches[0].compatibleWaitingHolds").value(1))
+                .andExpect(jsonPath("$.editions[0].branches[0].readyHolds").value(1))
                 .andExpect(jsonPath("$.branches[0].barcode").doesNotExist());
+        mvc.perform(get("/api/v1/public/catalog/books/availability").param("bookId", book.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].bookId").value(book.toString()))
+                .andExpect(jsonPath("$[0].copies.totalCopies").value(5))
+                .andExpect(jsonPath("$[0].copies.availableCopies").value(1))
+                .andExpect(jsonPath("$[0].branches.length()").value(1))
+                .andExpect(jsonPath("$[0].branches[0].branchId").value(active.toString()))
+                .andExpect(jsonPath("$[0].branches[0].copies.borrowedCopies").value(2))
+                .andExpect(jsonPath("$[0].branches[0].barcode").doesNotExist());
+        mvc.perform(get("/api/v1/public/catalog/books/availability")
+                        .param("bookId", book.toString(), book.toString()))
+                .andExpect(status().isUnprocessableEntity());
         jdbc.update("UPDATE book_copies SET status='ON_LOAN' WHERE id=?", free);
         mvc.perform(get(path, book)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.branches[0].availableCopies").value(0));
+                .andExpect(jsonPath("$.copies.availableCopies").value(0))
+                .andExpect(jsonPath("$.editions[0].branches[0].copies.availableCopies").value(0));
         mvc.perform(get(path, UUID.randomUUID())).andExpect(status().isNotFound());
+    }
+
+    @Test void availabilityDoesNotDoubleCountAnyEditionHoldsAcrossEditions() throws Exception {
+        UUID book = UUID.randomUUID(), branch = UUID.randomUUID(), shelf = UUID.randomUUID();
+        UUID editionOne = UUID.randomUUID(), editionTwo = UUID.randomUUID();
+        UUID genericReader = UUID.randomUUID(), editionReader = UUID.randomUUID();
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Tác phẩm nhiều ấn bản','tac pham nhieu an ban')", book);
+        jdbc.update("INSERT INTO editions(id,book_id) VALUES (?,?),(?,?)", editionOne, book, editionTwo, book);
+        jdbc.update("INSERT INTO branches(id,code,name) VALUES (?,'MULTI-EDITION','Chi nhánh nhiều ấn bản')", branch);
+        jdbc.update("INSERT INTO shelves(id,branch_id,code,label) VALUES (?,?,'C','Kệ C')", shelf, branch);
+        jdbc.update("INSERT INTO users(id,member_code,email,email_normalized,full_name,password_hash,status,created_at,updated_at) VALUES (?,?,?,?,?,'test-only','ACTIVE',now(),now())",
+                genericReader, "TV" + genericReader.toString().substring(0, 16), genericReader + "@test.invalid", genericReader + "@test.invalid", "Đọc giả tổng quát");
+        jdbc.update("INSERT INTO users(id,member_code,email,email_normalized,full_name,password_hash,status,created_at,updated_at) VALUES (?,?,?,?,?,'test-only','ACTIVE',now(),now())",
+                editionReader, "TV" + editionReader.toString().substring(0, 16), editionReader + "@test.invalid", editionReader + "@test.invalid", "Đọc giả ấn bản");
+        jdbc.update("INSERT INTO book_copies(id,edition_id,barcode,shelf_id,status) VALUES (?,?,?,?,'AVAILABLE'),(?,?,?,?,'AVAILABLE')",
+                UUID.randomUUID(), editionOne, "BC-1", shelf,
+                UUID.randomUUID(), editionTwo, "BC-2", shelf);
+        jdbc.update("INSERT INTO holds(id,reader_id,book_id,edition_id,branch_id,status,queued_at,policy_version,pickup_seconds) VALUES (?,?,?,?,?,'WAITING',now(),'test-v1',3600)",
+                UUID.randomUUID(), genericReader, book, null, branch);
+        jdbc.update("INSERT INTO holds(id,reader_id,book_id,edition_id,branch_id,status,queued_at,policy_version,pickup_seconds) VALUES (?,?,?,?,?,'WAITING',now(),'test-v1',3600)",
+                UUID.randomUUID(), editionReader, book, editionOne, branch);
+        mvc.perform(get("/api/v1/public/catalog/books/{id}/availability", book)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.branches.length()").value(1))
+                .andExpect(jsonPath("$.branches[0].waitingHolds").value(2))
+                .andExpect(jsonPath("$.waitingHolds").value(2))
+                .andExpect(jsonPath("$.editions.length()").value(2));
     }
 
     @Test void batchCardsPreserveRequestedOrderAndBoundTheRequest() throws Exception {

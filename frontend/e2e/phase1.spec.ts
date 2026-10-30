@@ -37,9 +37,10 @@ async function captureFullPage(page: Page, options: Parameters<Page['screenshot'
 }
 
 const core = process.env.LAMS_E2E_CORE_URL;
+const insight = process.env.LAMS_E2E_INSIGHT_URL;
 const container = process.env.LAMS_E2E_CONTAINER;
 const owner = process.env.LAMS_E2E_OWNER;
-if (!core || !container || !owner) throw new Error('Chạy qua scripts/test-phase1-e2e.ps1 với database kiểm thử riêng.');
+if (!core || !insight || !container || !owner) throw new Error('Chạy qua scripts/test-phase1-e2e.ps1 với database kiểm thử riêng.');
 const actualOwner = execFileSync('docker', ['inspect', '--format', '{{ index .Config.Labels "lams.phase1-e2e" }}', container], { encoding: 'utf8' }).trim();
 if (actualOwner !== owner) throw new Error('Container không thuộc lượt kiểm thử này.');
 
@@ -483,7 +484,7 @@ test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ li�
   await page.getByRole('alertdialog').getByRole('button',{name:'Xác nhận xóa'}).click();await expect(page.getByRole('status')).toHaveText('Đã xóa dữ liệu.');
 });
 
-test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy hàng chờ trên dữ liệu thật', async ({ page, request }) => {
+test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhận phân bổ kế tiếp trên dữ liệu thật', async ({ page, request }) => {
   test.setTimeout(120000);
   const headers = await staffApi(request);
   const book = await createCatalog(request, headers, '/books', { title: `Lưu thông ${suffix}`, authorIds: [], categoryIds: [] });
@@ -500,19 +501,34 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   await expect(page).toHaveURL(new RegExp(`/sach/${book.id}$`));
   await expect(page.getByRole('heading', { name: 'Các ấn bản' })).toBeFocused();
   await captureFullPage(page, { path: 'test-results/book-detail-glass.png', fullPage: true });
-  await page.getByRole('link', { name: 'Giữ chỗ ấn bản này' }).click();
+  await page.getByRole('link', { name: 'Đăng ký mượn tại quầy' }).click();
   await expect(page.getByRole('checkbox')).not.toBeChecked();
   await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
   await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).click();
   await expect(page.getByText(`Đã chọn: ${branch.code} · ${branch.name}`)).toBeVisible();
-  await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
-  await expect(page.getByRole('status')).toContainText('Sẵn sàng nhận');
-  await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
-  await page.reload(); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Sẵn sàng nhận');
+  await page.getByRole('button', { name: 'Đăng ký mượn tại quầy' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Sẵn sàng nhận' })).toBeVisible();
   const ready = await request.get(`${core}/copies/${copy.id}`, { headers }); expect(ready.status()).toBe(200);
-  const borrowed = await createCatalog(request, headers, '/loans', { requestId: randomUUID(), copyId: copy.id,
-    readerId: reader.user.id, branchId: branch.id, copyVersion: (await ready.json()).version });
-  await page.reload();
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/giu-cho');
+  await page.getByLabel('Người đọc / mã thành viên').fill(accounts.READER.name);
+  await page.getByRole('button', { name: 'Áp dụng bộ lọc' }).click();
+  const readyHold = page.locator('.hold-list-card').filter({ hasText: book.title });
+  await expect(readyHold).toContainText('Sẵn sàng nhận');
+  await readyHold.getByRole('button', { name: 'Mở chi tiết' }).click();
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await captureFullPage(page, { path: `test-results/staff-holds-ready-${viewport.width}.png`, fullPage: true });
+  }
+  await page.getByRole('button', { name: 'Xác nhận đã giao sách' }).click();
+  await expect(page.getByRole('status')).toContainText('Đã bàn giao. Hạn trả:');
+  const readerLoans = await request.get(`${core}/me/loans?page=0&size=10`, { headers: readerHeaders });
+  expect(readerLoans.status()).toBe(200);
+  const borrowed = (await readerLoans.json()).items.find((item: { copyId: string }) => item.copyId === copy.id);
+  expect(borrowed).toBeTruthy();
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await loginCatalog(page, 'READER'); await navigate(page, '/muon-va-giu-cho');
   const loans = page.getByLabel('Lượt mượn của tôi');
   await expect(loans).toContainText(book.title); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã nhận sách');
   await loans.getByRole('button', { name: 'Gia hạn', exact: true }).click();
@@ -526,7 +542,7 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
   await page.getByRole('radio', { name: new RegExp(`Nhận sách ${suffix}`) }).click();
   await expect(page.getByText(`Đã chọn: ${branch.code} · ${branch.name}`)).toBeVisible();
   await page.getByRole('button', { name: 'Xác nhận giữ chỗ' }).click();
-  await expect(page.getByRole('status')).toContainText('Đang chờ');
+  await expect(page.getByRole('status').filter({ hasText: 'Đang chờYêu cầu đã được ghi' })).toBeVisible();
   await page.getByRole('link', { name: 'Xem các lượt mượn và giữ chỗ của tôi' }).click();
   await page.getByRole('button', { name: 'Xem thời gian dự kiến' }).click();
   await expect(page.getByLabel('Ước tính giữ chỗ')).toContainText('chưa phải thông báo đến nhận');
@@ -538,17 +554,45 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và hủy
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/hold-eta-${viewport.width}.png`, fullPage: true });
   }
-  await page.getByRole('button', { name: 'Hủy giữ chỗ', exact: true }).click();
-  await page.getByRole('button', { name: 'Xác nhận hủy giữ chỗ' }).click();
-  await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã hủy');
-  await page.reload(); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã hủy');
+  await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đang chờ');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/reader-circulation-${viewport.width}.png`, fullPage: true });
   }
-  expect((await request.post(`${core}/loans/${borrowed.loanId}/return`, { headers, data: { requestId: randomUUID(), version: renewedBody.version, branchId: branch.id } })).status()).toBe(200);
-  await page.reload(); await expect(loans).toContainText('Đã trả');
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/luu-thong');
+  await page.getByLabel('Mã vạch bản sách').fill(copy.barcode);
+  await page.getByRole('button', { name: 'Tra bản sách' }).click();
+  await page.getByRole('button', { name: 'Tìm lượt đang mượn của bản này' }).click();
+  const returnedHistory = page.getByLabel('Lịch sử tại quầy');
+  await expect(returnedHistory).toContainText(book.title);
+  await returnedHistory.getByRole('button', { name: 'Nhận trả', exact: true }).click();
+  await page.getByRole('button', { name: 'Xác nhận nhận trả' }).click();
+  await expect(returnedHistory).toContainText('Không có lượt mượn phù hợp.');
+  const returned = await request.get(`${core}/loans?copyId=${copy.id}`, { headers });
+  expect((await returned.json()).items[0].status).toBe('RETURNED');
+  const afterReturn = await request.get(`${core}/me/holds?size=100`, { headers: readerHeaders });
+  expect(afterReturn.status()).toBe(200);
+  const allocated = (await afterReturn.json()).items
+    .find((item: { hold: { id: string } }) => item.hold.id === waitingHold.id);
+  expect(allocated?.hold).toMatchObject({ status: 'READY', copyId: copy.id });
+  const allocatedCopy = await request.get(`${core}/copies/${copy.id}`, { headers });
+  expect(allocatedCopy.status()).toBe(200);
+  expect((await allocatedCopy.json()).status).toBe('ON_HOLD');
+  await page.reload(); await expect(page.getByLabel('Lịch sử tại quầy')).toContainText('Đã trả');
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await loginCatalog(page, 'READER'); await navigate(page, '/muon-va-giu-cho');
+  await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Sẵn sàng nhận');
+  await expect.poll(async () => {
+    const notifications = await request.get(`${insight}/me/notifications?page=0&size=50`, { headers: readerHeaders });
+    if (notifications.status() !== 200) return false;
+    const body = await notifications.json();
+    return body.items.some((item: { holdId: string; eventType: string }) =>
+      item.holdId === waitingHold.id && item.eventType === 'HOLD_READY');
+  }, { timeout: 30000 }).toBe(true);
+  await navigate(page, '/thong-bao');
+  await expect(page.getByRole('heading', { name: 'Sách đã sẵn sàng nhận' }).first()).toBeVisible();
 });
 
 test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua giao diện', async ({ page, request }) => {

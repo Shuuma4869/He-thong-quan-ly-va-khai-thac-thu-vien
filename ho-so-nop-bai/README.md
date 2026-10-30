@@ -9,6 +9,7 @@
 | [Đối chiếu rubric](doi-chieu-rubric.md) | Bằng chứng và các điều kiện học thuật còn cần xác nhận. |
 | [Minh chứng giao diện](minh-chung-giao-dien/README.md) | Ảnh web và EXE/WebView2 có nguồn và SHA kiểm chứng. |
 | [Ảnh giao diện PR #31](minh-chung-giao-dien/pr31/README.md) | 13 ảnh gốc từ artifact Web E2E tại `0ef4007` và 2 ảnh trang tĩnh chụp local; không coi là bằng chứng EXE/WebView2. |
+| [Ảnh Reader–Librarian tại `00afafa`](minh-chung-giao-dien/00afafa/README.md) | 5 ảnh gốc từ Web E2E cô lập tại code SHA `00afafa`; gồm tồn kho Book, Reader circulation và Hold READY của Librarian ở desktop/mobile. Không phải ảnh EXE. |
 | [Ảnh giao diện vòng cuối](minh-chung-giao-dien/23b90ba/README.md) | 50 ảnh toàn trang và 2 viewport ở UI commit `23b90ba`, chụp web local với Core/Insight/PostgreSQL demo; thêm [7 ảnh EXE E2E](minh-chung-giao-dien/23b90ba/desktop-e2e/README.md) có giao dịch test thật. |
 | [Ảnh Web E2E tại main](minh-chung-giao-dien/d0ba015/README.md) | 6 ảnh gốc từ run `40880637621` tại `d0ba015`; ảnh Reader và dashboard Admin được dùng trong báo cáo. Không phải ảnh EXE. |
 

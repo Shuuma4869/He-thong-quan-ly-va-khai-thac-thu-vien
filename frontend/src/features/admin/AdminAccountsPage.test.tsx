@@ -41,3 +41,23 @@ it('người đọc không thấy trang quản trị hoặc gọi API tài kho�
   expect(await screen.findByText(/403 · Không có quyền truy cập/)).toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/admin/accounts'))).toBe(false);
 });
+
+it('cho phép tải lại lịch sử quản trị khi API audit tạm thời lỗi', async () => {
+  let auditAttempts = 0;
+  const fetchMock = vi.fn((url: string) => {
+    if (String(url).endsWith('/auth/refresh')) return Promise.resolve(Response.json(session));
+    if (String(url).endsWith(`/admin/accounts/${target.id}/audit`)) {
+      auditAttempts += 1;
+      return Promise.resolve(auditAttempts === 1 ? Response.json({}, { status: 503 }) : Response.json([]));
+    }
+    return Promise.resolve(Response.json(String(url).includes('/admin/accounts?')
+      ? { items: [target], number: 0, size: 20, totalElements: 1 } : target));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/tai-khoan']}><AppRouter/></MemoryRouter></AppProviders>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Chi tiết' }));
+  expect(await screen.findByText('Không tải được dữ liệu. Vui lòng kiểm tra kết nối và thử lại.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+  expect(await screen.findByText('Chưa có thay đổi quản trị.')).toBeInTheDocument();
+  expect(auditAttempts).toBe(2);
+});

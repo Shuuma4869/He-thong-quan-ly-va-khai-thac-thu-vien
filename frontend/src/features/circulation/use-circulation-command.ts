@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
 
-export function useCirculationCommand<T>(owner: string, signature: string, send: (requestId: string) => Promise<T>) {
+export function useCirculationCommand<T>(owner: string, signature: string, send: (requestId: string) => Promise<T>,
+  onSuccess?: (result: T) => void) {
   const client = useQueryClient();
   const receipt = useRef<{ signature: string; id: string } | null>(null);
   const sending = useRef(false);
@@ -17,9 +18,11 @@ export function useCirculationCommand<T>(owner: string, signature: string, send:
     try {
       const response = await send(receipt.current.id);
       setResult(response);
+      onSuccess?.(response);
       await client.cancelQueries({ queryKey: ['circulation', owner] });
       await client.invalidateQueries({ queryKey: ['circulation', owner] });
       await client.invalidateQueries({ queryKey: ['catalog', owner] });
+      await client.invalidateQueries({ queryKey: ['catalog', 'availability'] });
     } catch (failure) { setError(failure instanceof Error ? failure : new Error('Không hoàn tất yêu cầu.')); }
     finally { sending.current = false; setBusy(false); }
   };

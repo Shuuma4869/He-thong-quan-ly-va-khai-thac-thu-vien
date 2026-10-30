@@ -46,6 +46,11 @@ public class PublicCatalogController {
     public PublicAvailabilityService.Availability availability(@PathVariable UUID id) {
         return availability.forBook(id);
     }
+    @GetMapping("/books/availability")
+    public List<PublicAvailabilityService.CatalogAvailability> availabilityBatch(
+            @RequestParam("bookId") List<UUID> bookIds) {
+        return availability.forBooks(bookIds);
+    }
     @GetMapping("/{kind:authors|categories}")
     public PublicCatalogService.Result<PublicCatalogService.Named> names(@PathVariable String kind,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,

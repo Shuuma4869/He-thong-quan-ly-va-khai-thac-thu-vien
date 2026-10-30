@@ -6,6 +6,7 @@ import { AppRouter } from '../../app/router/AppRouter';
 
 const id = '11111111-1111-4111-8111-111111111111', copyId = '22222222-2222-4222-8222-222222222222';
 const branchId = '33333333-3333-4333-8333-333333333333', readerId = '44444444-4444-4444-8444-444444444444';
+const holdId = '55555555-5555-4555-8555-555555555555';
 const time = '2026-10-25T00:00:00Z';
 const session = { accessToken: 'test-only', accessTokenExpiresAt: '2030-01-01T00:00:00Z',
   user: { id, memberCode: 'TT1', email: 'staff@example.test', fullName: 'Thủ thư', roles: ['LIBRARIAN'] } };
@@ -15,6 +16,13 @@ const initialCopy = { id: copyId, editionId: id, bookTitle: 'Sách tại quầy'
 const initialLoan = { loanId: id, copyId, readerId, editionId: id, branchId, bookTitle: initialCopy.bookTitle, barcode: initialCopy.barcode,
   branchName: 'Chi nhánh A', borrowedAt: time, dueAt: '2026-11-08T00:00:00Z', returnedAt: null as string | null, renewalCount: 0,
   version: 2, copyVersion: 8, status: 'ACTIVE', overdue: false };
+const hold = { id: holdId, readerId, bookId: id, editionId: id, branchId, status: 'READY', queuedAt: time,
+  readyAt: time, expiresAt: '2030-01-01T00:00:00Z', closedAt: null, copyId, loanId: null, version: 1,
+  policyVersion: 'test-v1', pickupSeconds: 172800 };
+const readyCopy = { ...initialCopy, status: 'ON_HOLD', version: 8 };
+const staffHoldItem = { hold, queuePosition: null, readerMemberCode: 'TV42', readerName: 'Nguyễn An',
+  bookTitle: initialCopy.bookTitle, isbn13: null, branchCode: 'A', branchName: 'Chi nhánh A',
+  copyBarcode: initialCopy.barcode, copyStatus: 'ON_HOLD', copyVersion: 8 };
 const page = (items: unknown[]) => ({ items, page: { number: 0, size: 10, totalElements: items.length, totalPages: items.length ? 1 : 0 } });
 let copy = { ...initialCopy }, loans: typeof initialLoan[] = [], memberStatus = 'ACTIVE';
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -23,6 +31,10 @@ function result(url: string, init: RequestInit) {
   if (path.endsWith('/auth/refresh')) return Response.json(session);
   if (path.endsWith('/members')) return Response.json(page([{ ...member, status: memberStatus }]));
   if (path.endsWith('/copies/by-barcode')) return Response.json(copy);
+  if (path.endsWith(`/copies/${copyId}`)) return Response.json(readyCopy);
+  if (path.endsWith('/staff/holds/summary')) return Response.json({ waiting: 0, ready: 1, expiringSoon: 0, fulfilledLast30Days: 0, needsAttention: 0 });
+  if (path.endsWith('/staff/holds')) return Response.json(page([staffHoldItem]));
+  if (path.endsWith(`/staff/holds/${holdId}`)) return Response.json({ item: staffHoldItem, history: [{ version: 1, eventType: 'HOLD_READY', actorId: null, occurredAt: time }] });
   if (path.endsWith(`/branches/${branchId}`)) return Response.json({ id: branchId, code: 'A', name: 'Chi nhánh A', status: 'ACTIVE' });
   if (path.endsWith('/return')) { loans = [{ ...initialLoan, version: 3, returnedAt: time, status: 'RETURNED' }]; return Response.json(loans[0]); }
   if (path.endsWith('/renew')) { loans = [{ ...initialLoan, version: 3, renewalCount: 1 }]; return Response.json(loans[0]); }
@@ -62,6 +74,19 @@ it('quầy xác nhận đúng người, bản, chi nhánh và version; không g�
   expect(screen.getByLabelText('Mã vạch bản sách')).toBeDisabled();
   await act(async () => finish(Response.json(initialLoan, { status: 201 })));
   expect(await screen.findByText(/Đã cho mượn. Hạn trả/)).toBeInTheDocument();
+});
+it('không tạo Loan trước bàn giao; workspace giữ chỗ xác nhận qua Core với Copy đã phân bổ', async () => {
+  app('/nhan-vien/giu-cho');
+  await screen.findByRole('heading', { name: 'Quản lý giữ chỗ' });
+  expect(await screen.findByText('Sách tại quầy')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Mở chi tiết' }));
+  const pickup = await screen.findByRole('button', { name: 'Xác nhận đã giao sách' });
+  expect(commands()).toHaveLength(0);
+  fireEvent.click(pickup);
+  await screen.findByText(/Đã bàn giao\. Hạn trả:/);
+  expect(commands()).toHaveLength(1);
+  expect(commands()[0][0]).toContain('/loans');
+  expect(JSON.parse(commands()[0][1].body)).toMatchObject({ copyId, readerId, branchId, copyVersion: 8 });
 });
 it('mất phản hồi giữ nguyên giao dịch cho mượn khi thử lại', async () => {
   let first = true;
