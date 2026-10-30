@@ -9,6 +9,7 @@ import { getBookCards } from '../catalog/catalog-api';
 import { Pagination } from '../catalog/CatalogStates';
 import { listFavorites, myReviews } from './library-api';
 import { LibraryError } from './LibraryError';
+import { BorrowingOverview } from './BorrowingOverview';
 
 export function MyLibraryPage() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ function Library({ owner }: { owner: string }) {
   }, [location.hash, favorites.isPending, reviews.isPending]);
   return <section className="shell library-page my-library-page py-8">
     <header className="my-library-hero"><p className="eyebrow">Không gian cá nhân</p><h1>Thư viện của tôi</h1>
-      <p>Sách đã lưu và những đánh giá của bạn, ở cùng một nơi.</p>
+      <p>Theo dõi hạn trả, yêu cầu giữ chỗ và những tác phẩm bạn muốn đọc.</p>
       <div className="my-library-hero-links"><Link to="/sach"><BookOpen size={17}/> Khám phá sách</Link>
         <Link to="/muon-va-giu-cho">Mượn và giữ chỗ →</Link></div></header>
     <nav className="my-library-sections" aria-label="Các mục trong thư viện của tôi">
@@ -40,6 +41,7 @@ function Library({ owner }: { owner: string }) {
       <Link to="#danh-gia" aria-current={location.hash === '#danh-gia' ? 'location' : undefined}><Star size={17}/> Đánh giá của tôi
         {reviews.isSuccess && <span>{reviews.data.page.totalElements}</span>}</Link>
     </nav>
+    <BorrowingOverview owner={owner}/>
     <section id="sach-yeu-thich" aria-label="Sách yêu thích" className="my-library-section">
       <div className="detail-section-heading"><div><p className="eyebrow">Bộ sưu tập</p><h2>Sách yêu thích</h2></div>
         {favorites.isSuccess && <p>{favorites.data.page.totalElements.toLocaleString('vi-VN')} tác phẩm đã lưu</p>}</div>

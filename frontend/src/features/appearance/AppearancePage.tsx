@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../auth/auth-context';
 import { useAppearance } from './appearance-context';
@@ -22,16 +22,18 @@ const widgetLabels: Record<string, string> = { overview: 'Tổng quan', circulat
 export function AppearancePage() {
   const appearance = useAppearance();
   const { user } = useAuth();
-  const [draft, setDraft] = useState<Appearance>(appearance.values);
-  const savedRef = useRef(appearance.saved);
-  savedRef.current = appearance.saved;
+  const draft = appearance.values;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(appearance.saved);
   const [notice, setNotice] = useState('');
-  useEffect(() => { setDraft(appearance.saved); }, [appearance.saved]);
-  const preview = appearance.preview;
-  useEffect(() => () => preview(savedRef.current), [preview]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
   const change = <K extends Exclude<keyof Appearance, 'widgets'>>(key: K, value: Appearance[K]) => {
     const next = { ...draft, [key]: value };
-    setDraft(next); appearance.preview(next); setNotice('');
+    appearance.preview(next); setNotice('');
   };
   const save = async (next = draft) => {
     try { await appearance.save(next); setNotice('Đã lưu thiết lập giao diện.'); }
@@ -40,19 +42,20 @@ export function AppearancePage() {
   const toggleWidget = (widget: string) => {
     const next = { ...draft, widgets: draft.widgets.includes(widget)
       ? draft.widgets.filter(item => item !== widget) : [...draft.widgets, widget] };
-    setDraft(next); appearance.preview(next);
+    appearance.preview(next); setNotice('');
   };
   return <section className="shell library-page appearance-page" aria-labelledby="appearance-title">
     <header className="appearance-hero"><span className="appearance-hero-icon"><SlidersHorizontal size={26}/></span>
       <div><p className="eyebrow">Không gian của bạn</p><h1 id="appearance-title" className="page-title">Tùy chỉnh giao diện</h1>
       <p>Thử các lựa chọn ngay trên trang. Lưu khi bạn thấy vừa ý.</p></div></header>
     <div className="appearance-layout"><div className="appearance-controls">
-      {fields.map(field => <fieldset className="appearance-field" key={field.key}><legend>{field.label}</legend>
+      {fields.map((field, index) => <fieldset disabled={appearance.saving || appearance.loading} className="appearance-field" key={field.key}><legend>{field.label}</legend>
+        {[0, 3, 7].includes(index) && <p className="appearance-group-label">{index === 0 ? 'Màu sắc & bề mặt' : index === 3 ? 'Bố cục & khoảng cách' : 'Đọc & chuyển động'}</p>}
         <div className="appearance-options">{field.options.map(([value, label]) => <button key={value} type="button"
           className={draft[field.key] === value ? 'is-selected' : ''} aria-pressed={draft[field.key] === value}
           onClick={() => change(field.key, value as never)}>{draft[field.key] === value && <Check size={14}/>} {label}</button>)}</div>
       </fieldset>)}
-      {user?.roles.some(role => role === 'ADMIN' || role === 'LIBRARIAN') && <fieldset className="appearance-field"><legend>Widget bảng điều khiển</legend>
+      {user?.roles.some(role => role === 'ADMIN' || role === 'LIBRARIAN') && <fieldset disabled={appearance.saving || appearance.loading} className="appearance-field"><legend>Widget bảng điều khiển</legend>
         <div className="appearance-options">{Object.entries(widgetLabels).map(([key, label]) => <button key={key} type="button"
           aria-pressed={draft.widgets.includes(key)} className={draft.widgets.includes(key) ? 'is-selected' : ''}
           onClick={() => toggleWidget(key)}>{draft.widgets.includes(key) && <Check size={14}/>} {label}</button>)}</div>
@@ -65,10 +68,11 @@ export function AppearancePage() {
         : 'Bạn đang dùng chế độ khách. Thiết lập chỉ lưu trong trình duyệt này.'}</p></aside></div>
     {appearance.error && <p role="alert" className="appearance-error">{appearance.error}</p>}
     {notice && <p role="status" className="appearance-notice">{notice}</p>}
+    {dirty && <p role="status" className="appearance-dirty">Có thay đổi chưa lưu. Bạn có thể chuyển trang để xem thử rồi quay lại đây; tải lại ứng dụng sẽ bỏ bản xem thử.</p>}
     <div className="appearance-actions"><button type="button" className="button-primary" disabled={appearance.saving}
       onClick={() => void save()}>{appearance.saving ? 'Đang lưu…' : 'Lưu giao diện'}</button>
-      <button type="button" className="button-secondary" onClick={() => { appearance.discard(); setDraft(appearance.saved); setNotice('Đã bỏ thay đổi chưa lưu.'); }}>Bỏ thay đổi</button>
-      <button type="button" className="button-secondary" onClick={() => void save({ accent: 'blue', glass: 'standard', blur: 'on',
+      <button type="button" disabled={appearance.saving} className="button-secondary" onClick={() => { appearance.discard(); setNotice('Đã bỏ thay đổi chưa lưu.'); }}>Bỏ thay đổi</button>
+      <button type="button" disabled={appearance.saving} className="button-secondary" onClick={() => void save({ accent: 'blue', glass: 'standard', blur: 'on',
         sidebarStyle: 'floating', sidebarState: 'expanded', density: 'comfortable', radius: 'soft', fontSize: 'standard',
         motion: 'normal', bookView: 'grid', widgets: ['overview', 'circulation', 'inventory', 'acquisition'] })}>
         <RotateCcw size={15}/> Khôi phục mặc định</button></div>

@@ -113,7 +113,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .search-command form:focus-within { border-color: #67bfe0; box-shadow: 0 0 0 3px rgba(39,154,210,.13); }
 .search-command input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #1f333d; font-size: .8rem; }
 .search-command input:focus-visible { outline: 0; }
-.search-command kbd { flex: none; border: 1px solid #d3e3ea; border-radius: .3rem; padding: .05rem .33rem; color: #748590; font-size: .61rem; }
+.search-command kbd { flex: none; border: 1px solid #d3e3ea; border-radius: .3rem; padding: .05rem .33rem; color: #526775; font-size: .7rem; }
 .search-command-popover { position: absolute; z-index: 50; top: calc(100% + .55rem); left: 0; width: min(520px, 80vw); max-height: min(540px, 74vh); overflow: auto; border: 1px solid #d9e9ef; border-radius: 1rem; padding: .55rem; background: #fff; box-shadow: 0 20px 48px rgba(22,56,75,.18); }
 .search-command-popover > p { padding: 1rem; color: #617482; font-size: .83rem; }
 .search-command-item { display: flex; min-height: 58px; align-items: center; gap: .75rem; border-radius: .7rem; padding: .45rem .55rem; color: #253b48; }
@@ -161,9 +161,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .account-panel form { display: grid; gap: .9rem; margin-top: 1.1rem; }
 .account-panel .field { margin: 0; }
 .account-panel .button-primary, .account-panel .button-secondary { width: fit-content; min-width: 160px; margin-top: .2rem; }
-.account-help { color: #647a86; font-size: .77rem; line-height: 1.6; }
+.account-help { color: #526976; font-size: .8rem; line-height: 1.6; }
 .account-readonly { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .7rem; border-top: 1px solid #e7eff2; padding-top: 1rem; }
-.account-readonly dt { color: #71818b; font-size: .7rem; }
+.account-readonly dt { color: #526976; font-size: .75rem; }
 .account-readonly dd { margin-top: .2rem; overflow-wrap: anywhere; color: #2d4857; font-size: .85rem; font-weight: 650; }
 .account-error { color: #a32f26; font-size: .79rem; }
 .account-current-email { margin-top: 1rem; overflow-wrap: anywhere; color: #445c68; font-size: .83rem; }

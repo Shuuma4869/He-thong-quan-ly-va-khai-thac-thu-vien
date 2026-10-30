@@ -2,6 +2,7 @@ import { test as base, expect, chromium, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import AxeBuilder from '@axe-core/playwright';
 
 const desktopEndpoint = process.env.LAMS_E2E_DESKTOP_CDP;
 const test = base.extend({
@@ -45,6 +46,112 @@ if (actualOwner !== owner) throw new Error('Container không thuộc lượt ki�
 const password = 'Phase1-test-' + randomUUID();
 const suffix = randomUUID().slice(0, 8);
 const accounts: Record<string, { email: string; name: string }> = {};
+
+test('Báo cáo giữ chỗ: sự kiện thật, lọc tác phẩm, CSV và quyền Reader', async ({ page, request }) => {
+  test.setTimeout(120000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Báo cáo giữ chỗ ${suffix}`, authorIds: [], categoryIds: [] });
+  const edition = await createCatalog(request, headers, `/books/${book.id}/editions`, {});
+  const branch = await createCatalog(request, headers, '/branches', { code: `RP-${suffix}`, name: `Chi nhánh báo cáo ${suffix}` });
+  const shelf = await createCatalog(request, headers, '/shelves', { branchId: branch.id, code: 'R1', label: 'Kệ báo cáo', sortOrder: 0 });
+  const copy = await createCatalog(request, headers, '/copies', { editionId: edition.id, shelfId: shelf.id, barcode: `RP-${suffix}` });
+  expect((await request.post(`${core}/copies/${copy.id}/state`, { headers,
+    data: { requestId: randomUUID(), version: copy.version, status: 'AVAILABLE', reason: 'Chuẩn bị dữ liệu kiểm thử báo cáo' } })).status()).toBe(200);
+  const login = await request.post(`${core}/auth/register`, { data: {
+    fullName: 'Người đọc kiểm thử báo cáo', email: `hold-report-${suffix}@example.test`, password } });
+  expect(login.status()).toBe(201);
+  const readerHeaders = { Authorization: `Bearer ${(await login.json()).accessToken}` };
+  const holdResponse = await request.post(`${core}/holds`, { headers: readerHeaders,
+    data: { requestId: randomUUID(), bookId: book.id, editionId: edition.id, branchId: branch.id, anyEdition: false } });
+  expect(holdResponse.status(), await holdResponse.text()).toBe(201);
+  const from = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const to = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+  const params = new URLSearchParams({ from: `${from}T00:00:00+07:00`, to: `${to}T00:00:00+07:00`, bookId: book.id });
+  const report = await request.get(`${core}/reports/hold-activity?${params}`, { headers });
+  expect(report.status()).toBe(200);
+  const evidence = await report.json();
+  expect(evidence.totalEvents).toBeGreaterThanOrEqual(1);
+  expect((await request.get(`${core}/reports/hold-activity?${params}`, { headers: readerHeaders })).status()).toBe(403);
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/nhan-vien/bao-cao-giu-cho');
+  await page.getByLabel('Từ ngày (bao gồm)').fill(from);
+  await page.getByLabel('Đến ngày (không bao gồm)').fill(to);
+  await page.getByRole('button', { name: 'Chọn tác phẩm', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Tìm trong tác phẩm' }).fill(book.title);
+  await page.getByRole('radio', { name: book.title, exact: true }).click();
+  await expect(page.getByRole('group', { name: 'Tác phẩm', exact: true })).toContainText(book.title);
+  await page.getByRole('button', { name: 'Xem hoạt động giữ chỗ', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `${evidence.totalEvents} sự kiện`, exact: true })).toBeVisible();
+  await expect(page.getByRole('table')).toContainText(branch.name);
+  await expect(page.getByRole('table')).toContainText('Tạo yêu cầu');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Xuất CSV theo bộ lọc' }).click();
+  const file = await download;
+  const stream = await file.createReadStream();
+  const chunks: Buffer[] = []; for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const csv = Buffer.concat(chunks).toString('utf8');
+  expect(csv).toContain(book.id); expect(csv).toContain('HOLD_CREATED');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await captureFullPage(page, { path: `test-results/hold-activity-${width}.png`, fullPage: true });
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(results.violations).toEqual([]);
+  }
+});
+
+test('Tìm kiếm mobile: dialog, bàn phím, focus và 11 cỡ màn hình', async ({ page, request }) => {
+  test.setTimeout(120000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Tìm nhanh ${suffix}`, authorIds: [], categoryIds: [] });
+  await navigate(page, '/sach');
+  for (const width of [320, 360, 390, 428, 768, 1024, 1280, 1366, 1440, 1536, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (width <= 428) {
+      const trigger = page.getByRole('button', { name: 'Mở tìm kiếm' });
+      await trigger.click();
+      const dialog = page.getByRole('dialog', { name: 'Tìm trong thư viện' });
+      await expect(dialog).toBeVisible();
+      const search = dialog.getByRole('combobox');
+      await expect(search).toBeFocused();
+      await search.fill(book.title);
+      await expect(dialog.getByRole('option').filter({ hasText: book.title })).toBeVisible();
+      for (let step = 0; step < 6; step++) {
+        await page.keyboard.press('Tab');
+        expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+      }
+      await search.focus();
+      await search.press('Escape');
+      await expect(dialog).not.toBeVisible();
+      await expect(trigger).toBeFocused();
+      const menu = page.getByRole('button', { name: 'Mở menu thư viện' });
+      await menu.click();
+      expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeFocused();
+      expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+    }
+  }
+});
+
+test('Giao diện: bản xem thử giữ khi chuyển trang, lưu và đọc lại đúng revision', async ({ page }) => {
+  test.setTimeout(60000);
+  await loginCatalog(page, 'READER');
+  await navigate(page, '/cai-dat/giao-dien');
+  await page.getByRole('button', { name: 'Lục bảo', exact: true }).click();
+  await expect(page.getByText(/Có thay đổi chưa lưu/)).toBeVisible();
+  await page.locator('.library-sidebar-desktop').getByRole('link', { name: 'Khám phá sách', exact: true }).click();
+  await page.getByRole('link', { name: 'Cài đặt giao diện', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Lục bảo', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Lưu giao diện', exact: true }).click();
+  await expect(page.getByText('Đã lưu thiết lập giao diện.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Lục bảo', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Khôi phục mặc định' }).click();
+  await expect(page.getByRole('button', { name: 'Xanh dương', exact: true })).toHaveAttribute('aria-pressed', 'true');
+});
 
 test.beforeAll(async ({ request }) => {
   for (const role of ['READER', 'LIBRARIAN', 'ADMIN']) {

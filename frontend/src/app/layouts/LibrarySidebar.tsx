@@ -19,6 +19,7 @@ const staffGroups: Group[] = [
     { label: 'Quầy lưu thông', to: '/nhan-vien/luu-thong', icon: ClipboardList },
     { label: 'Kiểm kê kệ sách', to: '/nhan-vien/kiem-ke', icon: BookCopy },
     { label: 'Báo cáo mượn', to: '/nhan-vien/bao-cao-luu-thong', icon: BarChart3 },
+    { label: 'Hoạt động giữ chỗ', to: '/nhan-vien/bao-cao-giu-cho', icon: ClipboardList },
     { label: 'Đề xuất bổ sung', to: '/nhan-vien/de-xuat-bo-sung', icon: Lightbulb },
   ] },
   { title: 'Danh mục & tài khoản', items: [
@@ -67,6 +68,8 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
   }, [location.pathname, location.hash, onClose]);
   useEffect(() => {
     if (!open) return;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const prior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.current?.querySelector<HTMLElement>('button, a')?.focus();
     const onKey = (event: KeyboardEvent) => {
@@ -79,7 +82,7 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('keydown', onKey); prior?.focus(); };
+    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); prior?.focus(); };
   }, [open, onClose, trigger]);
   const groups = [...baseGroups, { title: 'Tùy chỉnh', items: [{ label: 'Giao diện', to: '/cai-dat/giao-dien', icon: SlidersHorizontal }] }];
   const contents = (compact: boolean) => <>

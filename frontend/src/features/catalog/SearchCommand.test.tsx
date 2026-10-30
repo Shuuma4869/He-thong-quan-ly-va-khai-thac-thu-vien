@@ -11,6 +11,7 @@ const categoryId = '33333333-3333-4333-8333-333333333333';
 const page = (items: unknown[]) => ({ items, page: { number: 0, size: 4, totalElements: items.length, totalPages: 1 } });
 function CurrentLocation() { const location = useLocation(); return <output data-testid="location">{location.pathname}{location.search}</output>; }
 function setup() {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
   const fetchMock = vi.fn((url: string) => {
     const path = new URL(url).pathname;
     if (path.endsWith('/books')) return Promise.resolve(Response.json(page([

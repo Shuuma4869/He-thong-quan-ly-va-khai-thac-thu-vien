@@ -111,7 +111,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .book-card-footer { display: flex; flex-direction: column; gap: .45rem; margin-top: auto; padding-top: .8rem; }
 .book-card-rating-line { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
 .book-card-rating, .book-card-favorite { margin-top: 0; }
-.book-card-unrated { color: #758476; font-size: .68rem; }
+.book-card-unrated { color: #526555; font-size: .75rem; }
+.book-card-authors a { display:inline-block; min-height:24px; padding-block:3px; }
 .book-card-favorite { min-height: 28px; margin-left: auto; padding: .2rem .45rem; font-size: .65rem; }
 .book-card-more { margin-top: 0; color: #245d4a; font-size: .75rem; }
 .book-detail-hero { grid-template-columns: minmax(230px, 350px) minmax(0, 1fr); gap: clamp(2rem, 4vw, 5rem); border: 1px solid #e1e6dc; border-radius: 1.4rem; padding: clamp(1.5rem, 4vw, 4rem); background: linear-gradient(125deg, #f9f8f1 0%, #fffefa 58%, #f1f3e8 100%); box-shadow: 0 16px 40px rgba(35,57,43,.06); }

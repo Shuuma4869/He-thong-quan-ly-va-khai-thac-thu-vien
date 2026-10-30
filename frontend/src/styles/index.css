@@ -71,7 +71,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .field small { color: #b91c1c; font-weight: 500; }
 .password-field { position: relative; }
 .password-field input { padding-right: 3rem; }
-.password-field button { position: absolute; top: 50%; right: .8rem; transform: translateY(-50%); color: #66736f; }
+.password-field button { position: absolute; top: 50%; right: .25rem; transform: translateY(-50%); color: #52645c; min-width:44px; min-height:44px; display:grid; place-items:center; border-radius:.5rem; }
 .login-aux-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: .875rem; }
 .text-link { color: #2563eb; font-weight: 600; }
 .form-notice { border: 1px solid #f4c7c3; border-radius: .65rem; padding: .75rem; color: #8f1d1d; background: #fff7f6; font-size: .85rem; }

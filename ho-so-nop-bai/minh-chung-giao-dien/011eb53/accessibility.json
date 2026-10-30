@@ -1,0 +1,139 @@
+[
+  {
+    "role": "public",
+    "route": "/",
+    "violations": [],
+    "incomplete": [
+      "aria-prohibited-attr",
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "route": "/sach",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "route": "/tac-gia",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "route": "/the-loai",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "route": "/dang-nhap",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "route": "/dang-ky",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "reader",
+    "route": "/thu-vien-cua-toi",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "reader",
+    "route": "/muon-va-giu-cho",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "reader",
+    "route": "/thong-bao",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "reader",
+    "route": "/ho-so",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "reader",
+    "route": "/cai-dat/giao-dien",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "librarian",
+    "route": "/nhan-vien/bang-dieu-khien",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "librarian",
+    "route": "/nhan-vien/bao-cao-giu-cho",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "librarian",
+    "route": "/nhan-vien/luu-thong",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "librarian",
+    "route": "/nhan-vien/kiem-ke",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "admin",
+    "route": "/nhan-vien/tai-khoan",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "admin",
+    "route": "/nhan-vien/bao-cao-danh-gia",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  }
+]
