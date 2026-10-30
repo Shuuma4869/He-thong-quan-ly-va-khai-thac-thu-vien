@@ -6,7 +6,8 @@ function source(): EventSource {
   const id = randomUUID();
   return { topic: loanTopic, partition: 0, offset: '9007199254740993', key: id,
     value: Buffer.from(JSON.stringify({ eventId: randomUUID(), eventType: 'COPY_BORROWED', aggregateId: id, aggregateVersion: 0, version: 1,
-      occurredAt: '2026-10-25T00:00:00Z', data: { loanId: id, readerId: randomUUID(), version: 0, dueAt: '2026-11-08T00:00:00Z', returnedAt: null } })) };
+      occurredAt: '2026-10-25T00:00:00Z', data: { loanId: id, readerId: randomUUID(), branchId: randomUUID(),
+        version: 0, dueAt: '2026-11-08T00:00:00Z', returnedAt: null } })) };
 }
 test('thành công và duplicate từ repository không gửi DLQ', async () => {
   const accept = jest.fn().mockResolvedValue('DUPLICATE'), dlq = jest.fn(), heartbeat = jest.fn().mockResolvedValue(undefined);

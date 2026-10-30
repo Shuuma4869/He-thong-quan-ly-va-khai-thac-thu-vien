@@ -1,7 +1,19 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../discovery/metadata/history/prisma.service';
 import { CirculationEvent, eventDigest, InvalidCirculationEvent } from './circulation-event';
+
+const readerEvents = new Set(['HOLD_CREATED', 'HOLD_READY', 'HOLD_EXPIRED', 'COPY_BORROWED', 'COPY_RETURNED', 'LOAN_RENEWED']);
+const reminderNamespace = Buffer.from('6ba7b8109dad11d180b400c04fd430c8', 'hex');
+
+function reminderId(loanId: string, dueAt: Date) {
+  const bytes = createHash('sha1').update(reminderNamespace).update(`${loanId}:${dueAt.toISOString()}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 @Injectable()
 export class NotificationRepository {
@@ -30,10 +42,11 @@ export class NotificationRepository {
           await tx.consumedCirculationEvent.create({ data: { eventId: event.eventId, digest } });
           if (current && current.aggregateVersion > version) return 'OLDER';
           const data = { ...identity, aggregateVersion: version, eventId: event.eventId, eventType: event.eventType,
-            readerId: event.readerId, occurredAt: new Date(event.occurredAt), receivedAt: new Date(),
+            readerId: event.readerId, branchId: event.branchId, occurredAt: new Date(event.occurredAt), receivedAt: new Date(),
             dueAt: event.dueAt ? new Date(event.dueAt) : null, expiresAt: event.expiresAt ? new Date(event.expiresAt) : null };
           await tx.circulationNotice.upsert({ where, create: data, update: data });
-          if (event.eventType === 'HOLD_READY' || event.eventType === 'HOLD_EXPIRED') {
+          if (event.aggregateType === 'HOLD') await this.updateStaffWorkItems(tx, event);
+          if (readerEvents.has(event.eventType)) {
             await tx.readerNotification.create({ data: { id: event.eventId, readerId: event.readerId,
               aggregateType: event.aggregateType, aggregateId: event.aggregateId, aggregateVersion: version,
               eventType: event.eventType, occurredAt: new Date(event.occurredAt),
@@ -55,8 +68,8 @@ export class NotificationRepository {
         skip: page * size, take: size }),
       this.db.readerNotification.count({ where: { readerId } }),
     ]);
-    return { items: items.map(item => ({ id: item.id, holdId: item.aggregateId, eventType: item.eventType,
-      occurredAt: item.occurredAt, receivedAt: item.receivedAt, expiresAt: item.expiresAt,
+    return { items: items.map(item => ({ id: item.id, aggregateType: item.aggregateType, aggregateId: item.aggregateId,
+      eventType: item.eventType, occurredAt: item.occurredAt, receivedAt: item.receivedAt, expiresAt: item.expiresAt,
       readAt: item.readAt })), page, size, totalElements };
   }
 
@@ -72,5 +85,55 @@ export class NotificationRepository {
       return found ? 'ALREADY_READ' as const : 'NOT_FOUND' as const;
     }
     return 'UPDATED' as const;
+  }
+
+  private async updateStaffWorkItems(tx: Prisma.TransactionClient, event: CirculationEvent) {
+    const now = new Date(event.occurredAt);
+    const identity = { aggregateType: event.aggregateType, aggregateId: event.aggregateId };
+    const waiting = { ...identity, workType: 'WAITING' };
+    const ready = { ...identity, workType: 'READY' };
+    const resolve = { resolvedAt: now, updatedAt: now };
+    if (event.eventType === 'HOLD_CREATED') {
+      await tx.staffWorkItem.upsert({ where: { aggregateType_aggregateId_workType: waiting },
+        create: { ...waiting, branchId: event.branchId, createdAt: now, updatedAt: now, resolvedAt: null },
+        update: { branchId: event.branchId, ...resolve } });
+    } else if (event.eventType === 'HOLD_READY') {
+      await tx.staffWorkItem.updateMany({ where: { ...waiting, resolvedAt: null }, data: resolve });
+      await tx.staffWorkItem.upsert({ where: { aggregateType_aggregateId_workType: ready },
+        create: { ...ready, branchId: event.branchId, createdAt: now, updatedAt: now, resolvedAt: null },
+        update: { branchId: event.branchId, ...resolve } });
+    } else if (['HOLD_EXPIRED', 'HOLD_CANCELLED', 'HOLD_FULFILLED'].includes(event.eventType)) {
+      await tx.staffWorkItem.updateMany({ where: { ...identity, resolvedAt: null }, data: resolve });
+    }
+  }
+
+  async listStaffWorkItems(input: { branchId?: string; workType?: 'WAITING' | 'READY'; page: number; size: number }) {
+    const where = { resolvedAt: null, ...(input.branchId ? { branchId: input.branchId } : {}),
+      ...(input.workType ? { workType: input.workType } : {}) };
+    const [items, totalElements] = await this.db.$transaction([
+      this.db.staffWorkItem.findMany({ where, orderBy: [{ createdAt: 'asc' }, { aggregateId: 'asc' }],
+        skip: input.page * input.size, take: input.size,
+        select: { aggregateType: true, aggregateId: true, workType: true, branchId: true, createdAt: true, updatedAt: true } }),
+      this.db.staffWorkItem.count({ where }),
+    ]);
+    return { items, page: input.page, size: input.size, totalElements };
+  }
+
+  async staffWorkUnreadCount(branchId?: string) {
+    return { count: await this.db.staffWorkItem.count({ where: { resolvedAt: null, ...(branchId ? { branchId } : {}) } }) };
+  }
+
+  async createDueReminders(now = new Date()) {
+    const dueWithinDay = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const loans = await this.db.circulationNotice.findMany({ where: { aggregateType: 'LOAN',
+      eventType: { in: ['COPY_BORROWED', 'LOAN_RENEWED'] }, dueAt: { gt: now, lte: dueWithinDay } },
+      select: { aggregateId: true, aggregateVersion: true, readerId: true, dueAt: true } });
+    const reminders = loans.flatMap(loan => loan.dueAt ? [{
+      id: reminderId(loan.aggregateId, loan.dueAt), readerId: loan.readerId, aggregateType: 'LOAN',
+      aggregateId: loan.aggregateId, aggregateVersion: loan.aggregateVersion, eventType: 'LOAN_DUE_REMINDER',
+      occurredAt: now, expiresAt: null,
+    }] : []);
+    if (!reminders.length) return 0;
+    return (await this.db.readerNotification.createMany({ data: reminders, skipDuplicates: true })).count;
   }
 }

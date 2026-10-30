@@ -4,16 +4,19 @@ import { randomUUID } from 'node:crypto';
 import { NotificationController } from '../src/notifications/notification.controller';
 import { NotificationGuard } from '../src/notifications/notification.guard';
 import { NotificationRepository } from '../src/notifications/notification.repository';
+import { StaffWorkInboxController } from '../src/notifications/staff-work-inbox.controller';
+import { StaffWorkInboxGuard } from '../src/notifications/staff-work-inbox.guard';
 
 const owner = randomUUID(), id = randomUUID();
-const repository = { list: jest.fn(), unreadCount: jest.fn(), markRead: jest.fn() };
+const repository = { list: jest.fn(), unreadCount: jest.fn(), markRead: jest.fn(),
+  listStaffWorkItems: jest.fn(), staffWorkUnreadCount: jest.fn() };
 const nativeFetch = globalThis.fetch;
 const previous = process.env.CORE_API_URL;
 let app: INestApplication, base: string;
 
 beforeAll(async () => {
-  const module = await Test.createTestingModule({ controllers: [NotificationController],
-    providers: [NotificationGuard, { provide: NotificationRepository, useValue: repository }] }).compile();
+  const module = await Test.createTestingModule({ controllers: [NotificationController, StaffWorkInboxController],
+    providers: [NotificationGuard, StaffWorkInboxGuard, { provide: NotificationRepository, useValue: repository }] }).compile();
   app = module.createNestApplication(); app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
   await app.listen(0, '127.0.0.1'); base = await app.getUrl();
@@ -24,7 +27,9 @@ beforeEach(() => {
     if (String(input) === 'http://127.0.0.1:1/api/v1/auth/me') {
       const token = (init?.headers as Record<string, string>)?.Authorization;
       if (token === 'Bearer locked') return Response.json({}, { status: 403 });
-      return Response.json({ id: owner, roles: token === 'Bearer staff-no-reader' ? [] : ['READER'] });
+      const roles = token === 'Bearer librarian' ? ['LIBRARIAN'] : token === 'Bearer admin' ? ['ADMIN']
+        : token === 'Bearer staff-no-reader' ? [] : ['READER'];
+      return Response.json({ id: owner, roles });
     }
     return nativeFetch(input, init);
   });
@@ -34,6 +39,8 @@ afterAll(async () => { await app?.close(); if (previous === undefined) delete pr
   else process.env.CORE_API_URL = previous; });
 const request = (path: string, method = 'GET', token = 'reader') => nativeFetch(`${base}/api/v1/me/notifications${path}`,
   { method, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+const staffRequest = (path: string, token = 'reader') => nativeFetch(`${base}/api/v1/staff/work-items${path}`,
+  { headers: { Authorization: `Bearer ${token}` } });
 
 test('hộp thư lấy owner từ Core, không nhận ownerId từ query', async () => {
   repository.list.mockResolvedValue({ items: [], page: 0, size: 20, totalElements: 0 });
@@ -57,4 +64,18 @@ test('chặn phiên lỗi; mark read chỉ tác động thông báo thuộc owne
   expect((await request(`/${id}/read`, 'PATCH')).status).toBe(204);
   expect(repository.markRead).toHaveBeenCalledWith(owner, id);
   expect((await request('/not-a-uuid/read', 'PATCH')).status).toBe(400);
+});
+
+test('work inbox chỉ cho Librarian/Admin; lọc chi nhánh và kiểu công việc đã kiểm tra', async () => {
+  const branchId = randomUUID();
+  repository.listStaffWorkItems.mockResolvedValue({ items: [], page: 0, size: 20, totalElements: 0 });
+  repository.staffWorkUnreadCount.mockResolvedValue({ count: 3 });
+  expect((await staffRequest('')).status).toBe(403);
+  expect((await staffRequest('', 'staff-no-reader')).status).toBe(403);
+  expect((await staffRequest(`?branchId=${branchId}&workType=WAITING&page=2`, 'librarian')).status).toBe(200);
+  expect(repository.listStaffWorkItems).toHaveBeenCalledWith({ branchId, workType: 'WAITING', page: 2, size: 20 });
+  expect((await staffRequest('/unread-count', 'admin')).status).toBe(200);
+  expect(repository.staffWorkUnreadCount).toHaveBeenCalledWith(undefined);
+  expect((await staffRequest(`?branchId=${branchId}&workType=UNKNOWN`, 'admin')).status).toBe(400);
+  expect((await staffRequest('/unread-count?branchId=invalid', 'admin')).status).toBe(400);
 });

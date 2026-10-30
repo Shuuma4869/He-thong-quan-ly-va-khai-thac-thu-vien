@@ -110,11 +110,26 @@ class HoldIntegrationTest {
         assertThat(service.create(f.reader,new HoldRequest(UUID.randomUUID(),f.book,branch,f.edition,false)).status()).isEqualTo("READY");
     }
 
-    @Test void refusesHoldWhenSelectedBranchHasNoManagedPhysicalCopy() {
+    @Test void refusesHoldWhenOnlyLostOrWithdrawnCopiesRemain() {
         var f=fixture();
+        jdbc.update("UPDATE book_copies SET status='LOST' WHERE id=?",f.copy);
+        failure(409,()->service.create(f.reader,request(f,f.edition,false)));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM holds WHERE book_id=?",Integer.class,f.book)).isZero();
         jdbc.update("UPDATE book_copies SET status='WITHDRAWN' WHERE id=?",f.copy);
         failure(409,()->service.create(f.reader,request(f,f.edition,false)));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM holds WHERE book_id=?",Integer.class,f.book)).isZero();
+    }
+
+    @Test void acceptsWaitingHoldForCopiesThatCanReturnToService() {
+        var damaged=fixture();
+        jdbc.update("UPDATE book_copies SET status='DAMAGED' WHERE id=?",damaged.copy);
+        assertThat(service.create(damaged.reader,request(damaged,damaged.edition,false)).status()).isEqualTo("WAITING");
+        assertThat(copyStatus(damaged.copy)).isEqualTo("DAMAGED");
+
+        var processing=fixture();
+        jdbc.update("UPDATE book_copies SET status='IN_PROCESS' WHERE id=?",processing.copy);
+        assertThat(service.create(processing.reader,request(processing,processing.edition,false)).status()).isEqualTo("WAITING");
+        assertThat(copyStatus(processing.copy)).isEqualTo("IN_PROCESS");
     }
 
     @Test void returnAllocatesCompatibleQueueAndCancellationPassesCopyToNextReader() {

@@ -64,7 +64,7 @@ public class HoldService {
                     SELECT count(*) FROM book_copies c
                     JOIN editions e ON e.id=c.edition_id
                     JOIN shelves s ON s.id=c.shelf_id
-                    WHERE e.book_id=? AND s.branch_id=? AND c.status<>'WITHDRAWN'
+                    WHERE e.book_id=? AND s.branch_id=? AND c.status NOT IN ('LOST','WITHDRAWN')
                       AND (?::uuid IS NULL OR c.edition_id=?)
                     """,Integer.class,request.bookId(),request.branchId(),request.editionId(),request.editionId())==0)
                 throw new AuthFailure(409,"Chi nhánh chưa có bản sách vật lý đang quản lý cho lựa chọn này.");

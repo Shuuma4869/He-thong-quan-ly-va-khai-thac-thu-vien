@@ -78,7 +78,7 @@ components:
         correlationId: { type: string }
         version: { type: integer, minimum: 1 }
         aggregateVersion: { type: integer, minimum: 0, description: Version nghiệp vụ của aggregate; Loan bắt đầu từ 0, khác version envelope. }
-        data: { type: object, additionalProperties: true }
+        data: { type: object, additionalProperties: true, description: Circulation facts include readerId and branchId; Insight persists only validated identifiers and event times. }
   messages:
     NOTIFICATION_FAILURE:
       name: NOTIFICATION_FAILURE

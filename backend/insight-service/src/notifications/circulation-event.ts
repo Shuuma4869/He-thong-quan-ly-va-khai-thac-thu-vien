@@ -9,7 +9,7 @@ export const eventTypes = ['COPY_BORROWED', 'COPY_RETURNED', 'LOAN_RENEWED', 'HO
 export type CirculationEventType = typeof eventTypes[number];
 export interface CirculationEvent {
   eventId: string; eventType: CirculationEventType; aggregateType: 'LOAN' | 'HOLD'; aggregateId: string;
-  aggregateVersion: number; occurredAt: string; readerId: string; dueAt: string | null; expiresAt: string | null;
+  aggregateVersion: number; occurredAt: string; readerId: string; branchId: string; dueAt: string | null; expiresAt: string | null;
 }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new InvalidCirculationEvent('INVALID_OBJECT');
@@ -53,7 +53,7 @@ export function parseCirculationEvent(topic: string, key: string | null, raw: Bu
   }
   return { eventId: uuid(envelope.eventId), eventType, aggregateType, aggregateId,
     aggregateVersion: envelope.aggregateVersion as number, occurredAt: instant(envelope.occurredAt),
-    readerId: uuid(data.readerId), dueAt, expiresAt };
+    readerId: uuid(data.readerId), branchId: uuid(data.branchId), dueAt, expiresAt };
 }
 export function eventDigest(event: CirculationEvent): string {
   return createHash('sha256').update(JSON.stringify(event)).digest('hex');
