@@ -60,6 +60,8 @@ it('yêu thích chờ server, chặn double click và tải lại trạng thái'
   saved = true; await act(async () => finish(Response.json(favorite)));
   expect(await screen.findByRole('button', { name: 'Bỏ yêu thích' })).toHaveAttribute('aria-pressed', 'true');
   view.unmount(); app('/thu-vien-cua-toi');
+  // Route tải động cần hoàn tất trước khi kiểm tra dữ liệu yêu thích.
+  await screen.findByRole('heading', { name: 'Thư viện của tôi', level: 1 }, { timeout: 5000 });
   expect(await screen.findByRole('link', { name: book.title })).toBeInTheDocument();
   fireEvent.click(await screen.findByRole('button', { name: `Bỏ yêu thích ${book.title}` }));
   expect(await screen.findByText('Chưa có sách yêu thích ở trang này.')).toBeInTheDocument();
