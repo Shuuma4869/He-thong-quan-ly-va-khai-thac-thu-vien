@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../app/providers/AppProviders';
@@ -40,6 +40,7 @@ function result(url: string, init: RequestInit) {
   if (path.endsWith('/holds/pickup-branches')) return Response.json(page([{ id: branchId, code: 'A', name: 'Chi nhánh A' }]));
   if (path.endsWith('/me/loans')) return Response.json({ ...page([loan]), asOf: time });
   if (path.endsWith('/me/holds')) return Response.json(page([{ hold, bookTitle: book.title, branchName: 'Chi nhánh A', queuePosition: hold.status === 'WAITING' ? 1 : null }]));
+  if (path.endsWith(`/loans/${id}`)) return Response.json(loan);
   if (path.endsWith(`/holds/${holdId}`)) return Response.json({ hold, bookTitle: book.title, branchName: 'Chi nhánh A', queuePosition: hold.status === 'WAITING' ? 1 : null });
   if (path.endsWith('/renew')) { loan = { ...loan, version: 1, renewalCount: 1, dueAt: '2026-11-14T00:00:00Z' }; return Response.json(loan); }
   if (path.endsWith('/cancel')) { hold = { ...hold, status: 'CANCELLED', version: 1 }; return Response.json(hold); }
@@ -104,6 +105,19 @@ it('gia hạn cần xác nhận, gửi version đã đọc và tải lại hạn
   expect(await screen.findByText('Đã gia hạn 1 lần')).toBeInTheDocument();
   expect(JSON.parse(commands()[0][1].body)).toMatchObject({ version: 0 });
   expect(commands()[0][0]).toContain(`/loans/${id}/renew`);
+});
+
+it('mở đúng lượt mượn hoặc yêu cầu giữ chỗ từ đường dẫn thông báo', async () => {
+  const { unmount } = app(`/muon-va-giu-cho?loanId=${id}#loans`);
+  const loanFocus = await screen.findByRole('region', { name: 'Lượt mượn được mở từ thông báo' });
+  expect(await within(loanFocus).findByText(book.title)).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url]) => new URL(url).pathname.endsWith(`/loans/${id}`))).toBe(true);
+
+  unmount();
+  app(`/muon-va-giu-cho?holdId=${holdId}#holds`);
+  const holdFocus = await screen.findByRole('region', { name: 'Giữ chỗ được mở từ thông báo' });
+  expect(await within(holdFocus).findByText(book.title)).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url]) => new URL(url).pathname.endsWith(`/holds/${holdId}`))).toBe(true);
 });
 
 it('hủy giữ chỗ có xác nhận và không tự báo thành công khi server từ chối', async () => {

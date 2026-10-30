@@ -8,12 +8,13 @@ Bộ demo có 10.013 Book nhưng chỉ 64 Copy vật lý. Các bản Gutenberg t
 
 ## Hành trình Reader – Librarian (Phase 4)
 
-1. Reader mở chi tiết một Book có Copy thật, so sánh tồn kho theo ấn bản và chi nhánh, rồi chọn nơi nhận. Nếu có sách, gửi yêu cầu nhận tại quầy; trạng thái READY chưa phải Loan.
-2. Librarian mở **Quản lý giữ chỗ**, tìm Reader và Book, kiểm tra bản được phân bổ rồi xác nhận đã giao sách vật lý. Chỉ sau xác nhận này Core mới tạo Loan; Reader thấy hạn trả trong **Lượt mượn và giữ chỗ**.
-3. Reader đăng ký thêm một yêu cầu khi Copy đang được mượn. Yêu cầu phải hiển thị WAITING, không tạo Loan. Khi Librarian nhận trả Copy tại quầy, Core phân bổ Copy đó cho người chờ kế tiếp trong transaction nhận trả.
-4. Reader kiểm tra trạng thái READY và mở **Thông báo**. Khi Kafka/Insight được bật, thông báo HOLD_READY phải khớp yêu cầu vừa được phân bổ. Thông báo là xác nhận sự kiện đã được Insight ghi nhận, không thay thế việc Core kiểm tra hạn nhận ở quầy.
+1. Reader mở chi tiết một Book có Copy thật, so sánh tồn kho theo ấn bản và chi nhánh, rồi chọn nơi nhận. Nếu có sách, gửi yêu cầu nhận tại quầy; READY là Hold được phân bổ, chưa phải Loan.
+2. Khi Kafka/Insight đang hoạt động, Librarian thấy mục READY trong **Hộp thư công việc**, mở thẳng giao dịch ở **Quản lý giữ chỗ**, kiểm tra Reader/Copy/chi nhánh rồi xác nhận đã giao sách vật lý. Chỉ sau xác nhận này Core mới tạo Loan; Reader thấy hạn trả trong **Lượt mượn và giữ chỗ** và thông báo **Mượn sách thành công**.
+3. Reader gia hạn Loan qua giao diện; hạn mới được Core trả về và Reader nhận thông báo gia hạn. Tạo thêm một Hold trong lúc Copy đang được mượn: Reader nhận xác nhận tạo yêu cầu, trạng thái là WAITING và không có Loan mới; Librarian thấy mục WAITING ở Work Inbox.
+4. Librarian nhận trả Copy tại quầy. Core phân bổ Copy cho người chờ kế tiếp trong transaction nhận trả; Work Inbox đổi từ WAITING sang READY. Reader thấy READY trong Core và nhận thông báo HOLD_READY từ Insight. Mở thông báo để đi thẳng đến Hold; đây là xác nhận sự kiện đã được Insight ghi nhận, không thay thế việc Core kiểm tra hạn nhận ở quầy.
+5. Hộp thông báo Reader hiển thị số chưa đọc và deep link đến Hold/Loan; Work Inbox có bộ đếm công việc đang mở theo sự kiện, không phải số thông báo Reader. Nhắc hạn trả xuất hiện khi Loan còn hạn trong 24 giờ và job chạy; không tạo dữ liệu hoặc chỉnh thời gian giả để trình diễn.
 
-Không trình diễn bằng cách gọi API tạo Loan trực tiếp hoặc đánh dấu Copy AVAILABLE để bỏ qua bàn giao. Nếu không có Kafka, vẫn có thể xác minh phân bổ trong Core nhưng không được khẳng định thông báo Insight đã được giao.
+Không trình diễn bằng cách gọi API tạo Loan trực tiếp hoặc đánh dấu Copy AVAILABLE để bỏ qua bàn giao. Nếu không có Kafka, vẫn có thể xác minh phân bổ trong Core nhưng Work Inbox/Thông báo Insight chưa thể được xác nhận đã nhận event. Bộ E2E bật Kafka cô lập kiểm thêm tạo Hold/Loan, bàn giao, trả, phân bổ kế tiếp, Work Inbox, deep link và notification delivery.
 
 ## Luồng trình diễn Phase 5–7
 

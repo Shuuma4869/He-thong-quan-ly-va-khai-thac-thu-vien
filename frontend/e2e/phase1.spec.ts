@@ -22,6 +22,8 @@ const test = base.extend({
       const nativePage = nativePages[0];
       await nativePage.goto('http://tauri.localhost/');
       expect(await nativePage.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
+      await nativePage.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+      await nativePage.reload();
       await providePage(nativePage);
     } finally { await desktop.close(); }
   },
@@ -32,7 +34,7 @@ async function navigate(page: Page, path: string) {
 
 async function captureFullPage(page: Page, options: Parameters<Page['screenshot']>[0]) {
   await page.evaluate(() => window.scrollTo(0, 0));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(1);
   await page.screenshot({ ...options, animations: 'disabled' });
 }
 
@@ -509,13 +511,37 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   await page.getByRole('button', { name: 'Đăng ký mượn tại quầy' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Sẵn sàng nhận' })).toBeVisible();
   const ready = await request.get(`${core}/copies/${copy.id}`, { headers }); expect(ready.status()).toBe(200);
+  const readerHolds = await request.get(`${core}/me/holds?page=0&size=100`, { headers: readerHeaders });
+  expect(readerHolds.status()).toBe(200);
+  const readyHoldRecord = (await readerHolds.json()).items
+    .find((item: { hold: { bookId: string; status: string } }) =>
+      item.hold.bookId === book.id && item.hold.status === 'READY');
+  if (!readyHoldRecord) throw new Error('Reader READY Hold không xuất hiện trong Core.');
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
-  await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/giu-cho');
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
+  await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/hop-thu');
+  await expect(page.getByRole('heading', { name: 'Hộp thư công việc' })).toBeVisible();
+  await expect.poll(async () => {
+    const workItems = await request.get(`${insight}/staff/work-items?page=0&size=20`, { headers });
+    if (workItems.status() !== 200) return false;
+    const body = await workItems.json();
+    return body.items.some((item: { aggregateId: string; workType: string }) =>
+      item.aggregateId === readyHoldRecord.hold.id && item.workType === 'READY');
+  }, { timeout: 30000 }).toBe(true);
+  await page.getByRole('button', { name: 'Cập nhật' }).click();
+  const inboxTask = page.locator('.staff-work-item').filter({
+    hasText: readyHoldRecord.hold.id.slice(0, 8).toUpperCase(),
+  });
+  await expect(inboxTask).toContainText('Hold sẵn sàng nhận sách');
+  await inboxTask.getByRole('link', { name: 'Mở nghiệp vụ' }).click();
+  await expect(page.getByRole('region', { name: 'Chi tiết yêu cầu' })).toContainText(book.title);
+  await page.getByLabel('Người đọc / mã thành viên').fill(accounts.READER.name);
   await page.getByLabel('Người đọc / mã thành viên').fill(accounts.READER.name);
   await page.getByRole('button', { name: 'Áp dụng bộ lọc' }).click();
   const readyHold = page.locator('.hold-list-card').filter({ hasText: book.title });
   await expect(readyHold).toContainText('Sẵn sàng nhận');
-  await readyHold.getByRole('button', { name: 'Mở chi tiết' }).click();
+  await expect(readyHold.getByRole('button', { name: 'Đang xem chi tiết' })).toHaveAttribute('aria-pressed', 'true');
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -527,13 +553,31 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   expect(readerLoans.status()).toBe(200);
   const borrowed = (await readerLoans.json()).items.find((item: { copyId: string }) => item.copyId === copy.id);
   expect(borrowed).toBeTruthy();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/dang-nhap$/ : /\/dang-nhap$/);
   await loginCatalog(page, 'READER'); await navigate(page, '/muon-va-giu-cho');
   const loans = page.getByLabel('Lượt mượn của tôi');
   await expect(loans).toContainText(book.title); await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đã nhận sách');
-  await loans.getByRole('button', { name: 'Gia hạn', exact: true }).click();
-  await loans.getByRole('button', { name: 'Xác nhận gia hạn' }).click();
-  await expect(loans).toContainText('Đã gia hạn 1 lần');
+  await expect.poll(async () => {
+    const notifications = await request.get(`${insight}/me/notifications?page=0&size=50`, { headers: readerHeaders });
+    if (notifications.status() !== 200) return false;
+    const body = await notifications.json();
+    return body.items.some((item: { aggregateId: string; eventType: string }) =>
+      item.aggregateId === borrowed.loanId && item.eventType === 'COPY_BORROWED');
+  }, { timeout: 30000 }).toBe(true);
+  await navigate(page, '/thong-bao');
+  await expect(page.getByRole('heading', { name: 'Mượn sách thành công' }).first()).toBeVisible();
+  const borrowedLoanLink = page.locator(`a[href*="${borrowed.loanId}"]`).first();
+  await expect(borrowedLoanLink).toBeVisible();
+  await borrowedLoanLink.click();
+  const linkedLoan = page.getByLabel('Lượt mượn được mở từ thông báo');
+  await expect(linkedLoan).toContainText(book.title);
+  await navigate(page, '/muon-va-giu-cho');
+  const activeLoans = page.getByLabel('Lượt mượn của tôi');
+  await activeLoans.getByRole('button', { name: 'Gia hạn', exact: true }).click();
+  await activeLoans.getByRole('button', { name: 'Xác nhận gia hạn' }).click();
+  await expect(activeLoans).toContainText('Đã gia hạn 1 lần');
   const renewed = await request.get(`${core}/loans/${borrowed.loanId}`, { headers: readerHeaders });
   expect(renewed.status()).toBe(200); const renewedBody = await renewed.json();
   expect(renewedBody.renewalCount).toBe(1); expect(Date.parse(renewedBody.dueAt)).toBeGreaterThan(Date.parse(borrowed.dueAt));
@@ -560,7 +604,9 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/reader-circulation-${viewport.width}.png`, fullPage: true });
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
   await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/luu-thong');
   await page.getByLabel('Mã vạch bản sách').fill(copy.barcode);
   await page.getByRole('button', { name: 'Tra bản sách' }).click();
@@ -588,11 +634,17 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
     const notifications = await request.get(`${insight}/me/notifications?page=0&size=50`, { headers: readerHeaders });
     if (notifications.status() !== 200) return false;
     const body = await notifications.json();
-    return body.items.some((item: { holdId: string; eventType: string }) =>
-      item.holdId === waitingHold.id && item.eventType === 'HOLD_READY');
+    return body.items.some((item: { aggregateId: string; eventType: string }) =>
+      item.aggregateId === waitingHold.id && item.eventType === 'HOLD_READY');
   }, { timeout: 30000 }).toBe(true);
   await navigate(page, '/thong-bao');
   await expect(page.getByRole('heading', { name: 'Sách đã sẵn sàng nhận' }).first()).toBeVisible();
+  const readyHoldLink = page.locator(`a[href*="${waitingHold.id}"]`).first();
+  await expect(readyHoldLink).toBeVisible();
+  await readyHoldLink.click();
+  const linkedHold = page.getByLabel('Giữ chỗ được mở từ thông báo');
+  await expect(linkedHold).toContainText(book.title);
+  await expect(linkedHold).toContainText('Sẵn sàng nhận');
 });
 
 test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua giao diện', async ({ page, request }) => {
@@ -813,6 +865,72 @@ test('Admin hủy phiên kiểm kê và tải lại vẫn giữ biên nhận đ�
   await expect(page.getByText('Đã hủy', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ghi nhận scan' })).toHaveCount(0);
   await captureFullPage(page, { path: 'test-results/admin-cancelled-session.png', fullPage: true });
+});
+
+test('Admin dashboard, tài khoản và kiểm duyệt responsive với dữ liệu thật', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', {
+    title: `Admin moderation ${suffix}`, authorIds: [], categoryIds: [],
+  });
+  const readerLogin = await request.post(`${core}/auth/login`, {
+    data: { identifier: accounts.READER.email, password, remember: false },
+  });
+  expect(readerLogin.status()).toBe(200);
+  const readerHeaders = { Authorization: `Bearer ${(await readerLogin.json()).accessToken}` };
+  const review = await request.post(`${core}/books/${book.id}/reviews`, {
+    headers: readerHeaders, data: { body: 'Đánh giá dùng để kiểm tra quy trình kiểm duyệt quản trị.', rating: 4 },
+  });
+  expect(review.status()).toBe(201);
+  const report = await request.post(`${core}/books/${book.id}/reviews/${(await review.json()).reviewId}/reports`, {
+    headers, data: { reason: 'Nội dung cần được quản trị viên xem xét theo quy định.' },
+  });
+  expect(report.status()).toBe(201);
+  await loginCatalog(page, 'ADMIN');
+  await navigate(page, '/nhan-vien/bang-dieu-khien');
+  await expect(page.getByRole('heading', { name: 'Quản trị hệ thống' })).toBeVisible();
+  const viewports = [
+    { width: 390, height: 844 }, { width: 768, height: 1024 },
+    { width: 1440, height: 900 }, { width: 1920, height: 1080 },
+  ];
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await captureFullPage(page, { path: `test-results/admin-dashboard-${viewport.width}.png`, fullPage: true });
+    const audit = await new AxeBuilder({ page }).include('.admin-dashboard')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(audit.violations).toEqual([]);
+  }
+
+  await navigate(page, '/nhan-vien/tai-khoan');
+  await expect(page.getByRole('heading', { name: 'Tài khoản và phân quyền' })).toBeVisible();
+  await page.getByRole('button', { name: 'Chi tiết' }).first().click();
+  await expect(page.getByRole('dialog', { name: 'Hồ sơ quản trị' })).toBeVisible();
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await captureFullPage(page, { path: `test-results/admin-account-drawer-${viewport.width}.png`, fullPage: true });
+  }
+  await page.getByRole('button', { name: 'Đóng' }).click();
+  await navigate(page, '/nhan-vien/bao-cao-danh-gia');
+  await expect(page.getByRole('heading', { name: 'Báo cáo đánh giá' })).toBeVisible();
+  await expect(page.getByText('1 báo cáo', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Xem chi tiết' }).click();
+  const reportDrawer = page.getByRole('dialog', { name: 'Chi tiết báo cáo' });
+  await expect(reportDrawer.getByText('Đánh giá dùng để kiểm tra quy trình kiểm duyệt quản trị.', { exact: true })).toBeVisible();
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await captureFullPage(page, { path: `test-results/admin-review-drawer-${viewport.width}.png`, fullPage: true });
+    const audit = await new AxeBuilder({ page }).include('.admin-detail-drawer')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+    expect(audit.violations).toEqual([]);
+  }
+  await reportDrawer.getByLabel('Lý do quyết định').fill('Đã rà soát và xác nhận cần ẩn theo quy định.');
+  await reportDrawer.getByRole('button', { name: 'Ẩn đánh giá' }).click();
+  await page.getByRole('alertdialog', { name: 'Ẩn đánh giá này?' }).getByRole('button', { name: 'Xác nhận ẩn đánh giá' }).click();
+  await expect(page.getByRole('status')).toHaveText('Đã lưu quyết định.');
+  await expect(page.getByText('Không có báo cáo ở trang này.')).toBeVisible();
 });
 
 test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang ổn định', async ({ page, request }) => {

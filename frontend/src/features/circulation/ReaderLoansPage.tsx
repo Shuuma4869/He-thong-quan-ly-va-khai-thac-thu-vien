@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/auth-context';
 import { Pagination } from '../catalog/CatalogStates';
-import { cancelHold, getLoans, getMyHolds, renewLoan, type HoldView, type Loan } from './circulation-api';
+import { cancelHold, getHold, getLoan, getLoans, getMyHolds, renewLoan, type HoldView, type Loan } from './circulation-api';
 import { CirculationError } from './CirculationStates';
 import { formatTime, holdLabels, loanLabels } from './circulation-labels';
 import { useCirculationCommand } from './use-circulation-command';
@@ -16,18 +16,41 @@ export function ReaderLoansPage() {
 function ReaderLoans({ owner }: { owner: string }) {
   const [params, setParams] = useSearchParams();
   const page = Number(params.get('page') ?? 0), holdPage = Number(params.get('holdPage') ?? 0), status = params.get('status') ?? '';
+  const loanId = params.get('loanId'), holdId = params.get('holdId');
+  const focusIsValid = !(loanId && holdId) && [loanId, holdId].every(value =>
+    !value || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value));
   const valid = Number.isInteger(page) && page >= 0 && page <= 2147483647 && Number.isInteger(holdPage) && holdPage >= 0
-    && holdPage <= 2147483647 && ['', 'ACTIVE', 'OVERDUE', 'RETURNED'].includes(status);
+    && holdPage <= 2147483647 && ['', 'ACTIVE', 'OVERDUE', 'RETURNED'].includes(status) && focusIsValid;
   const loans = useQuery({ queryKey: ['circulation', owner, 'loans', page, status],
     queryFn: ({ signal }) => getLoans({ page, status }, false, signal), enabled: valid, retry: false });
   const holds = useQuery({ queryKey: ['circulation', owner, 'holds', holdPage],
     queryFn: ({ signal }) => getMyHolds(holdPage, signal), enabled: valid, retry: false });
+  const focusedLoan = useQuery({ queryKey: ['circulation', owner, 'loan-detail', loanId],
+    queryFn: ({ signal }) => getLoan(loanId!, signal), enabled: valid && !!loanId, retry: false });
+  const focusedHold = useQuery({ queryKey: ['circulation', owner, 'hold-detail', holdId],
+    queryFn: ({ signal }) => getHold(holdId!, signal), enabled: valid && !!holdId, retry: false });
+  useEffect(() => {
+    if (loanId && focusedLoan.data) document.getElementById(`loan-${loanId}`)?.scrollIntoView?.({ block: 'start' });
+    if (holdId && focusedHold.data) document.getElementById(`hold-${holdId}`)?.scrollIntoView?.({ block: 'start' });
+  }, [loanId, holdId, focusedLoan.data, focusedHold.data]);
   const change = (key: string, value: string) => { const next = new URLSearchParams(params); next.set(key, value); if (key === 'status') next.set('page', '0'); setParams(next); };
   return <section className="shell py-8"><Link className="text-link" to="/thu-vien-cua-toi">← Thư viện của tôi</Link>
     <h1 className="page-title mt-5">Mượn và giữ chỗ</h1>
     <p className="text-muted my-3">Theo dõi hạn trả, gia hạn và các yêu cầu nhận sách tại thư viện.</p>
     {!valid ? <div role="alert"><p>Bộ lọc trong đường dẫn không hợp lệ.</p><button className="button-secondary" onClick={() => setParams({})}>Xóa bộ lọc</button></div> : <>
-      <section className="my-8" aria-label="Lượt mượn của tôi"><h2 className="section-title">Lượt mượn của tôi</h2>
+      {loanId && <section className="editorial-card my-6" aria-label="Lượt mượn được mở từ thông báo">
+        <h2 className="section-title">Giao dịch từ thông báo</h2>
+        {focusedLoan.isPending ? <p role="status">Đang tải lượt mượn…</p>
+          : focusedLoan.isError ? <CirculationError error={focusedLoan.error} reload={() => void focusedLoan.refetch()}/>
+            : <div id={`loan-${loanId}`}><LoanCard owner={owner} loan={focusedLoan.data} reload={() => void focusedLoan.refetch()}/></div>}
+      </section>}
+      {holdId && <section className="editorial-card my-6" aria-label="Giữ chỗ được mở từ thông báo">
+        <h2 className="section-title">Yêu cầu từ thông báo</h2>
+        {focusedHold.isPending ? <p role="status">Đang tải giữ chỗ…</p>
+          : focusedHold.isError ? <CirculationError error={focusedHold.error} reload={() => void focusedHold.refetch()}/>
+            : <div id={`hold-${holdId}`}><HoldCard owner={owner} view={focusedHold.data} reload={() => void focusedHold.refetch()}/></div>}
+      </section>}
+      <section id="loans" className="my-8 scroll-mt-24" aria-label="Lượt mượn của tôi"><h2 className="section-title">Lượt mượn của tôi</h2>
         <label className="field my-4">Trạng thái lượt mượn<select value={status} onChange={e => change('status', e.target.value)}>
           <option value="">Tất cả</option><option value="ACTIVE">Đang mượn (gồm quá hạn)</option><option value="OVERDUE">Quá hạn</option><option value="RETURNED">Đã trả</option>
         </select></label>
@@ -37,7 +60,7 @@ function ReaderLoans({ owner }: { owner: string }) {
             <Pagination page={loans.data.page} onChange={p => change('page', String(p))}/>
             <p className="text-sm text-muted">Trạng thái tính lúc {formatTime(loans.data.asOf)}. Tải lại trước khi thực hiện nếu dữ liệu đã cũ.</p></>}
       </section>
-      <section className="my-8" aria-label="Giữ chỗ của tôi"><h2 className="section-title">Giữ chỗ của tôi</h2>
+      <section id="holds" className="my-8 scroll-mt-24" aria-label="Giữ chỗ của tôi"><h2 className="section-title">Giữ chỗ của tôi</h2>
         <p className="my-3 text-muted">Đặt giữ chỗ từ ấn bản trong <Link className="text-link" to="/sach">danh mục sách</Link>. Yêu cầu sẵn sàng nhận chỉ có hiệu lực trước hạn ghi bên dưới.</p>
         {holds.isPending ? <p role="status">Đang tải giữ chỗ…</p> : holds.isError ? <CirculationError error={holds.error} reload={() => void holds.refetch()}/>
           : <>{!holds.data.items.length && <p>Không có giữ chỗ ở trang này.</p>}

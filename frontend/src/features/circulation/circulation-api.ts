@@ -35,6 +35,9 @@ export async function getLoans(query: LoanQuery, staff = false, signal?: AbortSi
   return z.object({ items: z.array(loanSchema), page: pageSchema, asOf: time })
     .parse(await coreApi.get(`${staff ? '/loans' : '/me/loans'}?${loanParams(query)}`, true, signal));
 }
+export async function getLoan(id: string, signal?: AbortSignal) {
+  return loanSchema.parse(await coreApi.get(`/loans/${uuid.parse(id)}`, true, signal));
+}
 export async function getMyHolds(page: number, signal?: AbortSignal) {
   return z.object({ items: z.array(holdView), page: pageSchema })
     .parse(await coreApi.get(`/me/holds?page=${page}&size=10`, true, signal));
