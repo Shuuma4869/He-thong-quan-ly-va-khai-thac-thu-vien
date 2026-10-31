@@ -29,6 +29,7 @@ jobs:
           path: |
             frontend/playwright-report/
             frontend/test-results/
+            backend/core-service/target/e2e-ci/
           retention-days: 7
   api-contracts:
     runs-on: ubuntu-latest
