@@ -7,7 +7,10 @@ $coreService = if ($CoreServiceDirectory) { (Resolve-Path -LiteralPath $CoreServ
 if (-not (Test-Path -LiteralPath (Join-Path $coreService 'pom.xml'))) { throw 'Thư mục Core Service không hợp lệ.' }
 $maven = if ($MavenExecutable) { (Resolve-Path -LiteralPath $MavenExecutable).Path }
     else { Join-Path $coreService 'mvnw.cmd' }
-if ($Desktop) { $CorePort = 8080; $InsightPort = 3000 }
+if ($Desktop) {
+    if ($CorePort -eq 18081) { $CorePort = 8080 }
+    if ($InsightPort -eq 13001) { $InsightPort = 3000 }
+}
 $ports = if ($Desktop) { @($CorePort, $InsightPort, $DebugPort) } else { @($CorePort, $InsightPort, $FrontendPort) }
 foreach ($port in $ports) {
     if (Test-LamsTcpPort -Port $port) { throw "Cổng kiểm thử $port đang được sử dụng." }

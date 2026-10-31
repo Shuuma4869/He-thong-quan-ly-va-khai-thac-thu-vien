@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { BarChart3, BookCopy, BookOpen, ChevronLeft, ChevronRight, ClipboardList, Heart, House, LibraryBig, Lightbulb, SlidersHorizontal,
-  LogIn, Star, Bell, UserRound, Users, X, type LucideIcon } from 'lucide-react';
+  LogIn, Star, Bell, Inbox, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/auth-context';
 import { useAppearance } from '../../features/appearance/appearance-context';
@@ -17,6 +17,7 @@ const staffGroups: Group[] = [
   { title: 'Vận hành', items: [
     { label: 'Bảng điều khiển', to: '/nhan-vien/bang-dieu-khien', icon: BarChart3 },
     { label: 'Quầy lưu thông', to: '/nhan-vien/luu-thong', icon: ClipboardList },
+    { label: 'Hộp thư công việc', to: '/nhan-vien/hop-thu', icon: Inbox },
     { label: 'Quản lý giữ chỗ', to: '/nhan-vien/giu-cho', icon: BookCopy },
     { label: 'Kiểm kê kệ sách', to: '/nhan-vien/kiem-ke', icon: BookCopy },
     { label: 'Báo cáo mượn', to: '/nhan-vien/bao-cao-luu-thong', icon: BarChart3 },

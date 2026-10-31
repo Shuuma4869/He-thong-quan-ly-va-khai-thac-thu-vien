@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { LibraryError } from '../my-library/LibraryError';
-import { listNotifications, markNotificationRead, unreadCount } from './notification-api';
+import { formatNotificationTime, listNotifications, markNotificationRead, notificationLink, notificationMessage,
+  notificationTitle, unreadCount } from './notification-api';
 
 export function NotificationsPage() {
   const { user } = useAuth();
@@ -23,19 +24,18 @@ function Inbox({ owner }: { owner: string }) {
   return <section className="shell py-8" aria-labelledby="notifications-heading">
     <Link to="/thu-vien-cua-toi" className="text-link">← Thư viện của tôi</Link>
     <h1 id="notifications-heading" className="page-title mt-5">Thông báo</h1>
-    <p className="mt-2 text-muted">Thông báo từ yêu cầu giữ chỗ. Kiểm tra trạng thái mới nhất trước khi đến nhận sách.</p>
+    <p className="mt-2 text-muted">Cập nhật sự kiện mượn, trả, gia hạn và yêu cầu giữ chỗ đã được Core ghi nhận.</p>
     {unread.isSuccess && <p className="mt-4" role="status">{unread.data.count} thông báo chưa đọc</p>}
     {unread.isError && <LibraryError error={unread.error} retry={() => void unread.refetch()}/>}
     {list.isPending ? <p role="status" className="my-6">Đang tải thông báo…</p> : list.isError
       ? <LibraryError error={list.error} retry={() => void list.refetch()}/>
       : <>{!list.data.items.length && <p className="editorial-card my-5">Bạn chưa có thông báo ở trang này.</p>}
         <ul className="my-5 grid gap-4">{list.data.items.map(item => <li key={item.id} className="editorial-card">
-          <h2 className="font-semibold">{item.eventType === 'HOLD_READY' ? 'Sách đã sẵn sàng nhận' : 'Yêu cầu giữ chỗ đã hết hạn'}</h2>
-          <p className="my-2">{item.eventType === 'HOLD_READY' && item.expiresAt
-            ? `Nhận trước ${new Date(item.expiresAt).toLocaleString('vi-VN')}.` : 'Hãy xem lại yêu cầu giữ chỗ của bạn.'}</p>
-          <p className="text-sm text-muted">Ghi nhận lúc {new Date(item.receivedAt).toLocaleString('vi-VN')}
+          <h2 className="font-semibold">{notificationTitle(item.eventType)}</h2>
+          <p className="my-2">{notificationMessage(item.eventType, item.expiresAt)}</p>
+          <p className="text-sm text-muted">Ghi nhận lúc {formatNotificationTime(item.receivedAt)}
             {item.readAt ? ' · Đã đọc' : ' · Chưa đọc'}</p>
-          <div className="mt-3 flex flex-wrap gap-3"><Link className="text-link" to="/muon-va-giu-cho">Xem yêu cầu giữ chỗ</Link>
+          <div className="mt-3 flex flex-wrap gap-3"><Link className="text-link" to={notificationLink(item.eventType, item.aggregateId)}>Mở giao dịch</Link>
             {!item.readAt && <button type="button" className="button-secondary" disabled={mark.isPending}
               onClick={() => mark.mutate(item.id)}>Đánh dấu đã đọc</button>}</div>
         </li>)}</ul>

@@ -44,6 +44,7 @@ model CirculationNotice {
   eventId          String   @unique @map("event_id") @db.Uuid
   eventType        String   @map("event_type") @db.VarChar(40)
   readerId         String   @map("reader_id") @db.Uuid
+  branchId         String?  @map("branch_id") @db.Uuid
   occurredAt       DateTime @map("occurred_at") @db.Timestamptz(6)
   receivedAt       DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
   dueAt            DateTime? @map("due_at") @db.Timestamptz(6)
@@ -52,6 +53,20 @@ model CirculationNotice {
   @@id([aggregateType, aggregateId])
   @@index([readerId, occurredAt, aggregateId])
   @@map("circulation_notices")
+}
+
+model StaffWorkItem {
+  aggregateType String    @map("aggregate_type") @db.VarChar(8)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  workType      String    @map("work_type") @db.VarChar(8)
+  branchId      String    @map("branch_id") @db.Uuid
+  createdAt     DateTime  @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @map("updated_at") @db.Timestamptz(6)
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  @@id([aggregateType, aggregateId, workType])
+  @@index([resolvedAt, workType, branchId, createdAt], map: "staff_work_items_open_idx")
+  @@map("staff_work_items")
 }
 
 // Mỗi event hợp lệ tạo tối đa một mục hộp thư; chỉ giữ mã giao dịch và thời điểm.

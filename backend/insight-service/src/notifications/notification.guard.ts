@@ -4,6 +4,7 @@ import { isUUID } from 'class-validator';
 import type { Request, Response } from 'express';
 
 export const notificationActor = Symbol('notificationActor');
+export const notificationRoles = Symbol('notificationRoles');
 
 @Injectable()
 export class NotificationGuard implements CanActivate {
@@ -43,6 +44,8 @@ export class NotificationGuard implements CanActivate {
     }
     window.count++; this.windows.set(user.id, window);
     (request as Request & { [notificationActor]?: string })[notificationActor] = user.id;
+    (request as Request & { [notificationRoles]?: string[] })[notificationRoles] =
+      user.roles.filter((role): role is string => typeof role === 'string');
     return true;
   }
 }

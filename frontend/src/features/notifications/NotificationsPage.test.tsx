@@ -8,7 +8,7 @@ const id = '1f6322af-8f00-4cb0-8b06-c6f6934e268a';
 const itemId = '6dff85ce-9a56-4cca-845d-a6f5d36cbe32';
 const user = { id, memberCode: 'TV-1234', email: 'reader@example.test', fullName: 'Người đọc', roles: ['READER'] };
 const session = { accessToken: 'reader-access', accessTokenExpiresAt: '2030-01-01T00:00:00Z', user };
-const item = { id: itemId, holdId: '4e6fa4d1-bdd9-429a-ae84-957eb9af60a8', eventType: 'HOLD_READY',
+const item = { id: itemId, aggregateType: 'HOLD', aggregateId: '4e6fa4d1-bdd9-429a-ae84-957eb9af60a8', eventType: 'HOLD_READY',
   occurredAt: '2026-10-28T00:00:00Z', receivedAt: '2026-10-28T00:00:01Z',
   expiresAt: '2026-10-30T00:00:00Z', readAt: null };
 
@@ -28,6 +28,8 @@ it('người đọc xem thông báo giữ chỗ và đánh dấu đã đọc b�
   render(<AppProviders><MemoryRouter initialEntries={['/thong-bao']}><AppRouter/></MemoryRouter></AppProviders>);
   expect(await screen.findByRole('heading', { name: 'Thông báo' })).toBeInTheDocument();
   expect(await screen.findByText('Sách đã sẵn sàng nhận')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Mở giao dịch' })).toHaveAttribute(
+    'href', `/muon-va-giu-cho?holdId=${item.aggregateId}#holds`);
   fireEvent.click(screen.getByRole('button', { name: 'Đánh dấu đã đọc' }));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
     String(url).endsWith(`/me/notifications/${itemId}/read`) && init.method === 'PATCH')).toBe(true));

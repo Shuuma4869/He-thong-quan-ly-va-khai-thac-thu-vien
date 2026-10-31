@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, Clock3, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../auth/auth-context';
 import { getCatalogItem, schemas } from '../catalog/catalog-api';
@@ -17,6 +17,10 @@ const expiryHours: Record<string, number> = { '24h': 24, '72h': 72, '7d': 168 };
 const holdStatusLabels: Record<string, string> = {
   WAITING: 'Đang chờ', READY: 'Sẵn sàng nhận', FULFILLED: 'Đã bàn giao', CANCELLED: 'Đã hủy', EXPIRED: 'Đã hết hạn',
 };
+const vietnamBusinessDayStart = (date: string, offsetDays = 0) => {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + offsetDays, -7)).toISOString();
+};
 
 export function StaffHoldManagementPage() {
   const { user } = useAuth();
@@ -24,10 +28,20 @@ export function StaffHoldManagementPage() {
 }
 
 function HoldWorkspace({ owner }: { owner: string }) {
-  const [draft, setDraft] = useState({ ...emptyFilters, expiry: '' });
-  const [filters, setFilters] = useState<Filters>({ ...emptyFilters });
+  const [searchParams] = useSearchParams();
+  const initialFilters = () => {
+    const status = searchParams.get('status') ?? '';
+    const branchId = searchParams.get('branchId') ?? '';
+    return { ...emptyFilters, status: Object.hasOwn(holdStatusLabels, status) ? status : '',
+      branchId: /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(branchId) ? branchId : '' };
+  };
+  const [draft, setDraft] = useState({ ...initialFilters(), expiry: '' });
+  const [filters, setFilters] = useState<Filters>(initialFilters);
   const [page, setPage] = useState(0);
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(() => {
+    const holdId = searchParams.get('holdId') ?? '';
+    return /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(holdId) ? holdId : '';
+  });
   const [pickupDueAt, setPickupDueAt] = useState<string | null>(null);
   const summary = useQuery({ queryKey: ['circulation', owner, 'staff-hold-summary'],
     queryFn: ({ signal }) => getStaffHoldSummary(signal), retry: false });
@@ -40,15 +54,13 @@ function HoldWorkspace({ owner }: { owner: string }) {
     event.preventDefault();
     if (invalidDateRange) return;
     const hours = expiryHours[draft.expiry];
-    const endDate = draft.to ? new Date(`${draft.to}T00:00:00Z`) : null;
-    endDate?.setUTCDate(endDate.getUTCDate() + 1);
     setFilters({
       status: draft.status,
       reader: draft.reader.trim(),
       book: draft.book.trim(),
       branchId: draft.branchId,
-      from: draft.from ? new Date(`${draft.from}T00:00:00Z`).toISOString() : '',
-      to: endDate?.toISOString() ?? '',
+      from: draft.from ? vietnamBusinessDayStart(draft.from) : '',
+      to: draft.to ? vietnamBusinessDayStart(draft.to, 1) : '',
       expiresBefore: hours ? new Date(Date.now() + hours * 60 * 60 * 1000).toISOString() : undefined,
     });
     setPage(0);

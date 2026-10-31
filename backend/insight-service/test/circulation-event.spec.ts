@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { eventDigest, eventTypes, holdTopic, loanTopic, parseCirculationEvent } from '../src/notifications/circulation-event';
 
-const aggregateId = randomUUID(), readerId = randomUUID();
+const aggregateId = randomUUID(), readerId = randomUUID(), branchId = randomUUID();
 const time = '2026-10-25T00:00:00.123456Z';
 function loan() { return { eventId: randomUUID(), eventType: 'COPY_BORROWED', aggregateId, aggregateVersion: 0, version: 1,
-  occurredAt: time, data: { loanId: aggregateId, version: 0, readerId, dueAt: time, returnedAt: null } }; }
+  occurredAt: time, data: { loanId: aggregateId, version: 0, readerId, branchId, dueAt: time, returnedAt: null } }; }
 function parse(value: unknown, topic = loanTopic, key = aggregateId) { return parseCirculationEvent(topic, key, Buffer.from(JSON.stringify(value))); }
 test.each(eventTypes)('%s được chuẩn hóa và không giữ trường danh tính thừa', type => {
   const source = loan(); source.eventType = type;
   const isHold = type.startsWith('HOLD_');
   const states: Record<string,string> = { HOLD_CREATED: 'WAITING', HOLD_READY: 'READY', HOLD_EXPIRED: 'EXPIRED', HOLD_CANCELLED: 'CANCELLED', HOLD_FULFILLED: 'FULFILLED' };
-  const data = isHold ? { id: aggregateId, version: 0, readerId, status: states[type], expiresAt: time } : { ...source.data, returnedAt: type === 'COPY_RETURNED' ? time : null };
+  const data = isHold ? { id: aggregateId, version: 0, readerId, branchId, status: states[type], expiresAt: time } : { ...source.data, returnedAt: type === 'COPY_RETURNED' ? time : null };
   const result = parse({ ...source, data: { ...data, email: 'must-not-store@test.local', fullName: 'Không lưu' } }, isHold ? holdTopic : loanTopic);
   expect(result).toMatchObject({ eventType: type, readerId, aggregateId, occurredAt: '2026-10-25T00:00:00.123Z' });
   expect(result).not.toHaveProperty('email'); expect(result).not.toHaveProperty('data');

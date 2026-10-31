@@ -24,9 +24,12 @@ it('chỉ quản trị viên thấy màn tài khoản và lưu thay đổi kèm 
   render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/tai-khoan']}><AppRouter/></MemoryRouter></AppProviders>);
   expect(await screen.findByRole('heading', { name: 'Tài khoản và phân quyền' })).toBeInTheDocument();
   fireEvent.click(await screen.findByRole('button', { name: 'Chi tiết' }));
-  const panel = await screen.findByRole('region', { name: 'Chi tiết tài khoản' });
+  const panel = await screen.findByRole('dialog', { name: 'Hồ sơ quản trị' });
   fireEvent.change(await within(panel).findByLabelText('Lý do thay đổi'), { target: { value: 'Kiểm tra tài khoản' } });
   fireEvent.click(within(panel).getByRole('button', { name: 'Khóa tài khoản' }));
+  const confirmation = await screen.findByRole('alertdialog', { name: 'Khóa tài khoản?' });
+  expect(confirmation).toHaveTextContent('được ghi lại cùng lý do');
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Xác nhận khóa' }));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
     String(url).endsWith(`/admin/accounts/${target.id}/status`) && init.method === 'PATCH'
     && JSON.parse(String(init.body)).expectedVersion === 0

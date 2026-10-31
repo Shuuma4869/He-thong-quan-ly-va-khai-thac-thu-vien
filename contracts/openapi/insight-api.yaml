@@ -149,7 +149,7 @@ paths:
     get:
       operationId: listReaderNotifications
       summary: Hộp thông báo của principal hiện tại
-      description: Core xác minh phiên và role mỗi request; chỉ trả thông báo của principal. Mỗi event HOLD_READY/HOLD_EXPIRED hợp lệ tạo một mục khi consumer được bật. Giới hạn 120 request/phút/tài khoản/process; no-store.
+      description: Core xác minh phiên và role mỗi request; chỉ trả thông báo của principal. Consumer tạo thông báo từ HOLD_CREATED/HOLD_READY/HOLD_EXPIRED/COPY_BORROWED/COPY_RETURNED/LOAN_RENEWED; job Insight tạo tối đa một nhắc hạn trong 24 giờ cho mỗi lượt mượn và dueAt. Giới hạn 120 request/phút/tài khoản/process; no-store.
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
         - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
@@ -186,6 +186,37 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
         '404': { description: Không có thông báo thuộc principal }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+  /staff/work-items:
+    get:
+      operationId: listStaffWorkItems
+      summary: Hộp thư công việc giữ chỗ của Librarian/Admin
+      description: Core xác minh role mỗi request. Phạm vi hiện hành là toàn hệ thống vì Core chưa có phân công nhân viên theo chi nhánh; branchId chỉ là bộ lọc, không phải ranh giới quyền.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+        - { name: workType, in: query, schema: { type: string, enum: [WAITING, READY] } }
+      responses:
+        '200': { description: Công việc mở theo sự kiện Hold đã xử lý; không chứa danh tính Reader, content: { application/json: { schema: { $ref: '#/components/schemas/StaffWorkItemPage' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+  /staff/work-items/unread-count:
+    get:
+      operationId: countOpenStaffWorkItems
+      summary: Đếm công việc giữ chỗ đang mở
+      description: Chỉ Librarian/Admin. Tổng hợp toàn hệ thống nếu không truyền branchId.
+      parameters:
+        - { name: branchId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Số công việc đang mở, content: { application/json: { schema: { type: object, required: [count], properties: { count: { type: integer, minimum: 0 } } } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Error' }
   /metadata/books/{isbn13}:
@@ -387,15 +418,34 @@ components:
         totalElements: { type: integer, minimum: 0 }
     ReaderNotification:
       type: object
-      required: [id, holdId, eventType, occurredAt, receivedAt, expiresAt, readAt]
+      required: [id, aggregateType, aggregateId, eventType, occurredAt, receivedAt, expiresAt, readAt]
       properties:
         id: { type: string, format: uuid }
-        holdId: { type: string, format: uuid }
-        eventType: { type: string, enum: [HOLD_READY, HOLD_EXPIRED] }
+        aggregateType: { type: string, enum: [HOLD, LOAN] }
+        aggregateId: { type: string, format: uuid }
+        eventType: { type: string, enum: [HOLD_CREATED, HOLD_READY, HOLD_EXPIRED, COPY_BORROWED, COPY_RETURNED, LOAN_RENEWED, LOAN_DUE_REMINDER] }
         occurredAt: { type: string, format: date-time }
         receivedAt: { type: string, format: date-time }
         expiresAt: { type: [string, 'null'], format: date-time }
         readAt: { type: [string, 'null'], format: date-time }
+    StaffWorkItemPage:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/StaffWorkItem' } }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 50 }
+        totalElements: { type: integer, minimum: 0 }
+    StaffWorkItem:
+      type: object
+      required: [aggregateType, aggregateId, workType, branchId, createdAt, updatedAt]
+      properties:
+        aggregateType: { type: string, const: HOLD }
+        aggregateId: { type: string, format: uuid }
+        workType: { type: string, enum: [WAITING, READY] }
+        branchId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     AcquisitionScope:
       type: object
       additionalProperties: false

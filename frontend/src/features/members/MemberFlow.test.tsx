@@ -18,6 +18,12 @@ let fetchMock: ReturnType<typeof vi.fn>;
 function app(path = '/ho-so') {
   return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRouter /></MemoryRouter></AppProviders>);
 }
+async function openMemberHoldReliabilityPanel() {
+  expect(await screen.findByRole('heading', { name: 'Thành viên' }, { timeout: 10_000 })).toBeInTheDocument();
+  expect(await screen.findByText('Tổng cộng 1 thành viên', {}, { timeout: 10_000 })).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }, { timeout: 10_000 }));
+  return screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' }, { timeout: 10_000 });
+}
 beforeEach(() => {
   fetchMock = vi.fn((url: string) => Promise.resolve(Response.json(
     url.endsWith('/auth/refresh') ? session : url.includes('/members?') ? page() : url.endsWith('/me/account') ? account : profile,
@@ -37,8 +43,7 @@ it('thủ thư xem căn cứ no-show nhưng không có quyền xác nhận', asy
           closedAt: '2026-10-22T00:00:00Z', decision: 'UNREVIEWED', decisionVersion: 0,
           reason: null, decidedAt: null, decisionPolicyVersion: null }] } : profile)));
   app('/nhan-vien/thanh-vien');
-  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }));
-  const panel = await screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' });
+  const panel = await openMemberHoldReliabilityPanel();
   expect(await within(panel).findByText(/1 chưa rà soát/)).toBeInTheDocument();
   expect(within(panel).getByText(/Không áp dụng giảm ưu tiên/)).toBeInTheDocument();
   expect(within(panel).queryByRole('button', { name: 'Xác nhận' })).not.toBeInTheDocument();
@@ -58,10 +63,9 @@ it('quản trị viên gửi quyết định no-show kèm phiên bản và lý d
         : url.includes('/no-show') ? { ...summary, confirmed: 1, unreviewed: 0,
           recentIncidents: [{ ...record, decision: 'CONFIRMED', decisionVersion: 1,
             reason: 'Đã đối chiếu tại quầy', decidedAt: '2026-10-28T00:00:00Z', decisionPolicyVersion: 'advisory-v1' }] }
-          : url.includes('/hold-reliability') ? summary : profile)));
+            : url.includes('/hold-reliability') ? summary : profile)));
   app('/nhan-vien/thanh-vien');
-  fireEvent.click(await screen.findByRole('button', { name: 'Xem hết hạn' }));
-  const panel = await screen.findByRole('region', { name: 'Rà soát giữ chỗ hết hạn' });
+  const panel = await openMemberHoldReliabilityPanel();
   fireEvent.change(await within(panel).findByLabelText('Lý do quyết định'),
     { target: { value: 'Đã đối chiếu tại quầy' } });
   fireEvent.click(within(panel).getByRole('button', { name: 'Xác nhận' }));

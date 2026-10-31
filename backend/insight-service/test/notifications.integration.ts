@@ -47,7 +47,8 @@ afterAll(async () => {
   }
 }, 30000);
 function fact(): CirculationEvent { return { eventId: randomUUID(), eventType: 'HOLD_READY', aggregateId: randomUUID(), aggregateType: 'HOLD',
-  aggregateVersion: 1, occurredAt: '2026-10-25T00:00:00.000Z', readerId: randomUUID(), dueAt: null, expiresAt: '2026-10-27T00:00:00.000Z' }; }
+  aggregateVersion: 1, occurredAt: '2026-10-25T00:00:00.000Z', readerId: randomUUID(), branchId: randomUUID(),
+  dueAt: null, expiresAt: '2026-10-27T00:00:00.000Z' }; }
 function where(event: CirculationEvent) { return { aggregateType_aggregateId: { aggregateType: event.aggregateType, aggregateId: event.aggregateId } }; }
 test('receipt và thông báo bền vững qua kết nối mới, event lặp không nhân đôi', async () => {
   const event = fact(); expect(await repository.accept(event)).toBe('APPLIED');
@@ -58,7 +59,7 @@ test('receipt và thông báo bền vững qua kết nối mới, event lặp kh
   expect(await db.readerNotification.count({ where: { id: event.eventId } })).toBe(1);
   expect(await repository.unreadCount(event.readerId)).toEqual({ count: 1 });
   expect((await repository.list(event.readerId, 0, 20)).items[0]).toMatchObject({ id: event.eventId,
-    holdId: event.aggregateId, eventType: 'HOLD_READY', readAt: null });
+    aggregateType: 'HOLD', aggregateId: event.aggregateId, eventType: 'HOLD_READY', readAt: null });
   expect((await repository.list(randomUUID(), 0, 20)).items).toHaveLength(0);
   expect(await repository.markRead(randomUUID(), event.eventId)).toBe('NOT_FOUND');
   expect(await repository.markRead(event.readerId, event.eventId)).toBe('UPDATED');
@@ -72,6 +73,55 @@ test('sự kiện cũ không thay trạng thái kết thúc bằng lời nhắc 
   expect(await repository.accept(ready)).toBe('DUPLICATE');
   expect(await db.readerNotification.count({ where: { id: ready.eventId } })).toBe(0);
   expect(await db.readerNotification.count({ where: { id: ended.eventId } })).toBe(1);
+});
+test('Reader inbox nhận event tạo yêu cầu, mượn, trả và gia hạn; không biến mọi event thành thông báo', async () => {
+  const readerId = randomUUID(), branchId = randomUUID();
+  const types = ['HOLD_CREATED', 'COPY_BORROWED', 'COPY_RETURNED', 'LOAN_RENEWED'] as const;
+  for (const eventType of types) {
+    const aggregateType = eventType.startsWith('HOLD_') ? 'HOLD' : 'LOAN';
+    await repository.accept({ eventId: randomUUID(), eventType, aggregateType, aggregateId: randomUUID(),
+      aggregateVersion: 1, occurredAt: '2026-10-25T00:00:00.000Z', readerId, branchId,
+      dueAt: aggregateType === 'LOAN' ? '2026-11-08T00:00:00.000Z' : null,
+      expiresAt: null });
+  }
+  const page = await repository.list(readerId, 0, 20);
+  expect(page.totalElements).toBe(4);
+  expect(page.items.map(item => item.eventType).sort()).toEqual([...types].sort());
+  expect(page.items.find(item => item.eventType === 'COPY_RETURNED')).toMatchObject({ aggregateType: 'LOAN' });
+});
+test('work inbox đổi từ WAITING sang READY rồi tự đóng khi Hold được bàn giao', async () => {
+  const holdId = randomUUID(), readerId = randomUUID(), branchId = randomUUID();
+  const event = (eventType: CirculationEvent['eventType'], aggregateVersion: number): CirculationEvent => ({
+    eventId: randomUUID(), eventType, aggregateType: 'HOLD', aggregateId: holdId, aggregateVersion,
+    occurredAt: new Date(Date.parse('2026-10-25T00:00:00Z') + aggregateVersion * 1000).toISOString(),
+    readerId, branchId, dueAt: null, expiresAt: eventType === 'HOLD_READY' ? '2026-10-27T00:00:00.000Z' : null,
+  });
+  await repository.accept(event('HOLD_CREATED', 0));
+  const inbox = (page: number) => repository.listStaffWorkItems({ branchId, page, size: 20 });
+  expect((await inbox(0)).items).toMatchObject([
+    { aggregateId: holdId, workType: 'WAITING', branchId },
+  ]);
+  expect(await repository.staffWorkUnreadCount(branchId)).toEqual({ count: 1 });
+  await repository.accept(event('HOLD_READY', 1));
+  expect((await inbox(0)).items).toMatchObject([
+    { aggregateId: holdId, workType: 'READY', branchId },
+  ]);
+  expect(await repository.staffWorkUnreadCount(branchId)).toEqual({ count: 1 });
+  await repository.accept(event('HOLD_FULFILLED', 2));
+  expect((await inbox(0)).items).toHaveLength(0);
+  expect(await repository.staffWorkUnreadCount(branchId)).toEqual({ count: 0 });
+});
+test('nhắc hạn trả trong 24 giờ dùng ID ổn định và không gửi trùng khi chạy lại', async () => {
+  const now = new Date('2026-10-25T00:00:00.000Z');
+  const loan: CirculationEvent = { eventId: randomUUID(), eventType: 'COPY_BORROWED', aggregateType: 'LOAN',
+    aggregateId: randomUUID(), aggregateVersion: 1, occurredAt: now.toISOString(), readerId: randomUUID(),
+    branchId: randomUUID(), dueAt: '2026-10-25T23:59:59.000Z', expiresAt: null };
+  await repository.accept(loan);
+  expect(await repository.createDueReminders(now)).toBe(1);
+  expect(await repository.createDueReminders(now)).toBe(0);
+  const reminder = await db.readerNotification.findFirst({ where: { aggregateId: loan.aggregateId, eventType: 'LOAN_DUE_REMINDER' } });
+  expect(reminder).toMatchObject({ aggregateType: 'LOAN', eventType: 'LOAN_DUE_REMINDER', readerId: loan.readerId,
+    aggregateVersion: 1n, occurredAt: now, readAt: null });
 });
 test('consumer cạnh tranh giữ một trạng thái mới nhất và một receipt mỗi eventId', async () => {
   const original = fact();
@@ -166,7 +216,8 @@ test('Kafka thật: nhận fact, restart consumer/broker, gửi lặp và DLQ c�
   producer = kafka.producer(); await producer.connect();
   const ready = fact();
   const raw = { eventId: ready.eventId, eventType: ready.eventType, aggregateId: ready.aggregateId, aggregateVersion: ready.aggregateVersion,
-    version: 1, occurredAt: ready.occurredAt, data: { id: ready.aggregateId, version: ready.aggregateVersion, status: 'READY', readerId: ready.readerId, expiresAt: ready.expiresAt } };
+    version: 1, occurredAt: ready.occurredAt, data: { id: ready.aggregateId, version: ready.aggregateVersion,
+      status: 'READY', readerId: ready.readerId, branchId: ready.branchId, expiresAt: ready.expiresAt } };
   const send = async (value: unknown) => { await producer!.send({ topic: 'lams.hold.events.v1', messages: [{ key: ready.aggregateId, value: JSON.stringify(value) }] }); };
   await send(raw); await until(async () => !!await db.consumedCirculationEvent.findUnique({ where: { eventId: ready.eventId } }));
   await events.onModuleDestroy(); events = new LoanEventsConsumer(repository); await events.onApplicationBootstrap();

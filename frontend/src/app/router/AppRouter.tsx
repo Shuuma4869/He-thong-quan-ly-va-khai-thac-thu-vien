@@ -6,8 +6,10 @@ import { PublicLayout } from '../layouts/PublicLayout';
 import { LoginPage } from '../../features/auth/LoginPage';
 import { RegisterPage } from '../../features/auth/RegisterPage';
 import { GuestRoute, ProtectedRoute, RoleGuard } from '../../features/auth/AuthGuards';
+import { useAuth } from '../../features/auth/auth-context';
 import { ReaderHomePage } from '../../features/discovery/ReaderHomePage';
 const StaffDashboardPage = lazy(() => import('../../features/analytics/StaffDashboardPage').then(value => ({ default: value.StaffDashboardPage })));
+const AdminDashboardPage = lazy(() => import('../../features/admin/AdminDashboardPage').then(value => ({ default: value.AdminDashboardPage })));
 import { NotFoundPage } from '../../shared/components/NotFoundPage';
 const ProfilePage = lazy(() => import('../../features/profile/ProfilePage').then(value => ({ default: value.ProfilePage })));
 const AppearancePage = lazy(() => import('../../features/appearance/AppearancePage').then(value => ({ default: value.AppearancePage })));
@@ -31,9 +33,15 @@ const AcquisitionPage = lazy(() => import('../../features/acquisition/Acquisitio
 const AdminAccountsPage = lazy(() => import('../../features/admin/AdminAccountsPage').then(value => ({ default: value.AdminAccountsPage })));
 const ReviewReportsPage = lazy(() => import('../../features/admin/ReviewReportsPage').then(value => ({ default: value.ReviewReportsPage })));
 const NotificationsPage = lazy(() => import('../../features/notifications/NotificationsPage').then(value => ({ default: value.NotificationsPage })));
+const StaffWorkInboxPage = lazy(() => import('../../features/notifications/StaffWorkInboxPage').then(value => ({ default: value.StaffWorkInboxPage })));
 
 function Deferred({ children }: { children: ReactNode }) {
   return <Suspense fallback={<p role="status" className="shell py-8">Đang tải trang…</p>}>{children}</Suspense>;
+}
+
+function StaffDashboardByRole() {
+  const { user } = useAuth();
+  return <Deferred>{user?.roles.includes('ADMIN') ? <AdminDashboardPage /> : <StaffDashboardPage />}</Deferred>;
 }
 
 export function AppRouter() {
@@ -65,10 +73,11 @@ export function AppRouter() {
       <Route element={<ProtectedRoute />}><Route element={<RoleGuard allowed={['LIBRARIAN', 'ADMIN']} />}>
       <Route path="/nhan-vien" element={<StaffLayout />}>
         <Route index element={<Navigate to="bang-dieu-khien" replace />} />
-        <Route path="bang-dieu-khien" element={<Deferred><StaffDashboardPage /></Deferred>} />
+        <Route path="bang-dieu-khien" element={<StaffDashboardByRole />} />
         <Route path="thanh-vien" element={<Deferred><MemberListPage /></Deferred>} />
         <Route path="danh-muc" element={<Deferred><StaffCatalogPage /></Deferred>} />
         <Route path="luu-thong" element={<Deferred><StaffCirculationPage /></Deferred>} />
+        <Route path="hop-thu" element={<Deferred><StaffWorkInboxPage /></Deferred>} />
         <Route path="giu-cho" element={<Deferred><StaffHoldManagementPage /></Deferred>} />
         <Route path="bao-cao-luu-thong" element={<Deferred><CirculationReportPage /></Deferred>} />
         <Route path="bao-cao-giu-cho" element={<Deferred><HoldActivityReportPage /></Deferred>} />

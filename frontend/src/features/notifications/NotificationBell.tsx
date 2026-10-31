@@ -4,8 +4,7 @@ import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { Dialog } from '../../shared/components/Dialog';
-import { listNotifications, unreadCount } from './notification-api';
-import { formatTime } from '../circulation/circulation-labels';
+import { formatNotificationTime, listNotifications, notificationMessage, notificationTitle, unreadCount } from './notification-api';
 
 export function NotificationBell() {
   const { user } = useAuth();
@@ -27,12 +26,12 @@ function InboxPreview({ owner }: { owner: string }) {
       {count.isError && <p role="status">Chưa cập nhật được số chưa đọc.</p>}
       {recent.isPending ? <p role="status">Đang tải thông báo…</p> : recent.isError
         ? <div role="alert"><p>Chưa tải được thông báo.</p><button className="button-secondary" onClick={() => void recent.refetch()}>Thử lại</button></div>
-        : !recent.data.items.length ? <p className="empty-message">Chưa có thông báo giữ chỗ. Khi sách sẵn sàng nhận, thông báo sẽ xuất hiện tại đây.</p>
+        : !recent.data.items.length ? <p className="empty-message">Chưa có thông báo về mượn, trả hoặc giữ chỗ.</p>
           : <ul className="notification-preview-list">{recent.data.items.slice(0, 5).map(item => <li key={item.id}>
-            <div><strong>{item.eventType === 'HOLD_READY' ? 'Sách đã sẵn sàng nhận' : 'Đã hết thời hạn nhận sách'}</strong>
+            <div><strong>{notificationTitle(item.eventType)}</strong>
               <span className="status-label">{item.readAt ? 'Đã đọc' : 'Chưa đọc'}</span></div>
-            <time dateTime={item.occurredAt}>{formatTime(item.occurredAt)}</time>
-            {item.eventType === 'HOLD_READY' && item.expiresAt && <p>Nhận trước {formatTime(item.expiresAt)}.</p>}
+            <time dateTime={item.occurredAt}>{formatNotificationTime(item.occurredAt)}</time>
+            <p>{notificationMessage(item.eventType, item.expiresAt)}</p>
           </li>)}</ul>}
       <Link className="button-primary" to="/thong-bao" onClick={() => setOpen(false)}>Mở trung tâm thông báo</Link>
     </Dialog>}

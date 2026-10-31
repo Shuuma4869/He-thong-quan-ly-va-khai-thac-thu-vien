@@ -88,6 +88,32 @@ it('không tạo Loan trước bàn giao; workspace giữ chỗ xác nhận qua 
   expect(commands()[0][0]).toContain('/loans');
   expect(JSON.parse(commands()[0][1].body)).toMatchObject({ copyId, readerId, branchId, copyVersion: 8 });
 });
+it('deep link từ work inbox mở đúng Hold, chi nhánh và hàng trạng thái READY', async () => {
+  app(`/nhan-vien/giu-cho?status=READY&branchId=${branchId}&holdId=${holdId}`);
+  expect(await screen.findByRole('heading', { name: 'Quản lý giữ chỗ' })).toBeInTheDocument();
+  expect(await screen.findByText('Xác nhận bàn giao')).toBeInTheDocument();
+  const listRequest = fetchMock.mock.calls.find(([url]) => String(url).includes('/staff/holds?'));
+  expect(listRequest).toBeDefined();
+  const params = new URL(String(listRequest![0])).searchParams;
+  expect(params.get('status')).toBe('READY');
+  expect(params.get('branchId')).toBe(branchId);
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining(`/staff/holds/${holdId}`),
+    expect.objectContaining({ method: 'GET' }));
+});
+it('lọc giữ chỗ theo ngày nghiệp vụ Việt Nam, gồm trọn ngày kết thúc', async () => {
+  app('/nhan-vien/giu-cho');
+  await screen.findByRole('heading', { name: 'Quản lý giữ chỗ' });
+  fireEvent.change(screen.getByLabelText('Tạo từ ngày'), { target: { value: '2026-10-25' } });
+  fireEvent.change(screen.getByLabelText('Đến hết ngày'), { target: { value: '2026-10-26' } });
+  fireEvent.click(screen.getByRole('button', { name: /Áp dụng bộ lọc/ }));
+  await waitFor(() => {
+    const request = fetchMock.mock.calls.filter(([url]) => String(url).includes('/staff/holds?')).at(-1);
+    expect(request).toBeDefined();
+    const params = new URL(String(request![0])).searchParams;
+    expect(params.get('from')).toBe('2026-10-24T17:00:00.000Z');
+    expect(params.get('to')).toBe('2026-10-26T17:00:00.000Z');
+  });
+});
 it('mất phản hồi giữ nguyên giao dịch cho mượn khi thử lại', async () => {
   let first = true;
   fetchMock.mockImplementation((url: string, init: RequestInit) => {

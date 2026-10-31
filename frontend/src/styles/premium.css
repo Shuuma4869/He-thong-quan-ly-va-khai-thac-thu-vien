@@ -195,6 +195,45 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .staff-quick-links a { display: flex; align-items: center; gap: .5rem; min-height: 57px; border: 1px solid #dfeef3; border-radius: .7rem; padding: .7rem; color: #145e7d; font-size: .77rem; font-weight: 650; }
 .staff-quick-links a:hover { background: #eaf8fc; }
 .staff-quick-links a > svg:last-child { margin-left: auto; }
+.admin-dashboard-hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2rem; overflow: hidden; border: 1px solid #d9d4f1; border-radius: 1.2rem; padding: clamp(1.6rem,2.8vw,2.6rem); background: radial-gradient(circle at 84% 8%,#d9d1f6 0,transparent 34%),linear-gradient(110deg,#f1effb,#fff); }
+.admin-dashboard-hero h1 { margin-top: .25rem; }
+.admin-dashboard-hero p:last-of-type { max-width: 68ch; margin-top: .6rem; color: #5b5872; font-size: .88rem; }
+.admin-dashboard-hero > svg { flex: none; color: #7665af; opacity: .7; }
+.admin-dashboard-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; margin-top: 1.2rem; }
+.admin-metric-card { display: grid; align-content: start; gap: .55rem; min-width: 0; min-height: 155px; border-color: #e2def1; border-radius: 1rem; }
+.admin-metric-card > svg { color: #7463aa; }
+.admin-metric-card > strong { font-size: 1.8rem; letter-spacing: -.035em; }
+.admin-dashboard-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin-top: 1.2rem; }
+.admin-dashboard-panels .editorial-card { min-width: 0; border-color: #e2def1; }
+.admin-dashboard-actions { display: grid; gap: .6rem; margin-top: 1.1rem; }
+.admin-dashboard-actions a { display: flex; align-items: center; justify-content: space-between; gap: .7rem; min-height: 48px; border: 1px solid #e5e1f1; border-radius: .7rem; padding: .7rem .85rem; color: #554785; font-size: .82rem; font-weight: 650; transition: background-color .18s ease, transform .18s ease; }
+.admin-dashboard-actions a:hover { background: #f5f2fd; transform: translateY(-1px); }
+.admin-drawer-backdrop, .admin-confirm-backdrop { position: fixed; z-index: 80; inset: 0; display: flex; background: rgba(31,35,53,.28); backdrop-filter: blur(5px); }
+.admin-drawer-backdrop { justify-content: flex-end; }
+.admin-detail-drawer { width: min(590px,100%); height: 100dvh; overflow-y: auto; border-left: 1px solid #e0dcef; padding: clamp(1.2rem,4vw,2rem); background: rgba(255,255,255,.97); box-shadow: -18px 0 55px rgba(34,33,59,.14); animation: admin-drawer-enter .22s ease-out; }
+.admin-detail-drawer > h2 { margin-top: .8rem; color: #2f2c42; font-size: 1.55rem; }
+.admin-detail-drawer > p { margin-top: .45rem; color: #626076; font-size: .84rem; overflow-wrap: anywhere; }
+.admin-detail-drawer-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #e7e4f0; padding-bottom: .9rem; }
+.admin-detail-drawer-heading .eyebrow { margin: 0; }
+.admin-audit-timeline { display: grid; gap: .85rem; margin-top: 1rem; }
+.admin-audit-timeline li { position: relative; display: grid; gap: .3rem; border: 1px solid #e8e4f2; border-radius: .75rem; padding: .8rem .9rem; background: #fcfbff; }
+.admin-audit-timeline time { color: #766f8a; font-size: .72rem; }
+.admin-audit-timeline strong { color: #39344e; font-size: .83rem; }
+.admin-audit-timeline span, .admin-audit-timeline p { color: #5c5870; font-size: .78rem; overflow-wrap: anywhere; }
+.admin-confirm-backdrop { z-index: 90; align-items: center; justify-content: center; padding: 1rem; }
+.admin-confirm-dialog { width: min(460px,100%); border: 1px solid #e2def1; border-radius: 1.1rem; padding: clamp(1.2rem,4vw,1.8rem); background: rgba(255,255,255,.98); box-shadow: 0 24px 80px rgba(35,32,58,.2); }
+.admin-confirm-dialog h2 { margin-top: .45rem; color: #302c44; font-size: 1.25rem; }
+.admin-confirm-dialog > p:not(.eyebrow) { margin-top: .65rem; color: #626076; font-size: .85rem; }
+.admin-confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .65rem; margin-top: 1.2rem; }
+.admin-report-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin-top: 1rem; }
+.admin-report-list > li { min-width: 0; border-color: #e2def1; }
+.admin-report-snapshot { border: 1px solid #e8e4f2; border-radius: .75rem; padding: 1rem; background: #fcfbff; }
+.admin-report-snapshot p { color: #4e4a60; font-size: .86rem; }
+.admin-report-meta { display: grid; gap: .75rem; }
+.admin-report-meta div { border-bottom: 1px solid #eeeaf5; padding-bottom: .65rem; }
+.admin-report-meta dt { color: #736d83; font-size: .73rem; }
+.admin-report-meta dd { margin-top: .25rem; color: #3e3a50; font-size: .84rem; overflow-wrap: anywhere; }
+@keyframes admin-drawer-enter { from { transform: translateX(24px); opacity: .7; } to { transform: translateX(0); opacity: 1; } }
 @media (max-width: 760px) {
   .search-command { width: min(42vw,320px); margin-left: auto; }
   .search-command kbd, .library-topbar-user { display: none; }
@@ -204,7 +243,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .category-heading-media > .directory-visual, .category-heading-media > .directory-visual-fallback { width: 100%; height: 190px; }
   .staff-dashboard-panels { grid-template-columns: 1fr; }
   .staff-dashboard-hero > svg { display: none; }
+  .admin-dashboard-panels { grid-template-columns: 1fr; }
+  .admin-report-list { grid-template-columns: 1fr; }
+  .admin-dashboard-hero > svg { display: none; }
 }
+@media (max-width: 900px) { .admin-dashboard-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 520px) {
   .catalog-grid { grid-template-columns: 1fr; gap: .8rem; }
   .book-card { display: grid; grid-template-columns: 116px minmax(0, 1fr); }
@@ -221,7 +264,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .search-command-popover { left: auto; right: -4rem; width: min(350px, calc(100vw - 1rem)); }
   .my-review-card { grid-template-columns: 64px minmax(0,1fr); gap: .7rem; padding: .75rem; }
   .my-review-cover { min-height: 86px; }
+  .admin-dashboard-metrics { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .library-sidebar-desktop, .library-back-top, .search-command-popover { animation: none; transition-duration: .01ms; }
+  .library-sidebar-desktop, .library-back-top, .search-command-popover, .admin-detail-drawer { animation: none; transition-duration: .01ms; }
 }
