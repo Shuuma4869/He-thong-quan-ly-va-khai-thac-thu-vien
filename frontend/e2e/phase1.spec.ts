@@ -1060,9 +1060,22 @@ test('Admin dashboard, tài khoản và kiểm duyệt responsive với dữ li�
   }
   await reportDrawer.getByLabel('Lý do quyết định').fill('Đã rà soát và xác nhận cần ẩn theo quy định.');
   await reportDrawer.getByRole('button', { name: 'Ẩn đánh giá' }).click();
-  await page.getByRole('alertdialog', { name: 'Ẩn đánh giá này?' }).getByRole('button', { name: 'Xác nhận ẩn đánh giá' }).click();
+  const confirmation = page.getByRole('alertdialog', { name: 'Ẩn đánh giá này?' });
+  await expect(confirmation.getByRole('button', { name: 'Quay lại' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(confirmation.getByRole('button', { name: 'Xác nhận ẩn đánh giá' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(confirmation.getByRole('button', { name: 'Quay lại' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toHaveCount(0);
+  await expect(reportDrawer.getByRole('button', { name: 'Ẩn đánh giá' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Shift+Tab');
+  await expect(confirmation.getByRole('button', { name: 'Xác nhận ẩn đánh giá' })).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('status')).toHaveText('Đã lưu quyết định.');
   await expect(page.getByText('Không có báo cáo ở trang này.')).toBeVisible();
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
 });
 
 test('Phase 6 tìm sách: không dấu, xếp hạng, tác giả, ISBN và trang ổn định', async ({ page, request }) => {

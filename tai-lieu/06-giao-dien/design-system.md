@@ -70,3 +70,7 @@ Khi chưa xác nhận được đăng xuất ở máy chủ, một thông báo c
 Đăng nhập và đăng ký đặt tiêu đề chính trong vùng biểu mẫu để vẫn đọc được ở màn hình nhỏ. Lỗi nhập liệu gắn với input qua `aria-invalid` và `aria-describedby`; thông báo chung từ máy chủ dùng vùng alert. Nút hiện mật khẩu không gửi form. Các giới hạn độ dài được diễn đạt bằng tiếng Việt.
 
 Thanh điều hướng và khung tìm kiếm landing có container query để chuyển bố cục theo chiều rộng thật của vùng chứa, kể cả khi nội dung được phóng đại. Kiểm thử tự động dùng CSS zoom 200% để kiểm reflow, cùng sáu độ rộng 390–1920 px. Đây không phải bằng chứng cho toàn bộ thao tác zoom native hoặc mọi công nghệ hỗ trợ của hệ điều hành.
+
+## Hộp thoại và ngăn chi tiết
+
+Khi mở xác nhận quản trị trên ngăn chi tiết, hộp xác nhận nhận quyền xử lý Tab, Shift+Tab và Escape; ngăn phía sau không kéo focus về các nút của mình. Đóng xác nhận bằng Escape trả focus về nút đã mở nó. Các lớp phủ dùng chung bộ đếm khóa cuộn, chỉ trả quyền cuộn cho trang khi lớp cuối đã đóng. Cách này cũng áp dụng khi lưu thành công làm đóng cả ngăn chi tiết lẫn xác nhận trong cùng một lần cập nhật.

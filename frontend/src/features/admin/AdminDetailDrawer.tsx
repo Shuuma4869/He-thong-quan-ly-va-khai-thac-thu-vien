@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { lockBodyScroll } from '../../shared/components/scroll-lock';
 
 export function AdminDetailDrawer({ title, children, onClose }: {
   title: string; children: ReactNode; onClose: () => void;
@@ -8,13 +9,13 @@ export function AdminDetailDrawer({ title, children, onClose }: {
   closeRef.current = onClose;
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = lockBodyScroll();
     const panel = drawer.current;
     panel?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
+      // Hộp xác nhận phía trên quản lý bàn phím cho đến khi đóng.
+      if (document.querySelector('[role="alertdialog"][aria-modal="true"]')) return;
       if (event.key === 'Escape') {
-        if (document.querySelector('[role="alertdialog"][aria-modal="true"]')) return;
         closeRef.current();
         return;
       }
@@ -28,7 +29,7 @@ export function AdminDetailDrawer({ title, children, onClose }: {
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.body.style.overflow = overflow;
+      releaseScroll();
       document.removeEventListener('keydown', onKeyDown);
       previous?.focus();
     };

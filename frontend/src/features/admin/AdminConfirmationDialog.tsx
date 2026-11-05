@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { lockBodyScroll } from '../../shared/components/scroll-lock';
 
 export function AdminConfirmationDialog({ title, description, confirmLabel, busy, error, onCancel, onConfirm }: {
   title: string; description: string; confirmLabel: string; busy: boolean; error?: ReactNode;
@@ -11,8 +12,7 @@ export function AdminConfirmationDialog({ title, description, confirmLabel, busy
   busyRef.current = busy;
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = lockBodyScroll();
     const panel = dialog.current;
     panel?.querySelector<HTMLElement>('button')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
@@ -27,7 +27,7 @@ export function AdminConfirmationDialog({ title, description, confirmLabel, busy
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.body.style.overflow = overflow;
+      releaseScroll();
       document.removeEventListener('keydown', onKeyDown);
       previous?.focus();
     };

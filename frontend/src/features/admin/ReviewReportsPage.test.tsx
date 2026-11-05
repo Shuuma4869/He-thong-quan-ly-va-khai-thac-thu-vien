@@ -16,6 +16,7 @@ const report = { id: '6dff85ce-9a56-4cca-845d-a6f5d36cbe32', reviewId: '5a5804a7
 afterEach(() => vi.unstubAllGlobals());
 
 it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đánh giá', async () => {
+  const originalOverflow = document.body.style.overflow;
   let decided = false;
   const fetchMock = vi.fn((url: string, init: RequestInit) => {
     if (String(url).endsWith('/auth/refresh')) return Promise.resolve(Response.json(session));
@@ -49,6 +50,7 @@ it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đ
       && JSON.parse(String(init.body)).reason === 'Có nội dung xúc phạm rõ ràng')).toBe(true));
   expect(await screen.findByRole('status')).toHaveTextContent('Đã lưu quyết định.');
   expect(await screen.findByText('Không có báo cáo ở trang này.')).toBeInTheDocument();
+  expect(document.body.style.overflow).toBe(originalOverflow);
 });
 
 it('người đọc không tải hàng đợi kiểm duyệt', async () => {
