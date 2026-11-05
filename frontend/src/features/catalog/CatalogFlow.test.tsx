@@ -43,6 +43,30 @@ function response(url:string) {
 beforeEach(() => { role='READER'; fetchMock=vi.fn((url:string) => Promise.resolve(Response.json(response(url)))); vi.stubGlobal('fetch',fetchMock); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); window.history.replaceState(null, '', '/'); });
 
+it('tạo tác phẩm xong quay lại dashboard nhận số liệu mới ngay', async () => {
+  role = 'LIBRARIAN';
+  let total = 21;
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (init.method === 'POST' && url.endsWith('/books')) {
+      total++;
+      return Promise.resolve(Response.json({ ...book, title: 'Tác phẩm mới' }, { status: 201 }));
+    }
+    if (new URL(url).pathname.endsWith('/books')) return Promise.resolve(Response.json(page([book], 0, total)));
+    return Promise.resolve(Response.json(response(url)));
+  });
+  app('/nhan-vien/bang-dieu-khien');
+  const metric = await screen.findByText('Tác phẩm trong danh mục');
+  await waitFor(() => expect(within(metric.closest('article')!).getByText('21')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('link', { name: 'Quản lý danh mục' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Thêm tác phẩm' }));
+  fireEvent.change(screen.getByLabelText('Tên tác phẩm'), { target: { value: 'Tác phẩm mới' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu thông tin' }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Lưu thông tin' })).not.toBeInTheDocument());
+  fireEvent.click(document.querySelector<HTMLAnchorElement>('.library-sidebar-desktop a[href="/nhan-vien/bang-dieu-khien"]')!);
+  const updated = await screen.findByText('Tác phẩm trong danh mục');
+  await waitFor(() => expect(within(updated.closest('article')!).getByText('22')).toBeInTheDocument());
+});
+
 it('desktop mở ấn bản ngay tại trang sách, giữ nguyên route và có lối giữ chỗ', async () => {
   window.history.replaceState(null, '', `/#/sach/${id}`);
   const scroll = vi.fn();

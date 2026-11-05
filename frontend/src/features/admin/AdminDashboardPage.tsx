@@ -9,6 +9,7 @@ import { listSessions } from '../inventory/inventory-api';
 import { listStaffWorkItems } from '../notifications/staff-work-inbox-api';
 import { listAccounts } from './accounts-api';
 import { listReviewReports } from '../reviews/moderation-api';
+import { formatTime } from '../circulation/circulation-labels';
 
 export function AdminDashboardPage() {
   const { user } = useAuth();
@@ -41,20 +42,20 @@ export function AdminDashboardPage() {
       <ShieldCheck size={82} strokeWidth={1} aria-hidden="true"/>
     </header>
     <p className="dashboard-data-note">Mỗi chỉ số được tải độc lập; lỗi ở một nguồn không làm sai các chỉ số còn lại.
-      {loans.data && ` Lượt mượn cập nhật ${new Date(loans.data.asOf).toLocaleString('vi-VN')}.`}</p>
+      {loans.data && ` Lượt mượn cập nhật ${formatTime(loans.data.asOf)} (giờ Việt Nam).`}</p>
     <div className="admin-dashboard-metrics">
-      <Metric title="Tác phẩm trong danh mục" icon={<BookOpen aria-hidden="true"/>}
-        value={books.data?.page.totalElements} query={books} href="/nhan-vien/danh-muc"/>
-      <Metric title="Lượt mượn đang mở" icon={<Boxes aria-hidden="true"/>}
-        value={loans.data?.page.totalElements} query={loans} href="/nhan-vien/luu-thong"/>
-      <Metric title="Giữ chỗ cần xử lý" icon={<ClipboardList aria-hidden="true"/>}
-        value={holds.data?.totalElements} query={holds} href="/nhan-vien/hop-thu"/>
-      <Metric title="Phiên kiểm kê đang mở" icon={<Boxes aria-hidden="true"/>}
-        value={sessions.data?.page.totalElements} query={sessions} href="/nhan-vien/kiem-ke"/>
       <Metric title="Tài khoản đang khóa" icon={<Users aria-hidden="true"/>}
         value={lockedAccounts.data?.totalElements} query={lockedAccounts} href="/nhan-vien/tai-khoan"/>
       <Metric title="Báo cáo đánh giá chờ xử lý" icon={<Flag aria-hidden="true"/>}
         value={reports.data?.totalElements} query={reports} href="/nhan-vien/bao-cao-danh-gia"/>
+      <Metric title="Tác phẩm trong danh mục" icon={<BookOpen aria-hidden="true"/>}
+        value={books.data?.page.totalElements} query={books} href="/nhan-vien/danh-muc"/>
+      <Metric title="Giữ chỗ cần xử lý" icon={<ClipboardList aria-hidden="true"/>}
+        value={holds.data?.totalElements} query={holds} href="/nhan-vien/hop-thu"/>
+      <Metric title="Phiên kiểm kê đang mở" icon={<Boxes aria-hidden="true"/>}
+        value={sessions.data?.page.totalElements} query={sessions} href="/nhan-vien/kiem-ke"/>
+      <Metric title="Lượt mượn đang mở" icon={<Boxes aria-hidden="true"/>}
+        value={loans.data?.page.totalElements} query={loans} href="/nhan-vien/luu-thong"/>
     </div>
     <div className="admin-dashboard-panels">
       <section className="editorial-card" aria-labelledby="admin-governance-heading">

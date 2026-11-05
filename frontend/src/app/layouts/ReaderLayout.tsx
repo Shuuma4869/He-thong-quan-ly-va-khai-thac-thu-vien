@@ -15,7 +15,7 @@ export function ReaderLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const signOut = async () => { await auth.logout(); navigate('/', { replace: true }); };
+  const signOut = async () => { await auth.logout().catch(() => {}); navigate('/', { replace: true }); };
   return (
     <div className="library-workspace">
       <LibrarySidebar mode="reader" open={menuOpen} onClose={closeMenu} trigger={trigger}/>

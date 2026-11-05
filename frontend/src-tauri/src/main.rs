@@ -44,6 +44,8 @@ fn allowed_source(url: &tauri::Url) -> bool {
                     | "archive.org"
                     | "developers.google.com"
                     | "standardebooks.org"
+                    | "gutenberg.org"
+                    | "www.gutenberg.org"
             )
         )
 }
@@ -76,6 +78,9 @@ mod tests {
     #[test]
     fn only_opens_https_catalog_sources() {
         assert!(allowed_source(
+            &"https://www.gutenberg.org/ebooks/1342".parse().unwrap()
+        ));
+        assert!(allowed_source(
             &"https://openlibrary.org/books/OL1M".parse().unwrap()
         ));
         assert!(allowed_source(
@@ -87,6 +92,8 @@ mod tests {
             "file:///C:/secret",
             "https://openlibrary.org.evil.test/",
             "https://standardebooks.org.evil.test/",
+            "https://www.gutenberg.org.evil.test/",
+            "http://www.gutenberg.org/ebooks/1342",
             "http://openlibrary.org/",
             "https://user:pass@openlibrary.org/",
             "https://openlibrary.org:444/",

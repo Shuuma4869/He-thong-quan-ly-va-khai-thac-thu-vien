@@ -13,10 +13,12 @@ Web và Windows dùng chung React; Windows dùng HashRouter. Bảng dưới mô 
 | Đã đăng nhập | `/thu-vien-cua-toi` | Yêu thích, đánh giá của mình và tóm tắt mượn/giữ chỗ |
 | Đã đăng nhập | `/muon-va-giu-cho`, `/giu-cho/:bookId/:editionId` | Lịch sử mượn, gia hạn, giữ chỗ theo chi nhánh, hủy yêu cầu |
 | Đã đăng nhập | `/thong-bao` | Hộp thư riêng, đánh dấu đã đọc; chuông topbar xem nhanh tối đa năm mục |
-| Librarian/Admin | `/nhan-vien/bang-dieu-khien` | Số liệu danh mục, bản sách, kiểm kê, mượn/quá hạn, đề xuất và hoạt động giữ chỗ |
+| Librarian/Admin | `/nhan-vien/bang-dieu-khien` | Dashboard Librarian; Admin có dashboard riêng ưu tiên tài khoản khóa, moderation và công việc giữ chỗ |
 | Librarian/Admin | `/nhan-vien/thanh-vien` | Danh sách, tìm/lọc/sắp xếp và phân trang thành viên |
 | Librarian/Admin | `/nhan-vien/danh-muc` | Author, Category, Publisher, Book, Edition, Branch, Shelf, Copy; duyệt media và lịch sử ISBN |
 | Librarian/Admin | `/nhan-vien/luu-thong` | Quầy mượn/trả và hàng chờ nhận sách |
+| Librarian/Admin | `/nhan-vien/hop-thu` | Work Inbox theo Outbox/Kafka/Insight, lọc WAITING/READY/chi nhánh; quyền hiện áp dụng toàn hệ thống do chưa có phân công nhân viên–chi nhánh |
+| Librarian/Admin | `/nhan-vien/giu-cho` | Danh sách/lọc Hold, lịch sử trạng thái và xác nhận bàn giao Copy READY |
 | Librarian/Admin | `/nhan-vien/bao-cao-luu-thong` | Báo cáo lượt mượn và CSV |
 | Librarian/Admin | `/nhan-vien/bao-cao-giu-cho` | Báo cáo sự kiện giữ chỗ, lọc ngày/chi nhánh/tác phẩm và CSV |
 | Librarian/Admin | `/nhan-vien/kiem-ke`, `/nhan-vien/kiem-ke/:sessionId` | Mở phiên, snapshot, quét, chốt và xác nhận xử lý bất thường; camera/offline tùy khả năng thiết bị |

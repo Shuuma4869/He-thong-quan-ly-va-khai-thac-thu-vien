@@ -30,11 +30,15 @@ Màn tra cứu ISBN dùng React-Bootstrap trong phạm vi `.metadata-history`; k
 
 Reader có Catalog, My Library, đánh giá và Account Center. Staff dùng cùng topbar/sidebar nhưng có bảng điều khiển, quầy lưu thông, kiểm kê và các màn quản trị theo quyền. Bảng điều khiển đọc số tác phẩm, bản sách, phiên kiểm kê, lượt đang mượn/quá hạn và đề xuất DRAFT từ API. Biểu đồ giữ chỗ tổng hợp sự kiện 30 ngày gần đây, không phải số yêu cầu đang chờ; mỗi nguồn được đọc độc lập, không tạo thành snapshot toàn hệ thống. Admin có thêm đường vào quản lý tài khoản và báo cáo đánh giá. Email mới chỉ trở thành email đăng nhập sau khi nhập mã gửi tới hộp thư mới; khi SMTP chưa bật, giao diện nói rõ tính năng tạm chưa khả dụng.
 
+Dashboard Admin ưu tiên tài khoản bị khóa, báo cáo cần kiểm duyệt và công việc giữ chỗ trước KPI danh mục/lưu thông; màn này độc lập với dashboard Librarian. Ở 390 px, các KPI dùng hai cột để giảm chiều dài cuộn. Dashboard Librarian cũng dùng lưới hai cột ở màn hẹp nhưng các panel nghiệp vụ xếp thành một cột. Drawer kiểm duyệt phân giải nhan đề bằng một truy vấn batch Catalog và giữ thông báo lỗi/tải lại tách biệt; không hiện UUID như tên sách. Quầy mượn nêu rõ lý do nút cho mượn bị khóa theo trạng thái thẻ hoặc bản sách. Thời điểm giao dịch hiển thị theo múi giờ nghiệp vụ `Asia/Ho_Chi_Minh`.
+
 ## Kiểm tra giao diện
 
 Lượt kiểm tra local ngày 27/10/2026 dùng cùng Core và dữ liệu Catalog demo để chụp giao diện trước/sau ở 390, 768, 1024, 1366, 1440, 1536 và 1920 px. Các màn đã kiểm không tràn ngang. Trước thay đổi, topbar của Catalog cuộn theo trang và ba mục cùng đường dẫn trong sidebar cùng được tô sáng; sau thay đổi topbar bám đầu, mỗi URL chỉ có một mục active. Ba sách yêu thích của tài khoản demo trước đây hiện thành ba ô tên sách; bản mới dùng Book Card có tác giả, bìa chữ khi thiếu ảnh và hành động tương ứng. Ảnh chụp kiểm tra nằm trong `.tools/premium-before-images/` và `.tools/premium-visual/` ở máy local, không phải asset cần commit.
 
 Ở lượt kiểm tra ngày 27/10/2026, Web và EXE E2E chạy 17 ca trên PostgreSQL cô lập; bài test Search kiểm phím tắt, gợi ý thật, điều hướng hash, sidebar và back-to-top khi bật reduced motion. Đây không phải chứng nhận WCAG: screen reader, tương phản mọi trạng thái và toàn bộ form nhân viên ở mức zoom cao chưa được nghiệm thu.
+
+Bộ E2E hiện chụp các màn Reader, Librarian và Admin ở 390, 768, 1440 và 1920 px trên dữ liệu PostgreSQL/Core/Insight cô lập. Axe kiểm dashboard Librarian/Admin, Work Inbox, Hold Management, báo cáo và drawer quản trị ở các vùng được nêu trong [chiến lược kiểm thử](../07-kiem-thu/test-strategy.md); đây là kiểm tra tự động có phạm vi, không thay thế kiểm thử screen reader hoặc chứng nhận WCAG.
 
 Mặc định dùng câu tiếng Việt ngắn, nút có động từ và trạng thái trống giải thích được nguyên nhân. Dữ liệu chưa có nguồn được ghi là chưa có, không tạo số liệu hoặc ảnh giả để làm đầy giao diện.
 
@@ -55,3 +59,14 @@ Bản xem thử Appearance giữ nguyên khi chuyển route rồi quay lại. L�
 Chuông thông báo kiểm số chưa đọc mỗi 60 giây khi ở foreground, dùng cache 30 giây. Chỉ mở hộp thoại mới tải danh sách, hiển thị tối đa năm thông báo; xem nhanh không tự đánh dấu đã đọc. My Library lấy trang đầu của lượt mượn và giữ chỗ, hiển thị tối đa ba mục mỗi nhóm rồi dẫn tới trang đầy đủ.
 
 Báo cáo giữ chỗ có kỳ [từ ngày, đến ngày), chi nhánh và tác phẩm; ngày nhập theo giờ Việt Nam, giới hạn sáu tháng lịch kiểm theo UTC như server. Bảng chia 50 nhóm mỗi trang trên kết quả tối đa 10.000 nhóm. CSV dùng cùng bộ lọc đã áp dụng nhưng đọc lại dữ liệu tại lúc tải. Trạng thái chưa chọn kỳ, không có sự kiện và lỗi API được trình bày riêng.
+
+## Xác thực và trạng thái phục hồi
+
+Tiêu đề chính của trang đăng nhập và đăng ký nằm trong vùng biểu mẫu, luôn hiển thị cả trên màn nhỏ. Khối ảnh chỉ giữ thông điệp giới thiệu. Đường quay lại sau xác thực chỉ nhận đường dẫn nội bộ; đường dẫn ngoài hệ thống và vòng lặp về biểu mẫu xác thực bị loại bỏ.
+
+Khi chưa xác nhận được đăng xuất ở máy chủ, một thông báo chung vẫn hiện dù người dùng đã chuyển trang. Ứng dụng không giữ access token hay cache dữ liệu cá nhân; một cờ trong sessionStorage chặn tự khôi phục phiên khi tải lại chính tab/cửa sổ đó. Cờ này không thay thế việc thu hồi cookie trên server và không bảo đảm trạng thái của tab hoặc thiết bị khác. Khi kết nối trở lại, người dùng chọn Thử đóng phiên lại. Nếu trình duyệt không cho dùng sessionStorage, việc chặn khôi phục sau reload không được bảo đảm.
+## Biểu mẫu xác thực và lỗi trường dữ liệu
+
+Đăng nhập và đăng ký đặt tiêu đề chính trong vùng biểu mẫu để vẫn đọc được ở màn hình nhỏ. Lỗi nhập liệu gắn với input qua `aria-invalid` và `aria-describedby`; thông báo chung từ máy chủ dùng vùng alert. Nút hiện mật khẩu không gửi form. Các giới hạn độ dài được diễn đạt bằng tiếng Việt.
+
+Thanh điều hướng và khung tìm kiếm landing có container query để chuyển bố cục theo chiều rộng thật của vùng chứa, kể cả khi nội dung được phóng đại. Kiểm thử tự động dùng CSS zoom 200% để kiểm reflow, cùng sáu độ rộng 390–1920 px. Đây không phải bằng chứng cho toàn bộ thao tác zoom native hoặc mọi công nghệ hỗ trợ của hệ điều hành.

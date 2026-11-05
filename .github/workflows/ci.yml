@@ -49,6 +49,12 @@ jobs:
         working-directory: frontend
       - run: rustup show active-toolchain
         working-directory: frontend/src-tauri
+      - name: Kiểm tra launcher và trạng thái dịch vụ
+        shell: pwsh
+        run: |
+          ./scripts/desktop-readiness.test.ps1
+          ./scripts/core-build-state.test.ps1
+          ./scripts/service-runtime.test.ps1
       - run: npm run build:desktop
         working-directory: frontend
       - run: cargo fmt --check
@@ -69,7 +75,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: lams-windows-x64
-          path: frontend/src-tauri/target/release/bundle/nsis/*-setup.exe*
+          path: |
+            frontend/src-tauri/target/release/bundle/nsis/*-setup.exe*
+            frontend/src-tauri/target/release/lams-build-manifest.json
           if-no-files-found: error
           retention-days: 14
   core:

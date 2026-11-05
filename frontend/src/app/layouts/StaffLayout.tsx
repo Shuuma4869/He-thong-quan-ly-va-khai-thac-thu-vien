@@ -14,7 +14,7 @@ export function StaffLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const signOut = async () => { await auth.logout(); navigate('/dang-nhap', { replace: true }); };
+  const signOut = async () => { await auth.logout().catch(() => {}); navigate('/dang-nhap', { replace: true }); };
   return (
     <div className="library-workspace staff-workspace">
       <LibrarySidebar mode="staff" open={menuOpen} onClose={closeMenu} trigger={trigger}/>

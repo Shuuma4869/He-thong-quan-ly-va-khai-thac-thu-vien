@@ -2,4 +2,6 @@ export const loanLabels = { ACTIVE: 'Đang mượn', OVERDUE: 'Quá hạn', RETU
 export const holdLabels = { WAITING: 'Đang chờ', READY: 'Sẵn sàng nhận', FULFILLED: 'Đã nhận sách', CANCELLED: 'Đã hủy', EXPIRED: 'Hết hạn nhận' };
 export const copyLabels: Record<string, string> = { IN_PROCESS: 'Đang xử lý', AVAILABLE: 'Sẵn sàng cho mượn',
   ON_LOAN: 'Đang được mượn', ON_HOLD: 'Đang giữ cho bạn đọc', LOST: 'Thất lạc', DAMAGED: 'Hư hỏng', WITHDRAWN: 'Đã thanh lý' };
-export const formatTime = (value: string) => new Date(value).toLocaleString('vi-VN');
+const businessTimeZone = 'Asia/Ho_Chi_Minh';
+export const formatTime = (value: string) => new Date(value).toLocaleString('vi-VN', { timeZone: businessTimeZone });
+export const formatDate = (value: string) => new Date(value).toLocaleDateString('vi-VN', { timeZone: businessTimeZone });

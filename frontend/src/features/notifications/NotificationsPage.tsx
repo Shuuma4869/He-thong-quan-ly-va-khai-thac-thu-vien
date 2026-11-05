@@ -39,7 +39,9 @@ function Inbox({ owner }: { owner: string }) {
             {!item.readAt && <button type="button" className="button-secondary" disabled={mark.isPending}
               onClick={() => mark.mutate(item.id)}>Đánh dấu đã đọc</button>}</div>
         </li>)}</ul>
-        {mark.isError && <LibraryError error={mark.error} retry={() => mark.reset()}/>}
+        {mark.isError && <LibraryError error={mark.error} retry={() => {
+          mark.reset(); void list.refetch(); void unread.refetch();
+        }}/>}
         <nav className="flex items-center gap-3" aria-label="Phân trang thông báo">
           <button type="button" className="button-secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Trước</button>
           <span>Trang {page + 1}</span>

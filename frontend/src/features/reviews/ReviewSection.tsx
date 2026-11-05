@@ -6,6 +6,7 @@ import { LibraryError } from '../my-library/LibraryError';
 import { createReview, deleteReview, listReviews, myReviews, ratingSummary, updateReview, type Review, type ReviewInput } from '../my-library/library-api';
 import { RatingInput } from './RatingInput';
 import { reportReview } from './moderation-api';
+import { invalidateCatalogViews } from '../catalog/catalog-cache';
 
 export function ReviewSection({ bookId }: { bookId: string }) {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ function Reviews({ book, owner }: { book: string; owner: string }) {
     // Hủy cả lượt đọc đầu tiên để phản hồi cũ không ghi lại cache sau khi sửa/xóa.
     await client.cancelQueries({ queryKey: ['reviews', owner] });
     await client.invalidateQueries({ queryKey: ['reviews', owner] });
+    await invalidateCatalogViews(client);
   };
   return <section className="my-8 border-t border-line pt-6" aria-labelledby="reviews-heading">
     <h2 id="reviews-heading" className="section-title">Đánh giá của bạn đọc</h2>
@@ -59,7 +61,7 @@ function ReportReview({ book, reviewId }: { book: string; reviewId: string }) {
       <p className="text-sm text-muted">Nêu lý do cụ thể, 10–500 ký tự.</p>
       <div className="mt-2 flex gap-2"><button type="submit" className="button-primary" disabled={!valid || send.isPending}>Gửi báo cáo</button>
         <button type="button" className="button-secondary" disabled={send.isPending} onClick={() => { setOpen(false); send.reset(); }}>Hủy</button></div>
-      {send.isError && <LibraryError error={send.error} retry={() => send.reset()}/>}
+      {send.isError && <LibraryError error={send.error}/>}
     </form>}
   </div>;
 }

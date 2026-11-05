@@ -9,6 +9,7 @@ import { CatalogForm } from './CatalogForm';
 import { ReferencePicker } from './ReferencePicker';
 import { MediaEditor } from './MediaEditor';
 import { CategoryAliasManager } from './CategoryAliasManager';
+import { invalidateCatalogViews } from './catalog-cache';
 const MetadataHistory = lazy(() => import('./MetadataHistory').then(module => ({ default: module.MetadataHistory })));
 
 const labels: Record<Resource,string> = { books:'Tác phẩm',authors:'Tác giả',categories:'Thể loại',publishers:'Nhà xuất bản',editions:'Ấn bản',branches:'Chi nhánh',shelves:'Kệ sách',copies:'Bản sách' };
@@ -37,7 +38,7 @@ function ResourceManager({ resource,bookId }: { resource: Resource; bookId?: str
   const [mediaItem,setMediaItem] = useState<CatalogRecord | null>(null);
   const result = useQuery({ queryKey:['catalog',user?.id,resource,bookId,page], queryFn: ({ signal }) => getCatalogPage(resource,page,signal,bookId), retry:false });
   const removal = useMutation({ mutationFn:(id: string) => deleteCatalog(resource,id,bookId), onSuccess:async () => {
-    setDeleting(null); setNotice('Đã xóa dữ liệu.'); await queryClient.invalidateQueries({ queryKey:['catalog'] });
+    setDeleting(null); setNotice('Đã xóa dữ liệu.'); await invalidateCatalogViews(queryClient);
   } });
   const canDelete = ['authors','categories','publishers','books','editions'].includes(resource);
   return <>
@@ -54,14 +55,17 @@ function ResourceManager({ resource,bookId }: { resource: Resource; bookId?: str
       <div className="flex gap-3 mt-4"><button className="button-primary" disabled={removal.isPending} onClick={() => removal.mutate(deleting.id)}>Xác nhận xóa</button><button className="button-secondary" disabled={removal.isPending} onClick={() => { setDeleting(null); removal.reset(); }}>Giữ lại</button></div>
     </div>}
     {result.isPending ? <p role="status">Đang tải danh mục…</p> : result.isError ? <CatalogError error={result.error} retry={() => void result.refetch()} /> : <>
-      {result.data.items.length === 0 ? <p className="editorial-card">Chưa có dữ liệu ở trang này.</p> : <div className="member-table-wrap" tabIndex={0} role="region" aria-label="Danh mục quản lý, cuộn ngang để xem đủ cột">
+      {result.data.items.length === 0 ? <p className="editorial-card">Chưa có dữ liệu ở trang này.</p> : <>
+        <p className="catalog-table-hint">Vuốt ngang để xem đầy đủ thông tin và thao tác.</p>
+        <div className="member-table-wrap" tabIndex={0} role="region" aria-label="Danh mục quản lý, cuộn ngang để xem đủ cột">
         <table className="member-table"><thead><tr><th scope="col">{labels[resource]}</th><th scope="col">Thông tin</th><th scope="col">Thao tác</th></tr></thead><tbody>
           {result.data.items.map(item => <tr key={item.id}><td>{recordLabel(item)}</td><td>{'status' in item ? item.status : 'authors' in item ? item.authors.map(author => author.name).join(', ') : 'language' in item ? item.language ?? 'Chưa rõ ngôn ngữ' : 'sortOrder' in item ? `Thứ tự ${item.sortOrder}` : '—'}{'version' in item && <p>Version {item.version} · Kệ {item.shelfCode}</p>}</td><td><div className="flex flex-wrap gap-2">
             <button className="button-secondary" disabled={editing !== null || deleting !== null || mediaItem !== null} onClick={() => { setEditing(item); setNotice(''); }}>Sửa</button>
             {canDelete && <button className="button-secondary" disabled={editing !== null || deleting !== null || mediaItem !== null} onClick={() => { setDeleting(item); removal.reset(); }}>Xóa</button>}
             {(resource === 'authors' || resource === 'editions') && <button className="button-secondary" disabled={editing !== null || deleting !== null || mediaItem !== null} onClick={() => setMediaItem(item)}>Ảnh và nguồn</button>}
           </div></td></tr>)}
-        </tbody></table></div>}
+        </tbody></table></div>
+      </>}
       <Pagination page={result.data.page} onChange={next => { if (!editing && !deleting && !mediaItem) setPage(next); }} />
     </>}
   </>;

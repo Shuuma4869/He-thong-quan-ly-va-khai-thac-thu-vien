@@ -1,7 +1,7 @@
 import { test as base, expect, chromium, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
 
 const desktopEndpoint = process.env.LAMS_E2E_DESKTOP_CDP;
@@ -33,8 +33,13 @@ async function navigate(page: Page, path: string) {
 }
 
 async function captureFullPage(page: Page, options: Parameters<Page['screenshot']>[0]) {
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(1);
+  // Hủy cuộn mượt còn chạy trước khi chụp ở đầu trang, kể cả trên WebView2.
+  await expect.poll(() => page.evaluate(async () => {
+    // Resize và font/ảnh tải xong có thể dịch điểm neo sau lần scroll đầu tiên.
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    return window.scrollY;
+  })).toBeLessThan(1);
   await page.screenshot({ ...options, animations: 'disabled' });
 }
 
@@ -49,6 +54,48 @@ if (actualOwner !== owner) throw new Error('Container không thuộc lượt ki�
 const password = 'Phase1-test-' + randomUUID();
 const suffix = randomUUID().slice(0, 8);
 const accounts: Record<string, { email: string; name: string }> = {};
+const evidenceViewports = [
+  { width: 390, height: 844 }, { width: 768, height: 1024 },
+  { width: 1024, height: 900 }, { width: 1366, height: 900 },
+  { width: 1440, height: 900 }, { width: 1920, height: 1080 },
+];
+
+test('Nghiệm thu thư viện mới: chưa có danh mục và nghiệp vụ', async ({ page, request }) => {
+  const catalog = await request.get(`${core}/public/catalog/books?size=1`);
+  expect(catalog.status()).toBe(200);
+  expect((await catalog.json()).page.totalElements).toBe(0);
+  await navigate(page, '/sach');
+  await expect(page.getByRole('heading', { name: 'Chưa có sách phù hợp' })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/nhan-vien/danh-muc');
+  await expect(page.getByRole('button', { name: 'Thêm tác phẩm', exact: true })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await captureFullPage(page, { path: 'test-results/new-library-staff.png', fullPage: true });
+});
+
+test('Nghiệm thu mạng: lỗi Core và Insight không biến thành danh sách rỗng', async ({ page }) => {
+  await loginCatalog(page, 'READER');
+  await page.route('**/public/catalog/books?*', route => route.abort('failed'));
+  await navigate(page, '/sach');
+  await expect(page.getByRole('button', { name: 'Đăng xuất', exact: true })).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Đang tải dữ liệu' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Không tải được dữ liệu' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Chưa có sách phù hợp' })).toHaveCount(0);
+  await page.unroute('**/public/catalog/books?*');
+  await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Không tải được dữ liệu' })).toHaveCount(0);
+  await page.route('**/me/notifications*', route => route.abort('failed'));
+  await navigate(page, '/thong-bao');
+  await expect(page.getByRole('alert').first()).toBeVisible();
+  await expect(page.getByText('Bạn chưa có thông báo ở trang này.')).toHaveCount(0);
+  await page.unroute('**/me/notifications*');
+  await page.getByRole('button', { name: 'Tải lại dữ liệu', exact: true }).last().click();
+  await expect(page.getByText('Bạn chưa có thông báo ở trang này.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('0 thông báo chưa đọc')).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
 
 test('Báo cáo giữ chỗ: sự kiện thật, lọc tác phẩm, CSV và quyền Reader', async ({ page, request }) => {
   test.setTimeout(120000);
@@ -94,10 +141,10 @@ test('Báo cáo giữ chỗ: sự kiện thật, lọc tác phẩm, CSV và quy�
   const chunks: Buffer[] = []; for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
   const csv = Buffer.concat(chunks).toString('utf8');
   expect(csv).toContain(book.id); expect(csv).toContain('HOLD_CREATED');
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 });
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await captureFullPage(page, { path: `test-results/hold-activity-${width}.png`, fullPage: true });
+    await captureFullPage(page, { path: `test-results/hold-activity-${viewport.width}.png`, fullPage: true });
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
     expect(results.violations).toEqual([]);
   }
@@ -154,6 +201,16 @@ test('Giao diện: bản xem thử giữ khi chuyển trang, lưu và đọc l�
   await expect(page.getByRole('button', { name: 'Lục bảo', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Khôi phục mặc định' }).click();
   await expect(page.getByRole('button', { name: 'Xanh dương', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('.appearance-page')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/appearance-${viewport.width}.png`, fullPage: true });
+  }
 });
 
 test.beforeAll(async ({ request }) => {
@@ -252,6 +309,9 @@ test('Reader đăng ký, đọc profile, bị chặn staff và đăng xuất', a
   await captureFullPage(page, { path: 'test-results/profile-mobile.png', fullPage: true });
   await navigate(page, '/nhan-vien/thanh-vien');
   await expect(page.getByRole('heading', { name: /403/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Về danh mục sách' }).click();
+  await expect(page).toHaveURL(/\/sach$/);
+  await expect(page.getByRole('heading', { name: /403/ })).toHaveCount(0);
   await navigate(page, '/ho-so');
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
   await expect(page.getByRole('link', { name: 'Đăng nhập', exact: true }).first()).toBeVisible();
@@ -372,7 +432,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await page.getByRole('button', { name: 'Lưu đánh giá', exact: true }).click();
   expect((await patch).postDataJSON()).toEqual({ rating: 5 });
   await expect(page.getByLabel('Điểm trung bình', { exact: true })).toHaveText('5.00/5 · 1 đánh giá');
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/reviews-${viewport.width}.png`, fullPage: true });
@@ -394,7 +454,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
   await loginCatalog(page, 'LIBRARIAN');
   await navigate(page, '/thu-vien-cua-toi');
-  await expect(page.getByText('Chưa có sách yêu thích ở trang này.')).toBeVisible();
+  await expect(page.getByText('Bạn chưa lưu cuốn sách nào. Khám phá danh mục để thêm sách vào thư viện của mình.')).toBeVisible();
   await expect(page.getByText('Bạn chưa có đánh giá ở trang này.')).toBeVisible();
   await navigate(page, `/sach/${book.id}`);
   await expect(page.getByText('Nội dung review đầu tiên', { exact: true })).toBeVisible();
@@ -417,7 +477,7 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await expect(page.getByLabel('Điểm trung bình', { exact: true })).toHaveText('Chưa có điểm đánh giá.');
   await page.getByRole('button', { name: 'Bỏ yêu thích' }).click();
   await navigate(page, '/thu-vien-cua-toi');
-  await expect(page.getByText('Chưa có sách yêu thích ở trang này.')).toBeVisible();
+  await expect(page.getByText('Bạn chưa lưu cuốn sách nào. Khám phá danh mục để thêm sách vào thư viện của mình.')).toBeVisible();
   await expect(page.getByText('Bạn chưa có đánh giá ở trang này.')).toBeVisible();
 });
 
@@ -470,6 +530,17 @@ test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ li�
   await page.getByRole('button',{name:'Chọn thể loại',exact:true}).click();await page.getByRole('checkbox',{name:`A0 Topic ${suffix}`}).check();
   await page.getByRole('button',{name:'Lưu thông tin'}).click();await expect(page.getByRole('status')).toHaveText('Đã lưu thông tin.');
   await page.reload();await expect(page.getByRole('row').filter({hasText:`A0 Book ${suffix}`})).toBeVisible();
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      await expect(page.getByText('Vuốt ngang để xem đầy đủ thông tin và thao tác.')).toBeVisible();
+      const audit = await new AxeBuilder({ page }).include('.member-table-wrap')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/catalog-management-${viewport.width}.png`, fullPage: true });
+  }
   await page.getByLabel('Loại dữ liệu').selectOption('editions');await page.getByRole('button',{name:'Chọn tác phẩm',exact:true}).click();
   await page.getByRole('radio',{name:`A0 Book ${suffix}`}).click();await page.getByRole('button',{name:'Thêm ấn bản'}).click();
   await page.getByLabel('ISBN-13 (không bắt buộc)').fill('9780140328721');await page.getByLabel('Năm xuất bản (không bắt buộc)').fill('1988');
@@ -502,7 +573,11 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   await page.getByRole('button', { name: 'Xem ấn bản và giữ chỗ' }).click();
   await expect(page).toHaveURL(new RegExp(`/sach/${book.id}$`));
   await expect(page.getByRole('heading', { name: 'Các ấn bản' })).toBeFocused();
-  await captureFullPage(page, { path: 'test-results/book-detail-glass.png', fullPage: true });
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await captureFullPage(page, { path: `test-results/book-detail-${viewport.width}.png`, fullPage: true });
+  }
   await page.getByRole('link', { name: 'Đăng ký mượn tại quầy' }).click();
   await expect(page.getByRole('checkbox')).not.toBeChecked();
   await page.getByRole('button', { name: 'Chọn chi nhánh nhận' }).click();
@@ -520,7 +595,25 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
   await expect(page).toHaveURL(desktopEndpoint ? /#\/$/ : /\/$/);
-  await loginCatalog(page, 'LIBRARIAN'); await navigate(page, '/nhan-vien/hop-thu');
+  await loginCatalog(page, 'LIBRARIAN');
+  await navigate(page, '/nhan-vien/bang-dieu-khien');
+  await expect(page.getByRole('heading', { name: 'Bảng điều khiển' })).toBeVisible();
+  const staffMetrics = page.locator('.staff-dashboard .metric-card');
+  await expect(staffMetrics).toHaveCount(6);
+  await expect(staffMetrics.getByRole('status')).toHaveCount(0);
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      expect(await page.locator('.staff-dashboard-metrics').evaluate(element =>
+        getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(2);
+      const audit = await new AxeBuilder({ page }).include('.staff-dashboard')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/staff-dashboard-${viewport.width}.png`, fullPage: true });
+  }
+  await navigate(page, '/nhan-vien/hop-thu');
   await expect(page.getByRole('heading', { name: 'Hộp thư công việc' })).toBeVisible();
   await expect.poll(async () => {
     const workItems = await request.get(`${insight}/staff/work-items?page=0&size=20`, { headers });
@@ -534,6 +627,16 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
     hasText: readyHoldRecord.hold.id.slice(0, 8).toUpperCase(),
   });
   await expect(inboxTask).toContainText('Hold sẵn sàng nhận sách');
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('.staff-work-inbox')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/staff-inbox-${viewport.width}.png`, fullPage: true });
+  }
   await inboxTask.getByRole('link', { name: 'Mở nghiệp vụ' }).click();
   await expect(page.getByRole('region', { name: 'Chi tiết yêu cầu' })).toContainText(book.title);
   await page.getByLabel('Người đọc / mã thành viên').fill(accounts.READER.name);
@@ -542,9 +645,14 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   const readyHold = page.locator('.hold-list-card').filter({ hasText: book.title });
   await expect(readyHold).toContainText('Sẵn sàng nhận');
   await expect(readyHold.getByRole('button', { name: 'Đang xem chi tiết' })).toHaveAttribute('aria-pressed', 'true');
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('.hold-operations')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
     await captureFullPage(page, { path: `test-results/staff-holds-ready-${viewport.width}.png`, fullPage: true });
   }
   await page.getByRole('button', { name: 'Xác nhận đã giao sách' }).click();
@@ -568,6 +676,16 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   }, { timeout: 30000 }).toBe(true);
   await navigate(page, '/thong-bao');
   await expect(page.getByRole('heading', { name: 'Mượn sách thành công' }).first()).toBeVisible();
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('main')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/reader-notifications-${viewport.width}.png`, fullPage: true });
+  }
   const borrowedLoanLink = page.locator(`a[href*="${borrowed.loanId}"]`).first();
   await expect(borrowedLoanLink).toBeVisible();
   await borrowedLoanLink.click();
@@ -594,12 +712,12 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   const waitingHold = (await waiting.json()).items.find((item: { hold: { status: string } }) => item.hold.status === 'WAITING').hold;
   const estimate = await request.get(`${core}/holds/${waitingHold.id}/estimate`, { headers: readerHeaders }); expect(estimate.status()).toBe(200);
   const eta = await estimate.json(); expect(eta.reason).toBe('CONDITIONAL'); expect(Date.parse(eta.estimatedAt)).toBe(Date.parse(renewedBody.dueAt));
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/hold-eta-${viewport.width}.png`, fullPage: true });
   }
   await expect(page.getByLabel('Giữ chỗ của tôi')).toContainText('Đang chờ');
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/reader-circulation-${viewport.width}.png`, fullPage: true });
@@ -676,8 +794,13 @@ test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua g
   await history.getByRole('button', { name: 'Gia hạn tại quầy', exact: true }).click();
   await history.getByRole('button', { name: 'Xác nhận gia hạn tại quầy' }).click();
   await expect(history).toContainText('Đã gia hạn 1 lần');
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('main')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
     await captureFullPage(page, { path: `test-results/staff-circulation-${viewport.width}.png`, fullPage: true });
   }
   await history.getByRole('button', { name: 'Nhận trả', exact: true }).click();
@@ -704,7 +827,7 @@ test('Phase 4 quầy: mượn, gia hạn, quét nhận trả và tải CSV qua g
   const csv = await readFile(output, 'utf8'); expect(csv.charCodeAt(0)).toBe(0xfeff); expect(csv).toContain(branch.name);
   expect(csv).not.toContain(accounts.READER.email); expect(csv).not.toContain(accounts.READER.name);
   if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/circulation-report-${viewport.width}.png`, fullPage: true });
   }
@@ -779,10 +902,15 @@ test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận ch
   expect((await updated.json()).shelfId).toBe(observed.id);
   await page.reload();
   await expect(page.getByText(/Đã chuyển về kệ quét/)).toBeVisible();
-  for (const width of [390, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await captureFullPage(page, { path: `test-results/inventory-${width}.png`, fullPage: true });
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('main')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/inventory-${viewport.width}.png`, fullPage: true });
   }
   if (desktopEndpoint) expect(await page.evaluate(() => '__TAURI_INTERNALS__' in window)).toBe(true);
 });
@@ -889,13 +1017,16 @@ test('Admin dashboard, tài khoản và kiểm duyệt responsive với dữ li�
   await loginCatalog(page, 'ADMIN');
   await navigate(page, '/nhan-vien/bang-dieu-khien');
   await expect(page.getByRole('heading', { name: 'Quản trị hệ thống' })).toBeVisible();
-  const viewports = [
-    { width: 390, height: 844 }, { width: 768, height: 1024 },
-    { width: 1440, height: 900 }, { width: 1920, height: 1080 },
-  ];
-  for (const viewport of viewports) {
+  const adminMetrics = page.locator('.admin-dashboard .admin-metric-card');
+  await expect(adminMetrics).toHaveCount(6);
+  await expect(adminMetrics.getByRole('status')).toHaveCount(0);
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      expect(await page.locator('.admin-dashboard-metrics').evaluate(element =>
+        getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(2);
+    }
     await captureFullPage(page, { path: `test-results/admin-dashboard-${viewport.width}.png`, fullPage: true });
     const audit = await new AxeBuilder({ page }).include('.admin-dashboard')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
@@ -906,7 +1037,7 @@ test('Admin dashboard, tài khoản và kiểm duyệt responsive với dữ li�
   await expect(page.getByRole('heading', { name: 'Tài khoản và phân quyền' })).toBeVisible();
   await page.getByRole('button', { name: 'Chi tiết' }).first().click();
   await expect(page.getByRole('dialog', { name: 'Hồ sơ quản trị' })).toBeVisible();
-  for (const viewport of viewports) {
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/admin-account-drawer-${viewport.width}.png`, fullPage: true });
@@ -918,7 +1049,8 @@ test('Admin dashboard, tài khoản và kiểm duyệt responsive với dữ li�
   await page.getByRole('button', { name: 'Xem chi tiết' }).click();
   const reportDrawer = page.getByRole('dialog', { name: 'Chi tiết báo cáo' });
   await expect(reportDrawer.getByText('Đánh giá dùng để kiểm tra quy trình kiểm duyệt quản trị.', { exact: true })).toBeVisible();
-  for (const viewport of viewports) {
+  await expect(reportDrawer.getByRole('heading', { name: `${book.title} · 4/5` })).toBeVisible();
+  for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await captureFullPage(page, { path: `test-results/admin-review-drawer-${viewport.width}.png`, fullPage: true });
@@ -1138,7 +1270,16 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
   await page.getByRole('button', { name: 'Xem số liệu và điểm nhu cầu' }).click();
   await expect(page.getByLabel('Kết quả phân tích')).toContainText('Điểm 58.8/100');
   await expect(page.getByLabel('Kết quả phân tích')).toContainText('1 lượt mượn trong kỳ');
-  await captureFullPage(page, { path: 'test-results/acquisition-analysis-1440.png', fullPage: true });
+  for (const viewport of evidenceViewports) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width === 390) {
+      const audit = await new AxeBuilder({ page }).include('main')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect(audit.violations).toEqual([]);
+    }
+    await captureFullPage(page, { path: `test-results/acquisition-analysis-${viewport.width}.png`, fullPage: true });
+  }
   await page.getByRole('button', { name: 'Lưu đề xuất chờ duyệt' }).click();
   await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('Chờ duyệt');
 
@@ -1322,4 +1463,102 @@ test('Hồ sơ lưu thay đổi, xử lý email theo cấu hình và đổi mậ
   await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
   await navigate(page, '/ho-so');
   await expect(personal.getByLabel('Họ và tên')).toHaveValue('Người đọc cập nhật');
+});
+
+const readinessWidths = [390, 768, 1024, 1366, 1440, 1920];
+function startReadinessMeasurements() {
+  const previous = (window as unknown as { __lamsReadinessObserver?: PerformanceObserver }).__lamsReadinessObserver;
+  previous?.disconnect();
+  performance.clearResourceTimings();
+  const metrics = { supported: PerformanceObserver.supportedEntryTypes.includes('longtask'), durations: [] as number[] };
+  Object.assign(window, { __lamsReadinessMetrics: metrics });
+  if (metrics.supported) {
+    const observer = new PerformanceObserver(list => {
+      metrics.durations.push(...list.getEntries().map(entry => entry.duration));
+    });
+    observer.observe({ type: 'longtask' });
+    Object.assign(window, { __lamsReadinessObserver: observer });
+  }
+}
+for (const role of ['GUEST', 'READER', 'LIBRARIAN', 'ADMIN']) {
+  test(`Nghiệm thu route và responsive: ${role}`, async ({ page, request }, testInfo) => {
+    test.setTimeout(360_000);
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.addInitScript(startReadinessMeasurements);
+    const headers = await staffApi(request);
+    const author = await createCatalog(request, headers, '/authors', { name: `Tác giả nghiệm thu ${role} ${suffix}` });
+    const category = await createCatalog(request, headers, '/categories', { name: `Thể loại nghiệm thu ${role} ${suffix}` });
+    const book = await createCatalog(request, headers, '/books', { title: `Tác phẩm nghiệm thu ${role} ${suffix}`, authorIds: [author.id], categoryIds: [category.id] });
+    const publicPaths = ['/', '/sach', '/tac-gia', '/the-loai', `/sach/${book.id}`, `/tac-gia/${author.id}`, `/the-loai/${category.id}`, '/cai-dat/giao-dien'];
+    const readerPaths = ['/ho-so', '/thu-vien-cua-toi', '/muon-va-giu-cho', '/thong-bao'];
+    const staffPaths = ['bang-dieu-khien', 'thanh-vien', 'danh-muc', 'luu-thong', 'hop-thu', 'giu-cho', 'bao-cao-luu-thong', 'bao-cao-giu-cho', 'kiem-ke', 'de-xuat-bo-sung'].map(path => `/nhan-vien/${path}`);
+    const paths = role === 'GUEST' ? [...publicPaths, '/dang-nhap', '/dang-ky', '/duong-dan-khong-ton-tai']
+      : role === 'READER' ? readerPaths
+        : role === 'LIBRARIAN' ? staffPaths : [...staffPaths, '/nhan-vien/tai-khoan', '/nhan-vien/bao-cao-danh-gia'];
+    if (role !== 'GUEST') await loginCatalog(page, role);
+    const inventory: unknown[] = [];
+    for (let index = 0; index < paths.length; index++) {
+      const path = paths[index];
+      await page.evaluate(startReadinessMeasurements);
+      const started = performance.now();
+      await navigate(page, path);
+      await expect(page.getByRole('heading', { level: 1 }).first(), path).toBeVisible();
+      await expect(page.getByRole('progressbar', { name: 'Đang tải dữ liệu' })).toHaveCount(0);
+      const settledMs = Math.round(performance.now() - started);
+      // Lấy mốc trước khi chụp ảnh/chạy axe để không tính chi phí công cụ vào thao tác mở trang.
+      const runtime = await page.evaluate(() => ({
+        longTasks: (window as unknown as { __lamsReadinessMetrics: { supported: boolean; durations: number[] } }).__lamsReadinessMetrics,
+        resources: performance.getEntriesByType('resource').map(entry => {
+          const resource = entry as PerformanceResourceTiming;
+          return { path: new URL(resource.name).pathname, initiator: resource.initiatorType, duration: resource.duration, transferSize: resource.transferSize };
+        }),
+      }));
+      for (const width of readinessWidths) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth), { message: `${role} ${path} ${width}px` }).toBeLessThanOrEqual(1);
+        await captureFullPage(page, { path: testInfo.outputPath(`route-${index}-${width}.png`), fullPage: true });
+      }
+      await page.setViewportSize({ width: 390, height: 900 });
+      const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+      expect.soft(audit.violations, `${role} ${path}`).toEqual([]);
+      // Kiểm reflow ở độ phóng đại CSS 200%; không thay thế kiểm zoom native bằng tay.
+      await page.setViewportSize({ width: 1366, height: 900 });
+      try {
+        await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+          { message: `${role} ${path} CSS zoom 200%` }).toBeLessThanOrEqual(1);
+        await captureFullPage(page, { path: testInfo.outputPath(`route-${index}-css-zoom-200.png`), fullPage: true });
+      } finally { await page.evaluate(() => { document.documentElement.style.zoom = ''; }); }
+      inventory.push({ path, role, settledMs, runtime, actions: await page.locator('button,a,input,select,textarea').evaluateAll(elements => elements.map(element => ({
+        tag: element.tagName, text: element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 160),
+        href: element.getAttribute('href'), disabled: element.matches(':disabled'), visible: element.getClientRects().length > 0,
+      }))), accessibilityViolations: audit.violations });
+    }
+    const inventoryPath = testInfo.outputPath('route-inventory.json');
+    await writeFile(inventoryPath, JSON.stringify(inventory, null, 2));
+    await testInfo.attach('route-inventory', { path: inventoryPath, contentType: 'application/json' });
+    expect(errors).toEqual([]);
+  });
+}
+
+test('Nghiệm thu phục hồi: đăng nhập giữ đường quay lại và đăng xuất khi mất mạng', async ({ page }) => {
+  await navigate(page, '/muon-va-giu-cho?holdPage=2#holds');
+  await expect(page.getByRole('heading', { name: 'Chào mừng bạn quay lại' })).toBeVisible();
+  await page.getByLabel('Email hoặc mã thành viên').fill(accounts.READER.email);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await expect(page).toHaveURL(/muon-va-giu-cho\?holdPage=2#holds$/);
+  await expect(page.getByRole('heading', { name: 'Mượn và giữ chỗ', exact: true })).toBeVisible();
+  await page.route('**/auth/logout', route => route.abort('failed'));
+  await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'chưa xác nhận thu hồi phiên' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Thử đóng phiên lại' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đăng xuất', exact: true })).toHaveCount(0);
+  await page.unroute('**/auth/logout');
+  await page.getByRole('button', { name: 'Thử đóng phiên lại' }).click();
+  await expect(page.getByText(/chưa xác nhận thu hồi phiên/)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Đăng xuất', exact: true })).toHaveCount(0);
 });

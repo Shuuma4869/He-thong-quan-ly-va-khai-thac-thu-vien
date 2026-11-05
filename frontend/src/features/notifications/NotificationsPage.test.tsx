@@ -14,6 +14,24 @@ const item = { id: itemId, aggregateType: 'HOLD', aggregateId: '4e6fa4d1-bdd9-42
 
 afterEach(() => vi.unstubAllGlobals());
 
+it('tải lại dữ liệu sau lỗi đánh dấu đọc thực sự gọi lại API', async () => {
+  let read = false;
+  const fetchMock = vi.fn((url: string, init: RequestInit) => Promise.resolve(
+    url.endsWith('/auth/refresh') ? Response.json(session)
+      : url.includes('/unread-count') ? Response.json({ count: read ? 0 : 1 })
+        : url.endsWith(`/${itemId}/read`) && init.method === 'PATCH'
+          ? (read = true, Response.json({ detail: 'Không nhận được biên nhận.' }, { status: 503 }))
+          : url.includes('/me/notifications?') ? Response.json({ items: [{ ...item, readAt: read ? '2026-10-28T01:00:00Z' : null }], page: 0, size: 20, totalElements: 1 })
+            : Response.json({})));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<AppProviders><MemoryRouter initialEntries={['/thong-bao']}><AppRouter/></MemoryRouter></AppProviders>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Đánh dấu đã đọc' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Tải lại dữ liệu' }));
+  expect(await screen.findByText('0 thông báo chưa đọc')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Đánh dấu đã đọc' })).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.filter(([url]) => url.includes('/me/notifications?')).length).toBe(2);
+});
+
 it('người đọc xem thông báo giữ chỗ và đánh dấu đã đọc bằng API Insight', async () => {
   let read = false;
   const fetchMock = vi.fn((url: string, init: RequestInit) => Promise.resolve(

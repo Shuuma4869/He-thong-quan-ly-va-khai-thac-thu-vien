@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/api/client';
 import { saveCatalog, type CatalogRecord, type Resource } from './catalog-api';
 import { initialValues, parseCatalogForm } from './catalog-form';
 import { ReferencePicker } from './ReferencePicker';
+import { invalidateCatalogViews } from './catalog-cache';
 
 export function CatalogForm({ resource, item, bookId, onClose, onSaved }: {
   resource: Resource; item?: CatalogRecord; bookId?: string; onClose: () => void; onSaved: () => void;
@@ -14,7 +15,7 @@ export function CatalogForm({ resource, item, bookId, onClose, onSaved }: {
   const [conflict,setConflict] = useState(false);
   const queryClient = useQueryClient(); const submitting = useRef(false);
   const mutation = useMutation({ mutationFn: (body: unknown) => saveCatalog(resource,body,item?.id,bookId),
-    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey:['catalog'] }); onSaved(); },
+    onSuccess: async () => { await invalidateCatalogViews(queryClient); onSaved(); },
     onError: error => { if (resource === 'copies' && error instanceof ApiError && error.status === 409) setConflict(true); } });
   const text = (key: string) => typeof values[key] === 'string' ? values[key] as string : '';
   const set = (key: string, value: string | string[]) => setValues(previous => ({ ...previous,[key]:value }));

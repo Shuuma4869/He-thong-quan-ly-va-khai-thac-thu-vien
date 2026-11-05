@@ -5,6 +5,7 @@ import { ApiError } from '../../shared/api/client';
 import { approveMedia,getMedia,lookupAuthor,lookupBook,removeMedia,safeMediaUrl,type BookMetadata,type Candidate,type MediaKind } from './media-api';
 import { CatalogError } from './CatalogStates';
 import { GoogleAttribution,SourceLink } from './SourceLink';
+import { invalidateCatalogViews } from './catalog-cache';
 
 export function MediaEditor({kind,id,isbn,title,onClose}:{kind:MediaKind;id:string;isbn?:string|null;title:string;onClose:()=>void}) {
   const {user}=useAuth(); const client=useQueryClient();
@@ -20,8 +21,12 @@ export function MediaEditor({kind,id,isbn,title,onClose}:{kind:MediaKind;id:stri
       setMessage(result.attempts.map(item=>`${item.provider}: ${item.status}`).join(' · '));
     } else { const result=await lookupAuthor(lookupId); setCandidates(result.candidates); setMessage(`Tra cứu: ${result.status}`); }
   }});
-  const save=useMutation({mutationFn:()=>approveMedia(kind,id,{source,...fields,confirmed,expectedVersion:current.data?.version??null}),onSuccess:async()=>{await client.invalidateQueries({queryKey:['catalog-media']});onClose();}});
-  const remove=useMutation({mutationFn:()=>removeMedia(kind,id,current.data!.version),onSuccess:async()=>{await client.invalidateQueries({queryKey:['catalog-media']});onClose();}});
+  const refreshMedia = async () => {
+    await invalidateCatalogViews(client);
+    onClose();
+  };
+  const save=useMutation({mutationFn:()=>approveMedia(kind,id,{source,...fields,confirmed,expectedVersion:current.data?.version??null}),onSuccess:refreshMedia});
+  const remove=useMutation({mutationFn:()=>removeMedia(kind,id,current.data!.version),onSuccess:refreshMedia});
   const [confirmRemoval,setConfirmRemoval]=useState(false);
   const choose=(candidate:Candidate)=>{setSource(candidate.source);setFields({sourceId:candidate.source_id,sourceUrl:candidate.source_url,imageUrl:candidate.image_url,
     license:candidate.license??'',licenseUrl:candidate.source==='wikimedia'?candidate.source_url:'',attribution:candidate.attribution??'',

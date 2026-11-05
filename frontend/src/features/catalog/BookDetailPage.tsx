@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ArrowRight, BookCopy, BookOpenText, LibraryBig } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
+import { authLink } from '../auth/auth-navigation';
 import { getBook, getBookAvailability, getBooks, getEditions } from './catalog-api';
 import { CatalogError, Pagination } from './CatalogStates';
 import { CatalogMedia } from './CatalogMedia';
@@ -10,6 +11,7 @@ import { FavoriteButton } from '../favorites/FavoriteButton';
 import { ReviewSection } from '../reviews/ReviewSection';
 import { BookCover } from './BookCover';
 import { BookList } from './BookList';
+import { SourceLink } from './SourceLink';
 
 export function BookDetailPage() {
   const { bookId = '' } = useParams();
@@ -45,7 +47,7 @@ function BookDetail({ id }: { id: string }) {
           {!!book.data.ratingCount && book.data.averageRating != null && <p className="book-detail-rating" aria-label={`Điểm trung bình ${book.data.averageRating.toFixed(2)} trên 5 từ ${book.data.ratingCount} đánh giá`}>
             ★ {book.data.averageRating.toFixed(1)} / 5 · {book.data.ratingCount} đánh giá</p>}
           <p className="book-detail-description whitespace-pre-wrap">{book.data.description || 'Tác phẩm này chưa có phần giới thiệu. Bạn vẫn có thể xem tác giả, thể loại và các ấn bản đã được biên mục.'}</p>
-          <div className="book-detail-actions">{user ? <FavoriteButton bookId={id}/> : <Link className="button-primary" to="/dang-nhap">Đăng nhập để lưu sách <ArrowRight size={16}/></Link>}
+          <div className="book-detail-actions">{user ? <FavoriteButton bookId={id}/> : <Link className="button-primary" to={authLink('/dang-nhap', `/sach/${id}`)}>Đăng nhập để lưu sách <ArrowRight size={16}/></Link>}
             <button type="button" className="button-primary" onClick={() => {
               const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
                 || ['off', 'reduced'].includes(document.documentElement.dataset.appearanceMotion ?? '');
@@ -53,11 +55,11 @@ function BookDetail({ id }: { id: string }) {
               document.getElementById('editions-heading')?.focus({ preventScroll: true });
             }}>Xem ấn bản và giữ chỗ <BookCopy size={17}/></button>
             {user && <Link className="button-secondary" to="/muon-va-giu-cho">Mượn và giữ chỗ của tôi</Link>}</div>
-          {book.data.catalogSource && <p className="book-source-note">Dữ liệu thư mục đối chiếu từ <a className="text-link" href={book.data.catalogSource.sourceUrl} target="_blank" rel="noopener noreferrer">Project Gutenberg ↗</a>. Ngày phát hành ebook không phải năm xuất bản sách in; thông tin nguồn không chứng minh thư viện có bản vật lý.</p>}
+          {book.data.catalogSource && <p className="book-source-note">Dữ liệu thư mục đối chiếu từ <SourceLink href={book.data.catalogSource.sourceUrl}>Project Gutenberg ↗</SourceLink>. Ngày phát hành ebook không phải năm xuất bản sách in; thông tin nguồn không chứng minh thư viện có bản vật lý.</p>}
         </div>
       </div>
       <div className="book-detail-quick-facts" aria-label="Tóm tắt tác phẩm">
-        <div><BookOpenText size={20} aria-hidden="true"/><span>Ấn bản đã biên mục</span><strong>{editions.isSuccess ? editions.data.page.totalElements : 'Đang kiểm tra'}</strong></div>
+        <div><BookOpenText size={20} aria-hidden="true"/><span>Ấn bản đã biên mục</span><strong>{editions.isSuccess ? editions.data.page.totalElements : editions.isError ? 'Chưa tải được' : 'Đang kiểm tra'}</strong></div>
         <div><LibraryBig size={20} aria-hidden="true"/><span>Thể loại</span><strong>{book.data.categories[0]?.name ?? 'Chưa phân loại'}</strong></div>
         <div><BookCopy size={20} aria-hidden="true"/><span>Nguồn thông tin</span><strong>{book.data.catalogSource ? 'Thư mục tham khảo' : 'Danh mục thư viện'}</strong></div>
       </div>

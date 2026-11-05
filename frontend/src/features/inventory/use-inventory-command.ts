@@ -23,6 +23,9 @@ export function useInventoryCommand<T>(owner: string, signature: string, send: (
       // The command receipt is final; background reads must not keep its button spinning.
       void client.invalidateQueries({ queryKey: ['inventory', owner] });
       void client.invalidateQueries({ queryKey: ['catalog', owner] });
+      void client.invalidateQueries({ queryKey: ['catalog', 'availability'] });
+      void client.invalidateQueries({ queryKey: ['staff-dashboard', owner] });
+      void client.invalidateQueries({ queryKey: ['admin-dashboard', owner] });
     } catch (failure) { setError(failure instanceof Error ? failure : new Error('Không hoàn tất yêu cầu kiểm kê.')); }
     finally { sending.current = false; setBusy(false); }
   };

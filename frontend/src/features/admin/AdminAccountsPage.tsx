@@ -45,7 +45,7 @@ export function AdminAccountsPage() {
     await Promise.all([client.invalidateQueries({ queryKey: ['admin-accounts'] }),
       client.invalidateQueries({ queryKey: ['admin-account', selected] }),
       client.invalidateQueries({ queryKey: ['admin-account-audit', selected] })]);
-    if (selected === user?.id) { await logout(); navigate('/dang-nhap', { replace: true }); }
+    if (selected === user?.id) { await logout().catch(() => {}); navigate('/dang-nhap', { replace: true }); }
   }, onError: error => {
     setNotice(error instanceof ApiError ? error.message : 'Chưa lưu được thay đổi. Vui lòng thử lại.');
     if (error instanceof ApiError && error.status === 409) {

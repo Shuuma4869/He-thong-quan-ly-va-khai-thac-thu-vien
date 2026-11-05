@@ -149,7 +149,7 @@ function HoldWorkspace({ owner }: { owner: string }) {
 }
 
 function Metric({ label, value, detail }: { label: string; value: number; detail: string }) {
-  return <div><dt>{label}</dt><dd>{value}</dd><span>{detail}</span></div>;
+  return <div><dt>{label}</dt><dd>{value}<span>{detail}</span></dd></div>;
 }
 
 function HoldListCard({ item, selected, onSelect }: { item: StaffHoldItem; selected: boolean; onSelect: () => void }) {

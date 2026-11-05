@@ -26,14 +26,14 @@ export function ProfilePage() {
     setNotice('Đã cập nhật thông tin cá nhân.');
   } });
   const passwordChange = useMutation({ mutationFn: () => changePassword(currentPassword, nextPassword), onSuccess: async () => {
-    setCurrentPassword(''); setNextPassword(''); await logout(); navigate('/dang-nhap', { replace: true });
+    setCurrentPassword(''); setNextPassword(''); await logout().catch(() => {}); navigate('/dang-nhap', { replace: true });
   } });
   const emailChange = useMutation({ mutationFn: () => requestEmail(emailPassword, nextEmail), onSuccess: data => {
     client.setQueryData(['account', user?.id], data); setEmailPassword(''); setNextEmail('');
     setNotice('Mã xác minh đã được gửi tới email mới. Mã có hiệu lực 15 phút.');
   } });
   const emailConfirmation = useMutation({ mutationFn: () => confirmEmail(emailCode), onSuccess: async () => {
-    setEmailCode(''); await logout(); navigate('/dang-nhap', { replace: true });
+    setEmailCode(''); await logout().catch(() => {}); navigate('/dang-nhap', { replace: true });
   } });
   const cancelEmail = useMutation({ mutationFn: cancelEmailRequest, onSuccess: async () => {
     await account.refetch(); setNotice('Đã hủy yêu cầu đổi email.');
@@ -74,6 +74,7 @@ export function ProfilePage() {
             <p className="account-current-email">Email đang dùng: <strong>{account.data.email}</strong></p>
             {account.data.pendingEmail && <div className="account-pending"><p>Đang chờ xác minh: <strong>{account.data.pendingEmail}</strong></p>
               <button type="button" className="text-link" disabled={cancelEmail.isPending} onClick={() => cancelEmail.mutate()}>Hủy yêu cầu</button></div>}
+            {cancelEmail.isError && <MemberRequestError error={cancelEmail.error} retry={() => void account.refetch()}/>}
             {account.data.pendingEmail && account.data.emailVerificationEnabled && <form onSubmit={event => submit(event, () => emailConfirmation.mutate())}>
               <label className="field">Mã xác minh<input value={emailCode} required minLength={12} maxLength={12} autoComplete="one-time-code"
                 onChange={event => setEmailCode(event.target.value.toUpperCase())}/></label>

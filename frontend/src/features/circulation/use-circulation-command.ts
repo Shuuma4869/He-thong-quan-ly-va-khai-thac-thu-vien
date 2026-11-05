@@ -23,6 +23,8 @@ export function useCirculationCommand<T>(owner: string, signature: string, send:
       await client.invalidateQueries({ queryKey: ['circulation', owner] });
       await client.invalidateQueries({ queryKey: ['catalog', owner] });
       await client.invalidateQueries({ queryKey: ['catalog', 'availability'] });
+      void client.invalidateQueries({ queryKey: ['staff-dashboard', owner] });
+      void client.invalidateQueries({ queryKey: ['admin-dashboard', owner] });
     } catch (failure) { setError(failure instanceof Error ? failure : new Error('Không hoàn tất yêu cầu.')); }
     finally { sending.current = false; setBusy(false); }
   };

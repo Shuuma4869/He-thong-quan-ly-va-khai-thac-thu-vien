@@ -29,6 +29,7 @@ function CategoryDetail({ id }: { id: string }) {
         : <><header className="category-heading category-heading-media"><DirectoryVisual kind="categories" title={'name' in category.data ? category.data.name : ''} image={media.data?.[0]}/>
           <div><p className="eyebrow">Tủ sách theo chủ đề</p><h1 className="page-title">{'name' in category.data ? category.data.name : ''}</h1>
           <p className="mt-2 text-muted">Duyệt các tác phẩm được biên mục theo thể loại này.</p></div></header>
+          {media.isError && <CatalogError error={media.error} retry={() => void media.refetch()}/>}
           {books.isSuccess && <div className="detail-section-heading"><div><p className="eyebrow">Tác phẩm đã biên mục</p><h2>Khám phá trong tủ sách</h2></div><p>{books.data.page.totalElements.toLocaleString('vi-VN')} tác phẩm</p></div>}
           {books.isPending ? <p role="status" className="mt-6">Đang tải tác phẩm…</p>
             : books.isError ? <CatalogError error={books.error} retry={() => void books.refetch()} />

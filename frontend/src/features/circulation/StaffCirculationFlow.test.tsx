@@ -130,7 +130,13 @@ it('mất phản hồi giữ nguyên giao dịch cho mượn khi thử lại', a
 it.each(['LOCKED', 'DISABLED'])('chặn cho mượn cho thành viên %s nhưng vẫn cho xem lịch sử', async status => {
   memberStatus = status; app(); await selectAndScan();
   expect(screen.getByRole('button', { name: 'Cho mượn bản sách này' })).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent(`thẻ người đọc đang ở trạng thái ${status}`);
   expect(fetchMock.mock.calls.some(([url]) => url.includes('/loans?') && url.includes(`readerId=${readerId}`))).toBe(true);
+});
+it.each(['IN_PROCESS', 'ON_LOAN', 'LOST', 'DAMAGED', 'WITHDRAWN'])('giải thích vì sao không thể cho mượn bản sách trạng thái %s', async status => {
+  copy = { ...copy, status }; app(); await selectAndScan();
+  expect(screen.getByRole('button', { name: 'Cho mượn bản sách này' })).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent(`Không thể cho mượn: bản sách`);
 });
 it('tìm lượt theo bản đã quét, bỏ bộ lọc người trước đó để nhận trả đúng bản', async () => {
   app(); await selectAndScan(); fireEvent.click(screen.getByRole('button', { name: 'Tìm lượt đang mượn của bản này' }));

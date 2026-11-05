@@ -12,7 +12,10 @@ export function PublicLayout() {
   const menuButton = useRef<HTMLButtonElement>(null);
   useEffect(() => { setOpen(false); }, [location.pathname, location.hash]);
   useEffect(() => {
-    if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+    if (!location.hash) return;
+    let anchor = location.hash.slice(1);
+    try { anchor = decodeURIComponent(anchor); } catch { /* A malformed anchor must not prevent the page from rendering. */ }
+    document.getElementById(anchor)?.scrollIntoView();
   }, [location.pathname, location.hash]);
   useEffect(() => {
     if (!open) return;
@@ -22,7 +25,7 @@ export function PublicLayout() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
-  const signOut = async () => { await logout(); navigate('/', { replace: true }); };
+  const signOut = async () => { await logout().catch(() => {}); navigate('/', { replace: true }); };
   return <div className="landing-page">
     <header className="landing-header">
       <div className="landing-container landing-header-inner">

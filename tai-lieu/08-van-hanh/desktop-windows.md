@@ -44,10 +44,27 @@ Lệnh cuối mở cửa sổ LAMS, có hot reload; không mở tab trình duy�
 
 - EXE: `frontend/src-tauri/target/release/lams-desktop.exe`.
 - Bộ cài: `frontend/src-tauri/target/release/bundle/nsis/LAMS_0.1.0_x64-setup.exe`.
+- Manifest của EXE: `frontend/src-tauri/target/release/lams-build-manifest.json`, gồm SHA nền, trạng thái working tree, phiên bản, thời điểm build, môi trường, URL API, fingerprint input và SHA-256 EXE. Bản có `dirty: true` là bản thử từ source chưa commit, không phải release từ SHA sạch.
 - Cài theo tài khoản Windows hiện tại, có shortcut và trình gỡ cài đặt. Bộ cài chưa được ký số; Windows có thể hiện SmartScreen. Không tắt bảo vệ Windows; chỉ cài artifact từ bản build/CI đã xác minh.
 - Người dùng bản cài không cần Rust, Node hoặc Vite để mở giao diện. Họ vẫn cần dịch vụ LAMS hoạt động tại địa chỉ được build sẵn. Chưa có cấu hình máy chủ từ UI, auto-updater, ký số hoặc bản macOS/Linux.
 
 Không commit `.tools`, `target`, bộ cài, node_modules hay dữ liệu WebView vào Git. CI job `desktop-windows` build trên Windows sạch và cung cấp bộ cài cùng file SHA-256 dưới dạng artifact của từng run. Kiểm checksum sau khi tải artifact; job này không tự phát hành release hoặc merge PR.
+
+Launcher release trong checkout kiểm manifest trước khi mở EXE. Nếu thiếu manifest, source/config đã đổi hoặc checksum EXE không khớp, script dừng và yêu cầu build lại. `start-local-desktop.ps1` kiểm bước này trước khi bật dịch vụ. Không cần build lại mỗi lần mở nếu input vẫn khớp. Kiểm này dành cho EXE trong checkout; shortcut của bản cài không đọc source và chưa tự kiểm phiên bản backend. Các bài E2E với API thật vẫn là điều kiện nghiệm thu riêng.
+
+File `Khoi chay ung dung LAMS.cmd` ở root gọi cùng `scripts/start-local-desktop.ps1` bằng PowerShell 7. Khi có lỗi, cửa sổ giữ thông báo để người dùng đọc. Việc chuẩn bị dữ liệu demo phải được thực hiện riêng theo hướng dẫn dữ liệu, không gắn với mỗi lần mở ứng dụng.
+
+Launcher chặn hai lượt khởi động đồng thời trong cùng phiên Windows. Sau khi hạ tầng chạy, nó kiểm tên dịch vụ và trạng thái `UP` của Core/Insight, rồi kiểm health tổng hợp của Core để không mở ứng dụng khi database chưa sẵn sàng. Insight trả HTTP 200 nhưng trạng thái `DEGRADED` vẫn chưa được chấp nhận. Mỗi bước chờ API có giới hạn 90 giây; khi hết hạn, đọc log tại `.tools/desktop-launch` để xử lý rồi chạy lại.
+
+Khi Core chưa chạy, launcher kiểm source và checksum JAR qua `backend/core-service/target/lams-core-build.json`. Nếu thiếu hoặc không khớp, dùng `scripts/start-local-desktop.ps1 -RebuildCore` một lần; các lần mở sau có thể dùng lại bản đã xác minh. Script `start-core.ps1` ghi manifest sau khi package thành công và từ chối source thay đổi giữa lúc build.
+
+Các script Core/Insight ghi thông tin lượt khởi động vào `.tools/desktop-launch`: workspace, PID và thời điểm tạo tiến trình cha, cùng fingerprint đầu vào. Launcher đối chiếu tiến trình đang nghe cổng 8080/3000 với chuỗi tiến trình con của lượt đó, đồng thời kiểm source/cấu hình và binary Core. Dịch vụ chỉ trả health tốt nhưng không có bản ghi phù hợp vẫn bị từ chối. Cơ chế này giúp tránh dùng nhầm backend cũ hoặc backend của checkout khác; không phải cơ chế xác thực bảo mật giữa các tài khoản Windows.
+
+Nếu dịch vụ đang chạy từ lệnh riêng hoặc từ bản script cũ, đóng đúng terminal đã khởi động nó rồi chạy lại `start-core.ps1`/`start-insight.ps1` trong checkout hiện tại. Launcher không tự kill tiến trình hoặc tự restart dịch vụ đang dùng. Khi sửa source Insight trong chế độ watch, launcher vẫn yêu cầu một lượt khởi động mới trước khi nghiệm thu release. Bản ghi chỉ chứa fingerprint, không chép giá trị secret từ `.env`; thay đổi `.env` cũng yêu cầu khởi động lại. Kiểm tra ownership cần quyền đọc thông tin tiến trình Windows; nếu không đọc được, script dừng thay vì bỏ qua bước kiểm.
+
+EXE cài bằng NSIS có thể khác checksum EXE rời do Tauri gắn nhãn loại gói vào binary. Khi nghiệm thu, ghi riêng checksum installer, EXE rời và EXE đã cài; không tự coi mọi khác biệt checksum là hợp lệ. Cần đối chiếu nguồn artifact và kiểm phần khác biệt trước khi chạy bộ test trên bản cài.
+
+Nếu đã di chuyển checkout và Cargo báo không tìm thấy file permissions trong đường dẫn cũ, cache `frontend/src-tauri/target` có thể chứa đường dẫn tuyệt đối của lần build trước. Dừng lượt build, giữ lại EXE/bộ cài cần bảo toàn, chuyển cache cũ ra thư mục backup rồi build lại từ root hiện tại. Không sao chép cache Rust giữa các workspace để làm bằng chứng bản release mới.
 
 ## Địa chỉ và phiên đăng nhập
 

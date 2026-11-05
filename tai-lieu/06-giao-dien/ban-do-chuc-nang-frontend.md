@@ -4,7 +4,7 @@ Bảng này nối nghiệp vụ với API và đường vào trên giao diện. 
 
 | Nghiệp vụ | API | Đường vào / thành phần | Kiểm thử hiện có | Trạng thái và phần còn thiếu |
 |---|---|---|---|---|
-| Đăng ký, đăng nhập, đăng xuất, phiên | Core `/auth/*` | `/dang-ky`, `/dang-nhap`, topbar | `AuthFlow` | Có UI; cần xác nhận lại với ba tài khoản demo trên web và EXE. |
+| Đăng ký, đăng nhập, đăng xuất, phiên | Core `/auth/*` | `/dang-ky`, `/dang-nhap`, topbar | `AuthFlow` | Có UI; đường quay lại giữ bộ lọc và vị trí trong trang sau đăng nhập/đăng ký. Nếu đăng xuất không liên lạc được máy chủ, ứng dụng xóa phiên cục bộ và hiển thị nút thử thu hồi lại; không tuyên bố cookie đã được thu hồi. |
 | Hồ sơ | Core `/me/account`, `/auth/me` | `/ho-so` | `MemberFlow`, `AccountCenterIntegrationTest` | Sửa tên/số điện thoại, đổi mật khẩu và thu hồi phiên. Đổi email có mã xác minh khi SMTP được bật; mặc định nút gửi mã được ẩn. |
 | Cài đặt giao diện | Core `/me/ui-preferences` khi đăng nhập; localStorage cho khách | `/cai-dat/giao-dien`, topbar, sidebar và hồ sơ | `appearance.test`, `UiPreferencesIntegrationTest` | Có xem trước, lưu, bỏ thay đổi và khôi phục preset. Có test PostgreSQL cho revision và quyền; bản xem thử được giữ khi chuyển trang, lỗi lưu không xóa lựa chọn. |
 | Tác phẩm và tìm kiếm | Core `/public/catalog/books`, `/authors`, `/categories` | `/`, `/sach`, `BookFilters`, `BookList`, tìm kiếm trên topbar | `CatalogFlow`, `SearchCommand`, Web E2E | Có tìm, lọc, sort, phân trang, URL state và gợi ý tối đa bốn mục mỗi nhóm. 10.000 định danh Gutenberg là thư mục tham khảo, không phải số Copy. Ảnh phụ thuộc duyệt media. |
@@ -25,7 +25,7 @@ Bảng này nối nghiệp vụ với API và đường vào trên giao diện. 
 | Đề xuất bổ sung | Core read facts, Insight Acquisition API | `/nhan-vien/de-xuat-bo-sung` | `AcquisitionFlow`, Web/EXE E2E 18/18 | UI đã nối API; E2E kiểm Loan/Hold thật, phân tích, lưu, reload, duyệt/từ chối, audit và CSV. Chưa có lịch sử Favorite, sự kiện tìm rỗng hoặc chính sách retention production. |
 
 | Hoạt động giữ chỗ và CSV | Core `/reports/hold-activity` và `.csv` | `/nhan-vien/bao-cao-giu-cho` | `hold-report-api`, `HoldActivityReportPage`, E2E | Bộ lọc ngày/chi nhánh/tác phẩm, 50 nhóm/trang; tối đa 6 tháng lịch và 10.000 nhóm. |
-| Thông báo | Insight `/me/notifications`, `/unread-count` | Chuông topbar và `/thong-bao` | `NotificationsPage`, integration owner/role và E2E | Chỉ có sự kiện giữ chỗ READY/EXPIRED; không phải hộp thư mọi nghiệp vụ. |
+| Thông báo | Insight `/me/notifications`, `/unread-count` | Chuông topbar và `/thong-bao` | `NotificationsPage`, integration owner/role và E2E | Hiển thị sự kiện tạo/sẵn sàng/hết hạn giữ chỗ, mượn, trả, gia hạn và nhắc hạn trả. Nguồn là Outbox/Kafka; không phải hộp thư mọi nghiệp vụ. |
 
 Điều hướng Sidebar chỉ trỏ tới các route trên. Tài khoản Reader không có quyền mở trang nhân viên; API kiểm quyền độc lập với guard ở giao diện. OpenAPI trong `contracts/openapi/` là nguồn chi tiết cho request/response và mã lỗi.
 
@@ -38,3 +38,13 @@ Be Vietnam Pro dùng cho nội dung và tiêu đề nghiệp vụ; Literata dàn
 Ảnh bìa chỉ xuất hiện sau khi tham chiếu của Edition được nhân viên duyệt. Khi chưa có ảnh hoặc ảnh ngoài tải lỗi, `BookCover` trình bày tên tác phẩm và tác giả như một bìa chữ, có nhãn phân biệt với ảnh thật. Nguồn và ghi công đi cùng ảnh đã duyệt; xem [quy trình media](../03-du-lieu/media-strategy.md) và [dữ liệu demo](../09-demo/du-lieu-demo.md). Hiệu ứng hover/focus ngắn; thiết lập giảm chuyển động của hệ điều hành tắt animation không cần thiết.
 
 Các dòng có Web E2E dùng tài khoản và dữ liệu được tạo trong PostgreSQL cô lập cho lượt kiểm thử, không chứng minh ba tài khoản demo local đã được cấp. Trước buổi trình diễn, kiểm lại tài khoản demo, 12 tham chiếu bìa và các hành trình Reader/Staff trên chính database demo. Feed audit toàn hệ thống, dữ liệu ISBN của ấn bản in, SMTP production và một số tín hiệu Acquisition còn thiếu; giao diện không hiển thị nút giả để che các khoảng trống này.
+
+## Phục hồi thao tác và dữ liệu mới
+
+Nút tải lại ở trung tâm thông báo đọc lại danh sách và số chưa đọc. Khi quyết định kiểm duyệt gặp lỗi, tải lại đóng hộp xác nhận và đọc lại hàng chờ để người quản trị kiểm tra tình trạng mới trước khi gửi tiếp. Lỗi hủy đổi email được hiển thị trong khu vực email, giữ nguyên yêu cầu chờ cho đến khi máy chủ xác nhận.
+
+Duyệt hoặc gỡ ảnh làm hết hạn cache ảnh, danh mục, trang chủ và thẻ sách cá nhân. Khi API ảnh lỗi, các trang danh mục báo rõ đang dùng hình thay thế và cho tải lại; hình thay thế không chứng minh ảnh đang được nhân viên xử lý. Trang sách phân biệt lỗi tải ấn bản với trạng thái đang chờ. Phân trang ngoài phạm vi có đường trở về trang đầu.
+
+Liên kết nguồn Project Gutenberg dùng cùng thành phần mở nguồn với các nguồn thư mục khác. Web mở tab nguồn; bản Windows gọi lệnh native với danh sách tên miền HTTPS cho phép. Quyền mở trang nguồn không đồng nghĩa quyền sử dụng ảnh từ nguồn đó.
+
+Các thay đổi ở mục này cần được nghiệm thu trên bản build cùng nội dung source. Không dùng kết quả EXE của lượt trước để xác nhận những sửa đổi mới.
