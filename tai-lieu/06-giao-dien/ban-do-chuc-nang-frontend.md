@@ -47,4 +47,6 @@ Duyệt hoặc gỡ ảnh làm hết hạn cache ảnh, danh mục, trang chủ 
 
 Liên kết nguồn Project Gutenberg dùng cùng thành phần mở nguồn với các nguồn thư mục khác. Web mở tab nguồn; bản Windows gọi lệnh native với danh sách tên miền HTTPS cho phép. Quyền mở trang nguồn không đồng nghĩa quyền sử dụng ảnh từ nguồn đó.
 
+Trong phiên kiểm kê, người dùng có thể hủy khi đang chờ mở camera. Kết quả mở camera hoặc nhận dạng mã đến sau khi lượt quét đã dừng không được dùng cho lượt tiếp theo; luồng camera cấp muộn được đóng lại. Camera chỉ điền mã vào biểu mẫu, nhân viên vẫn phải kiểm tra và bấm ghi nhận. Nếu thiết bị không hỗ trợ hoặc từ chối quyền, có thể nhập mã thủ công hay dùng máy quét dạng bàn phím. Kiểm thử mô phỏng vòng đời camera không thay thế việc nghiệm thu với thiết bị thật.
+
 Các thay đổi ở mục này cần được nghiệm thu trên bản build cùng nội dung source. Không dùng kết quả EXE của lượt trước để xác nhận những sửa đổi mới.
