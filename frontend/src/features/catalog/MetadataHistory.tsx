@@ -10,6 +10,13 @@ import type { BookMetadata } from './media-api';
 import { GoogleAttribution, SourceLink } from './SourceLink';
 import './metadata-history.css';
 
+function describeAttempt(attempt: { provider: string; status: string }) {
+  const sources: Record<string, string> = { 'open-library': 'Open Library', 'google-books': 'Google Books', wikimedia: 'Wikimedia' };
+  const statuses: Record<string, string> = { ok: 'Có kết quả', 'not-found': 'Không tìm thấy', unavailable: 'Tạm thời không kết nối được',
+    'rate-limited': 'Nguồn đang giới hạn lượt tra', 'not-configured': 'Chưa bật nguồn này', invalid: 'Kết quả không hợp lệ' };
+  return `${sources[attempt.provider] ?? attempt.provider}: ${statuses[attempt.status] ?? attempt.status}`;
+}
+
 export function MetadataHistory() {
   const {user}=useAuth();
   return user ? <HistoryContent key={user.id} ownerId={user.id}/> : null;
@@ -23,10 +30,10 @@ function HistoryContent({ownerId}:{ownerId:string}) {
   const history=useQuery({queryKey:['metadata-history',ownerId,page,filter],queryFn:({signal})=>listHistory(page,filter,signal),retry:false});
   const refresh=()=>client.invalidateQueries({queryKey:['metadata-history',ownerId]});
   const lookup=useMutation({mutationFn:()=>saveLookup(isbn),onSuccess:async result=>{
-    setBooks(result.lookup.candidates); setNotice('Đã lưu lịch sử tra cứu. '+result.lookup.attempts.map(a=>`${a.provider}: ${a.status}`).join(' · ')); await refresh();
+    setBooks(result.lookup.candidates); setNotice('Đã lưu lịch sử tra cứu. '+result.lookup.attempts.map(describeAttempt).join(' · ')); await refresh();
   }});
   const replay=useMutation({mutationFn:replayLookup,onSuccess:result=>{
-    setBooks(result.candidates);setNotice('Kết quả tra lại nguồn hiện tại. '+result.attempts.map(a=>`${a.provider}: ${a.status}`).join(' · '));
+    setBooks(result.candidates);setNotice('Kết quả tra lại nguồn hiện tại. '+result.attempts.map(describeAttempt).join(' · '));
   }});
   const removal=useMutation({mutationFn:deleteHistory,onSuccess:async()=>{
     setRemoving(null);setBooks([]);setNotice('Đã xóa bản ghi lịch sử.');await refresh();
@@ -35,7 +42,7 @@ function HistoryContent({ownerId}:{ownerId:string}) {
   const begin=()=>{setBooks([]);setNotice('');lookup.reset();replay.reset();removal.reset();};
   return <section className="metadata-history editorial-card my-5" aria-labelledby="history-heading">
     <h2 id="history-heading" className="section-title">Lịch sử tra cứu ISBN của tôi</h2>
-    <p>Chỉ lưu ISBN, nguồn, trạng thái và thời điểm. Mở lại sẽ tra nguồn hiện tại; không lưu nội dung provider và không tự sửa Catalog.</p>
+    <p>Chỉ lưu ISBN, nguồn, trạng thái và thời điểm. Mở lại sẽ tra nguồn hiện tại; không lưu toàn bộ nội dung từ nguồn tra cứu và không tự sửa danh mục.</p>
     <Form onSubmit={event=>{event.preventDefault();begin();lookup.mutate();}}>
       <Form.Group controlId="history-isbn"><Form.Label>ISBN-13 cần tra và lưu</Form.Label>
         <Form.Control value={isbn} onChange={event=>setIsbn(event.target.value)} required pattern="[0-9]{13}" maxLength={13} inputMode="numeric"/>
@@ -52,14 +59,15 @@ function HistoryContent({ownerId}:{ownerId:string}) {
     {(lookup.isError||replay.isError||removal.isError)&&<Alert variant="danger">Không hoàn tất thao tác. Kiểm tra ISBN, kết nối và quyền; tải lại lịch sử trước khi thử lại nếu đã chờ quá lâu.</Alert>}
     {books.map(book=>{
       const content=<article><h3>{book.title}</h3><p>{book.authors.join(', ')} · {book.isbn13}</p>
-        <SourceLink href={book.sourceUrl}>Nguồn {book.source}</SourceLink><p>Đối chiếu thông tin này khi nhập biểu mẫu biên mục. Chưa ghi vào Book hoặc Edition.</p></article>;
+        <SourceLink href={book.sourceUrl}>Nguồn {book.source}</SourceLink><p>Đối chiếu thông tin này khi nhập biểu mẫu biên mục. Thông tin này chưa được ghi vào tác phẩm hoặc ấn bản.</p></article>;
       return book.source==='google-books'?<GoogleAttribution key={book.sourceId}>{content}</GoogleAttribution>:<div key={`${book.source}:${book.sourceId}`}>{content}</div>;
     })}
     {history.isPending?<p role="status">Đang tải lịch sử…</p>:history.isError?<Alert variant="danger">Không tải được lịch sử. <Button onClick={()=>void history.refetch()}>Thử lại</Button></Alert>:<>
       {!history.data.items.length&&<p>Chưa có bản ghi ở trang này.</p>}
       <ul>{history.data.items.map(item=><li key={item.id}>
         <strong>{item.isbn13}</strong> · <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('vi-VN')}</time>
-        <p>{item.attempts.map(a=>`${a.provider}: ${a.status}`).join(' · ')}</p>
+        <p>{item.attempts.map(describeAttempt).join(' · ')}</p>
+        <details><summary>Mã trạng thái nguồn</summary><p>{item.attempts.map(a=>`${a.provider}: ${a.status}`).join(' · ')}</p></details>
         <Button variant="secondary" disabled={busy} onClick={()=>{begin();replay.mutate(item.id);}}>Mở lại {item.isbn13}</Button>
         <Button variant="danger" disabled={busy} onClick={()=>{removal.reset();setRemoving(item.id);}}>Xóa {item.isbn13}</Button>
         {removing===item.id&&<div role="group" aria-label={`Xác nhận xóa ${item.isbn13}`}><p>Chỉ xóa lịch sử của bạn, không xóa sách.</p>

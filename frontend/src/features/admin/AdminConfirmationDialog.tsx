@@ -16,6 +16,7 @@ export function AdminConfirmationDialog({ title, description, confirmLabel, busy
     const panel = dialog.current;
     panel?.querySelector<HTMLElement>('button')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
       if (event.key === 'Escape' && !busyRef.current) { event.preventDefault(); onCancelRef.current(); return; }
       if (event.key !== 'Tab' || !panel) return;
       const focusable = Array.from(panel.querySelectorAll<HTMLElement>('button:not([disabled])'));

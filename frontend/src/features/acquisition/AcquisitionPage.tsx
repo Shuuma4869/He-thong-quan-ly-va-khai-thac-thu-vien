@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
@@ -30,6 +31,8 @@ function Content({ owner }: { owner: string }) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [uncertain, setUncertain] = useState(false);
+  const leaveDecision = useUnsavedChanges({ dirty: !!reason, busy, uncertain, label: 'Lý do quyết định bổ sung sách' });
   const list = useQuery({ queryKey: ['acquisition', owner, 'list', state, page],
     queryFn: ({ signal }) => listRecommendations(state, page, signal), retry: false });
   const detail = useQuery({ queryKey: ['acquisition', owner, 'detail', selected],
@@ -37,7 +40,7 @@ function Content({ owner }: { owner: string }) {
 
   const decide = async (action: 'APPROVED' | 'REJECTED') => {
     if (!detail.data || busy) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setUncertain(false);
     try {
       await decideRecommendation(detail.data.id, action, reason, detail.data.version);
       setReason('');
@@ -46,6 +49,7 @@ function Content({ owner }: { owner: string }) {
         client.invalidateQueries({ queryKey: ['acquisition', owner, 'detail', selected] }),
       ]);
     } catch (cause) {
+      setUncertain(!(cause instanceof ApiError) || cause.status === 0 || cause.status >= 500);
       setError(cause instanceof ApiError && cause.status === 409
         ? 'Đề xuất đã thay đổi. Hãy tải lại bằng chứng trước khi quyết định.'
         : cause instanceof Error ? cause.message : 'Không lưu được quyết định.');
@@ -55,13 +59,13 @@ function Content({ owner }: { owner: string }) {
 
   return <section>
     <h1 className="page-title">Đề xuất bổ sung sách</h1>
-    <p className="text-muted my-3">Nhân viên chọn sách, chi nhánh và khoảng thời gian để đọc số liệu Core, xem điểm nhu cầu rồi lưu đề xuất. Duyệt đề xuất không đặt mua sách.</p>
+    <p className="text-muted my-3">Chọn sách, chi nhánh và khoảng thời gian để xem nhu cầu, sau đó lưu đề xuất. Duyệt đề xuất chưa phải là đặt mua sách.</p>
     <AcquisitionAnalysis onCreated={async id => {
-      setState('DRAFT'); setPage(0); setSelected(id);
       await client.invalidateQueries({ queryKey: ['acquisition', owner, 'list'] });
+      leaveDecision(() => { setState('DRAFT'); setPage(0); setSelected(id); setReason(''); setUncertain(false); });
     }}/>
     <label className="field my-5 max-w-sm">Trạng thái
-      <select value={state} onChange={event => { setState(event.target.value as RecommendationState | ''); setPage(0); setSelected(''); }}>
+      <select value={state} onChange={event => { const next = event.target.value as RecommendationState | ''; leaveDecision(() => { setState(next); setPage(0); setSelected(''); setReason(''); setUncertain(false); }); }}>
         <option value="">Tất cả</option><option value="DRAFT">Chờ duyệt</option>
         <option value="APPROVED">Đã duyệt nội bộ</option><option value="REJECTED">Đã từ chối</option>
       </select>
@@ -75,7 +79,7 @@ function Content({ owner }: { owner: string }) {
               <h2 className="section-title my-2"><BookName bookId={item.bookId}/></h2>
               <p className="text-sm text-muted"><BranchName branchId={item.branchId}/> · {formatTime(item.createdAt)}</p>
               <p className="my-3">Điểm {item.score.toFixed(1)}/100 · Độ tin cậy {Math.round(item.confidence * 100)}%</p>
-              <button className="button-secondary" type="button" onClick={() => { setSelected(item.id); setReason(''); setError(''); }}>Xem bằng chứng</button>
+              <button className="button-secondary" type="button" onClick={() => leaveDecision(() => { setSelected(item.id); setReason(''); setError(''); setUncertain(false); })}>Xem bằng chứng</button>
             </article>)}</div>}
         <div className="flex items-center gap-3 my-5"><button className="button-secondary" type="button" disabled={page === 0} onClick={() => setPage(page - 1)}>Trang trước</button>
           <span>Trang {page + 1}/{Math.max(1, list.data.page.totalPages)}</span>
@@ -96,22 +100,25 @@ function AcquisitionAnalysis({ onCreated }: { onCreated: (id: string) => Promise
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof analyzeAcquisition>> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [uncertain, setUncertain] = useState(false);
   const scope = (): AcquisitionScope => ({ bookId, branchId,
     from: new Date(from).toISOString(), to: new Date(to).toISOString() });
+  useUnsavedChanges({ dirty: !!preview, busy, uncertain, label: 'Phân tích nhu cầu chưa lưu thành đề xuất' });
   const analyze = async () => {
     setBusy(true); setError(''); setPreview(null);
     try { setPreview(await analyzeAcquisition(scope())); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Không lấy được số liệu từ Core.'); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Không tải được số liệu thư viện.'); }
     finally { setBusy(false); }
   };
   const create = async () => {
     if (!preview || busy) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setUncertain(false);
     try {
       const record = await createRecommendation(scope());
       await onCreated(record.id);
       setPreview(null);
     } catch (cause) {
+      setUncertain(!(cause instanceof ApiError) || cause.status === 0 || cause.status >= 500);
       setError(cause instanceof ApiError && cause.status === 409
         ? 'Đã có đề xuất đang chờ duyệt cho sách, chi nhánh và khoảng thời gian này.'
         : cause instanceof Error ? cause.message : 'Không lưu được đề xuất.');

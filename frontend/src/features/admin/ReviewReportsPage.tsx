@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
+import { ApiError } from '../../shared/api/client';
 import { LibraryError } from '../my-library/LibraryError';
 import { decideReviewReport, listReviewReports, type ReviewReport } from '../reviews/moderation-api';
 import { getBookCards } from '../catalog/catalog-api';
@@ -46,15 +48,13 @@ export function ReviewReportsPage() {
           <button type="button" className="button-secondary" disabled={(page + 1) * 20 >= queue.data.totalElements}
             onClick={() => { setSelectedReportId(null); setPage(page + 1); }}>Sau</button>
         </nav></>}
-    {selectedReport && <AdminDetailDrawer title="Chi tiết báo cáo" onClose={() => setSelectedReportId(null)}>
-      <ReportDetails report={selectedReport} bookTitle={bookTitle(selectedReport.bookId)} onDone={() => {
+    {selectedReport && <ReportDetails report={selectedReport} bookTitle={bookTitle(selectedReport.bookId)} onClose={() => setSelectedReportId(null)} onDone={() => {
         setSelectedReportId(null);
         setNotice('Đã lưu quyết định.');
         void client.invalidateQueries({ queryKey: ['review-reports'] });
         void client.invalidateQueries({ queryKey: ['reviews'] });
         void invalidateCatalogViews(client);
-      }}/>
-    </AdminDetailDrawer>}
+      }}/>}
   </section>;
 }
 
@@ -68,14 +68,17 @@ function ReportCard({ report, bookTitle, onOpen }: { report: ReviewReport; bookT
   </>;
 }
 
-function ReportDetails({ report, bookTitle, onDone }: { report: ReviewReport; bookTitle: string; onDone: () => void }) {
+function ReportDetails({ report, bookTitle, onDone, onClose }: { report: ReviewReport; bookTitle: string; onDone: () => void; onClose: () => void }) {
   const client = useQueryClient();
   const [reason, setReason] = useState('');
   const [confirmation, setConfirmation] = useState<'HIDE' | 'DISMISS' | null>(null);
   const decision = useMutation({ mutationFn: (action: 'HIDE' | 'DISMISS') => decideReviewReport(report.id, action, reason.trim()),
     onSuccess: () => { setConfirmation(null); onDone(); } });
   const valid = [...reason.trim()].length >= 10 && [...reason.trim()].length <= 500;
-  return <>
+  const leave = useUnsavedChanges({ dirty: !!reason && !decision.isSuccess, busy: decision.isPending,
+    uncertain: decision.isError && (!(decision.error instanceof ApiError) || decision.error.status === 0 || decision.error.status >= 500),
+    label: 'Lý do kiểm duyệt đánh giá' });
+  return <AdminDetailDrawer title="Chi tiết báo cáo" onClose={() => leave(onClose)}>
     <h2 className="mt-4 text-xl font-semibold">{bookTitle} · {report.ratingSnapshot}/5</h2>
     <section className="admin-report-snapshot mt-5" aria-labelledby="admin-review-snapshot">
       <h3 id="admin-review-snapshot" className="font-semibold">Nội dung tại thời điểm báo cáo</h3>
@@ -108,5 +111,5 @@ function ReportDetails({ report, bookTitle, onDone }: { report: ReviewReport; bo
       }}/> : null}
       onCancel={() => { setConfirmation(null); decision.reset(); }}
       onConfirm={() => decision.mutate(confirmation)}/>}
-  </>;
+  </AdminDetailDrawer>;
 }

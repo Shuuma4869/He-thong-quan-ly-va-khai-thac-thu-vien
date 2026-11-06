@@ -79,7 +79,13 @@ Bộ lọc Catalog trên màn hẹp dùng hộp thoại native với nền đọ
 
 Bộ chọn tham chiếu chỉ cho chọn kết quả đã tải xong của từ khóa hiện tại. Enter trong ô tìm không được gửi biểu mẫu cha, kể cả khi danh sách rỗng hoặc đang chờ tìm kiếm. Đây là yêu cầu chung cho cả lọc danh mục và biên mục.
 
-Khi biên mục đang sửa, xác nhận xóa hoặc duyệt ảnh, bộ chọn loại dữ liệu và tác phẩm cha bị khóa để tránh đổi ngữ cảnh giữa thao tác. Hủy biểu mẫu đã thay đổi cần xác nhận; lỗi lưu giữ nguyên nội dung. Cảnh báo khi tải lại/đóng trang phụ thuộc khả năng hỗ trợ của trình duyệt hoặc WebView. Cơ chế này chưa chặn mọi điều hướng sang route khác qua sidebar.
+Khi biên mục đang sửa, xác nhận xóa hoặc duyệt ảnh, bộ chọn loại dữ liệu và tác phẩm cha bị khóa để tránh đổi ngữ cảnh giữa thao tác. Hủy biểu mẫu đã thay đổi cần xác nhận; lỗi lưu giữ nguyên nội dung. Cảnh báo khi tải lại/đóng trang phụ thuộc khả năng hỗ trợ của trình duyệt hoặc WebView.
+
+Các biểu mẫu có bản nháp đăng ký với `UnsavedChangesProvider`: biên mục, duyệt ảnh, hồ sơ, lý do quản trị, rà soát giữ chỗ, kiểm kê, đánh giá và đề xuất bổ sung. Web dùng `createBrowserRouter`, Windows dùng `createHashRouter`. Đổi đường dẫn hoặc tham số truy vấn qua sidebar, liên kết và Back/Forward sẽ hỏi trước khi bỏ nội dung chưa lưu. Neo trong cùng trang không làm mất biểu mẫu nên không bị chặn. Phân trang bất thường kiểm kê dùng tham số `anomalyPage` để áp dụng cùng quy tắc trước khi thay danh sách biểu mẫu.
+
+Khi đang gửi, hộp thoại không cho bỏ trang. Nếu mất phản hồi hoặc nhận lỗi máy chủ, thông báo nêu rõ chưa biết giao dịch đã ghi nhận hay chưa; rời trang không có nghĩa là hủy giao dịch. Người dùng cần đọc lại dữ liệu trước khi gửi yêu cầu mới. Các kiểm tra phiên bản và mã yêu cầu nghiệp vụ vẫn được giữ nguyên. Đăng xuất hoặc hết phiên luôn được phép: bản nháp trong bộ nhớ bị bỏ, cache tài khoản được xóa, không mang nội dung sang người đăng nhập sau. Bản xem thử Appearance nằm ở provider riêng và còn nguyên khi đổi route, vì vậy không cần hỏi bỏ bản nháp mỗi lần chuyển trang.
+
+Thông báo từ Insight có thể đến sau giao dịch Core. Danh sách và số chưa đọc là hai truy vấn riêng, không phải một snapshot nguyên tử. Khi nhận danh sách mới, giao diện làm mới số chưa đọc; chuông và trang thông báo dùng chung cache theo tài khoản. Dữ liệu được đọc lại khi trở về cửa sổ, kết nối lại mạng và mỗi phút khi cửa sổ hoạt động. Người dùng cũng có thể chọn Cập nhật thông báo. Số chưa đọc tính trên toàn bộ hộp thư, không chỉ trang đang xem; lỗi tải không được diễn đạt thành không có thông báo.
 
 Tùy chọn ẩn/hiện widget chỉ xuất hiện với dashboard Librarian. Dashboard Admin có bố cục nhiệm vụ riêng, không dùng tùy chọn này. Trong trang Giao diện, liên kết Khám phá sách mở Catalog; các thao tác lưu, bỏ thay đổi và khôi phục mặc định chờ cấu hình tài khoản tải xong mới được dùng.
 

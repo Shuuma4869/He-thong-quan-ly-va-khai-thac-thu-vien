@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { statusLabels } from '../members/member-api';
@@ -26,7 +27,6 @@ export function AdminAccountsPage() {
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState('');
   const [confirmation, setConfirmation] = useState<AccountAction | null>(null);
-  const closeDrawer = useCallback(() => setSelected(null), []);
   const accounts = useQuery({ queryKey: ['admin-accounts', query, status, page],
     queryFn: ({ signal }) => listAccounts(query, status, page, signal), retry: false });
   const detail = useQuery({ queryKey: ['admin-account', selected],
@@ -53,6 +53,10 @@ export function AdminAccountsPage() {
       void detail.refetch();
     }
   } });
+  const leave = useUnsavedChanges({ dirty: !!selected && !!reason, busy: mutation.isPending,
+    uncertain: mutation.isError && (!(mutation.error instanceof ApiError) || mutation.error.status === 0 || mutation.error.status >= 500),
+    label: 'Lý do thay đổi tài khoản' });
+  const closeDrawer = () => leave(() => { setSelected(null); setReason(''); });
   const closeConfirmation = () => {
     setConfirmation(null);
     mutation.reset();

@@ -14,7 +14,7 @@ export function AdminDetailDrawer({ title, children, onClose }: {
     panel?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       // Hộp xác nhận phía trên quản lý bàn phím cho đến khi đóng.
-      if (document.querySelector('[role="alertdialog"][aria-modal="true"]')) return;
+      if (document.querySelector('[role="alertdialog"][aria-modal="true"], dialog[open]')) return;
       if (event.key === 'Escape') {
         closeRef.current();
         return;

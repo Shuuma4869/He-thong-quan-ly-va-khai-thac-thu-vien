@@ -43,7 +43,7 @@ function Counter({ owner }: { owner: string }) {
           }}>Tìm lượt đang mượn của bản này</button>
           <button className="button-primary mt-4" disabled={!member || member.status !== 'ACTIVE' || !['AVAILABLE', 'ON_HOLD'].includes(copy.data.status) || copy.isFetching || !!confirmation}
             onClick={() => member && setConfirmation({ copy: copy.data, member })}>Cho mượn bản sách này</button>
-          {copy.data.status === 'ON_HOLD' && <p className="text-sm my-3">Chỉ bàn giao cho đúng người đọc được phân bổ trong yêu cầu READY còn hạn.</p>}
+          {copy.data.status === 'ON_HOLD' && <p className="text-sm my-3">Chỉ bàn giao cho đúng người đọc được phân bổ trong yêu cầu sẵn sàng nhận còn hạn.</p>}
           {borrowMessage && <p id="borrow-eligibility-message" role="status" className="text-sm my-3">{borrowMessage}</p>}
         </div>)}
       {confirmation && <BorrowConfirmation owner={owner} copy={confirmation.copy} member={confirmation.member}

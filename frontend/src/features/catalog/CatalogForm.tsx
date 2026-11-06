@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { Dialog } from '../../shared/components/Dialog';
 import { ApiError } from '../../shared/api/client';
 import { saveCatalog, type CatalogRecord, type Resource } from './catalog-api';
@@ -16,16 +17,12 @@ export function CatalogForm({ resource, item, bookId, onClose, onSaved }: {
   const [conflict,setConflict] = useState(false);
   const [confirmDiscard,setConfirmDiscard] = useState(false);
   const dirty = JSON.stringify(values) !== JSON.stringify(initialValues(resource,item));
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
   const queryClient = useQueryClient(); const submitting = useRef(false);
   const mutation = useMutation({ mutationFn: (body: unknown) => saveCatalog(resource,body,item?.id,bookId),
     onSuccess: async () => { await invalidateCatalogViews(queryClient); onSaved(); },
     onError: error => { if (resource === 'copies' && error instanceof ApiError && error.status === 409) setConflict(true); } });
+  const uncertain = mutation.isError && (!(mutation.error instanceof ApiError) || mutation.error.status === 0 || mutation.error.status >= 500);
+  useUnsavedChanges({ dirty: dirty && !mutation.isSuccess, busy: mutation.isPending, uncertain, label: 'Thông tin biên mục' });
   const text = (key: string) => typeof values[key] === 'string' ? values[key] as string : '';
   const set = (key: string, value: string | string[]) => setValues(previous => ({ ...previous,[key]:value }));
   const field = (key: string, label: string, max: number, type = 'text') => <label className="field" key={key}>{label}
@@ -53,20 +50,21 @@ export function CatalogForm({ resource, item, bookId, onClose, onSaved }: {
       {resource === 'shelves' && <>{reference('branchId','Chi nhánh','branches')}{field('code','Mã kệ',30)}{field('label','Nhãn kệ',150)}{field('sortOrder','Thứ tự kệ',10)}</>}
       {resource === 'copies' && <>
         {field('barcode','Mã vạch',100)}{reference('shelfId','Kệ sách','shelves')}
-        {item && 'version' in item && <p className="text-sm">Ấn bản hiện tại: {item.isbn13 ?? 'Không ISBN'} · {item.bookTitle}. Version {item.version}. Trạng thái {item.status} chỉ đọc.</p>}
+        {item && 'version' in item && <p className="text-sm">Ấn bản hiện tại: {item.isbn13 ?? 'Không ISBN'} · {item.bookTitle}. Phiên bản {item.version}. Trạng thái {item.status} chỉ đọc.</p>}
         <ReferencePicker label="Tác phẩm để chọn ấn bản" resource="books" value={copyBook ? [copyBook] : []} onChange={ids => { setCopyBook(ids[0] ?? ''); set('editionId',ids.length === 0 && item && 'editionId' in item ? item.editionId : ''); }} />
         {copyBook && <ReferencePicker key={copyBook} label="Ấn bản" resource="editions" bookId={copyBook} value={text('editionId') ? [text('editionId')] : []} onChange={ids => set('editionId',ids[0] ?? '')} />}
         {errors.editionId && <p className="text-red-700 text-sm">{errors.editionId}</p>}
-        <p className="text-sm text-muted">Bản sách mới luôn ở trạng thái IN_PROCESS. Không đổi trạng thái lưu thông ở màn hình này.</p>
+        <p className="text-sm text-muted">Bản sách mới luôn ở trạng thái đang xử lý. Không đổi trạng thái lưu thông ở màn hình này.</p>
       </>}
     </fieldset>
     {Object.keys(errors).length > 0 && <p role="alert" className="form-notice mt-4">Kiểm tra các trường chưa hợp lệ trước khi lưu.</p>}
     {mutation.isError && <div role="alert" className="form-notice mt-4">{mutation.error instanceof ApiError && mutation.error.status < 500 ? mutation.error.message : 'Chưa lưu được dữ liệu. Vui lòng tải lại để kiểm tra trước khi thử tiếp.'}
       {conflict && <p className="mt-2">Hủy chỉnh sửa, tải lại bản sách và mở lại biểu mẫu. Không tự ghi đè phiên bản mới.</p>}</div>}
     <div className="flex flex-wrap gap-3 mt-5"><button className="button-primary" type="submit" disabled={mutation.isPending || conflict}>{mutation.isPending ? 'Đang lưu…' : 'Lưu thông tin'}</button>
-      <button type="button" className="button-secondary" disabled={mutation.isPending} onClick={() => dirty ? setConfirmDiscard(true) : onClose()}>Hủy chỉnh sửa</button></div>
+      <button type="button" className="button-secondary" disabled={mutation.isPending} onClick={() => dirty || uncertain ? setConfirmDiscard(true) : onClose()}>Hủy chỉnh sửa</button></div>
     {confirmDiscard && <Dialog title="Bỏ thay đổi chưa lưu?" onClose={() => setConfirmDiscard(false)}>
-      <p>Nội dung vừa chỉnh sửa chưa được lưu. Bạn có muốn bỏ những thay đổi này không?</p>
+      <p>{uncertain ? 'Chưa xác định được máy chủ đã ghi nhận yêu cầu hay chưa. Đóng biểu mẫu không hủy giao dịch; hãy tải lại dữ liệu trước khi gửi yêu cầu mới.'
+        : 'Nội dung vừa chỉnh sửa chưa được lưu. Bạn có muốn bỏ những thay đổi này không?'}</p>
       <div className="flex flex-wrap gap-3 mt-5">
         <button type="button" className="button-secondary" onClick={() => setConfirmDiscard(false)}>Tiếp tục chỉnh sửa</button>
         <button type="button" className="button-primary" onClick={onClose}>Bỏ thay đổi</button>

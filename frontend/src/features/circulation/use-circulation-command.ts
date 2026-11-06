@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 
 export function useCirculationCommand<T>(owner: string, signature: string, send: (requestId: string) => Promise<T>,
   onSuccess?: (result: T) => void) {
@@ -11,6 +12,7 @@ export function useCirculationCommand<T>(owner: string, signature: string, send:
   const [error, setError] = useState<Error | null>(null);
   const [result, setResult] = useState<T | null>(null);
   const uncertain = !!error && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500);
+  useUnsavedChanges({ dirty: false, busy, uncertain: uncertain && !result, label: 'Giao dịch mượn, trả hoặc giữ chỗ chưa có kết quả' });
   const run = async () => {
     if (sending.current || result) return;
     sending.current = true; setBusy(true); setError(null);

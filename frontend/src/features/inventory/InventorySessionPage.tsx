@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { getCatalogItem } from '../catalog/catalog-api';
 import { copyLabels, formatTime } from '../circulation/circulation-labels';
@@ -13,6 +13,7 @@ import { ShelfPicker } from './ShelfPicker';
 import { useInventoryCommand } from './use-inventory-command';
 import { InventoryLocation, ShelfName } from './InventoryLocation';
 import { CameraBarcodeScanner } from './CameraBarcodeScanner';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 
 export function InventorySessionPage() {
   const { user } = useAuth();
@@ -59,6 +60,8 @@ function ScanForm({ owner, session, blocked, onPendingChange }: {
   const sending = useRef(false);
   const barcodeInput = useRef<HTMLInputElement>(null);
   const uncertain = !!error && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500);
+  useUnsavedChanges({ dirty: !!barcode || offlineQueue.length > 0, busy: busy || syncing, uncertain,
+    label: 'Mã kiểm kê chưa gửi hoặc chưa có biên nhận' });
   useEffect(() => { const update = () => setOnline(navigator.onLine);
     window.addEventListener('online', update); window.addEventListener('offline', update);
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
@@ -163,6 +166,7 @@ function CloseForm({ owner, session, blocked, onPendingChange }: {
     value => client.setQueryData(['inventory', owner, 'session', session.id], value));
   const locked = command.busy || command.uncertain;
   useEffect(() => { onPendingChange(locked); }, [locked, onPendingChange]);
+  useUnsavedChanges({ dirty: !command.result && (!!reason || confirmed || mode !== 'finalize'), label: 'Ghi chú đóng phiên kiểm kê' });
   return <form className="editorial-card my-6" onSubmit={event => {
     event.preventDefault(); if (blocked || !confirmed || mode === 'cancel' && !reason.trim()) return;
     onPendingChange(true); void command.run();
@@ -209,7 +213,15 @@ function SnapshotList({ owner, id }: { owner: string; id: string }) {
   </section>;
 }
 function AnomalyList({ owner, id }: { owner: string; id: string }) {
-  const [page, setPage] = useState(0);
+  // Paging destroys the resolution forms, so it must participate in route draft protection.
+  const [search, setSearch] = useSearchParams();
+  const requestedPage = Number(search.get('anomalyPage') ?? 0);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
+  const setPage = (next: number) => setSearch(previous => {
+    const params = new URLSearchParams(previous);
+    if (next === 0) params.delete('anomalyPage'); else params.set('anomalyPage', String(next));
+    return params;
+  });
   const rows = useQuery({ queryKey: ['inventory', owner, 'anomalies', id, page],
     queryFn: ({ signal }) => listAnomalies(id, page, signal), retry: false });
   return <section className="my-8" aria-label="Bất thường kiểm kê"><h2 className="section-title">Bằng chứng cần rà soát</h2>
@@ -249,6 +261,7 @@ function ResolutionForm({ owner, sessionId, row }: { owner: string; sessionId: s
     && !['ON_LOAN', 'ON_HOLD'].includes(live.status);
   const command = useInventoryCommand(owner, JSON.stringify([sessionId, row.id, action, reason, seen]),
     requestId => resolveAnomaly(sessionId, row.id, action, reason, seen, requestId));
+  useUnsavedChanges({ dirty: !command.result && (!!reason || confirmed || action !== 'REVIEWED'), label: 'Kết quả rà soát bất thường' });
   const locked = command.busy || command.uncertain;
   return <form className="mt-4 border-t border-line pt-3" onSubmit={event => {
     event.preventDefault(); if (confirmed && reason.trim() && (action === 'REVIEWED' || moveAllowed)) void command.run();

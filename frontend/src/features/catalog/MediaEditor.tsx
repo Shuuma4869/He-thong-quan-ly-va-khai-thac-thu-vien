@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { useAuth } from '../auth/auth-context';
 import { ApiError } from '../../shared/api/client';
 import { approveMedia,getMedia,lookupAuthor,lookupBook,removeMedia,safeMediaUrl,type BookMetadata,type Candidate,type MediaKind } from './media-api';
@@ -28,9 +29,14 @@ export function MediaEditor({kind,id,isbn,title,onClose}:{kind:MediaKind;id:stri
   const save=useMutation({mutationFn:()=>approveMedia(kind,id,{source,...fields,confirmed,expectedVersion:current.data?.version??null}),onSuccess:refreshMedia});
   const remove=useMutation({mutationFn:()=>removeMedia(kind,id,current.data!.version),onSuccess:refreshMedia});
   const [confirmRemoval,setConfirmRemoval]=useState(false);
-  const choose=(candidate:Candidate)=>{setSource(candidate.source);setFields({sourceId:candidate.source_id,sourceUrl:candidate.source_url,imageUrl:candidate.image_url,
+  const leave = useUnsavedChanges({ dirty: Object.values(fields).some(value => value !== '') || confirmed,
+    busy: save.isPending || remove.isPending,
+    uncertain: (save.isError && (!(save.error instanceof ApiError) || save.error.status === 0 || save.error.status >= 500))
+      || (remove.isError && (!(remove.error instanceof ApiError) || remove.error.status === 0 || remove.error.status >= 500)),
+    label: 'Tham chiếu ảnh và bằng chứng duyệt' });
+  const choose=(candidate:Candidate)=>leave(()=>{setSource(candidate.source);setFields({sourceId:candidate.source_id,sourceUrl:candidate.source_url,imageUrl:candidate.image_url,
     license:candidate.license??'',licenseUrl:candidate.source==='wikimedia'?candidate.source_url:'',attribution:candidate.attribution??'',
-    evidence:`Nguồn tra cứu: ${JSON.stringify(candidate.evidence)}. `});setConfirmed(false);};
+    evidence:`Nguồn tra cứu: ${JSON.stringify(candidate.evidence)}. `});setConfirmed(false);});
   if (current.isPending) return <p role="status">Đang tải tham chiếu ảnh…</p>;
   if (current.isError) return <CatalogError error={current.error} retry={()=>void current.refetch()} />;
   const labels:Record<string,string>={sourceId:'Định danh nguồn',sourceUrl:'URL trang nguồn',imageUrl:'URL ảnh HTTPS',license:'Giấy phép / căn cứ quyền sử dụng',licenseUrl:'URL bằng chứng quyền sử dụng',attribution:'Ghi công',evidence:'Bằng chứng đúng tác phẩm / tác giả'};
@@ -62,7 +68,7 @@ export function MediaEditor({kind,id,isbn,title,onClose}:{kind:MediaKind;id:stri
       {invalid&&<p role="alert" className="form-notice mt-3">{invalid}</p>}
       {save.isError&&<p role="alert" className="form-notice mt-3">{save.error instanceof ApiError&&save.error.status<500?save.error.message:'Không lưu được tham chiếu ảnh.'}</p>}
       <div className="flex flex-wrap gap-3 mt-4"><button className="button-primary" disabled={save.isPending||remove.isPending} type="submit">{save.isPending?'Đang kiểm tra ảnh…':'Duyệt và lưu tham chiếu'}</button>
-        <button className="button-secondary" disabled={save.isPending||remove.isPending} type="button" onClick={onClose}>Đóng</button>
+        <button className="button-secondary" disabled={save.isPending||remove.isPending} type="button" onClick={() => leave(onClose)}>Đóng</button>
         {current.data&&<button className="button-secondary" type="button" disabled={save.isPending||remove.isPending} onClick={()=>setConfirmRemoval(true)}>Gỡ ảnh đã duyệt</button>}</div>
     </form>
     {confirmRemoval&&<div role="alertdialog" aria-label="Xác nhận gỡ ảnh" className="my-4"><p>Gỡ tham chiếu ảnh này? Không xóa file ở nhà cung cấp.</p><button className="button-secondary" disabled={remove.isPending} onClick={()=>remove.mutate()}>Xác nhận gỡ ảnh</button><button className="button-secondary" disabled={remove.isPending} onClick={()=>setConfirmRemoval(false)}>Giữ ảnh</button>{remove.isError&&<p role="alert">Không gỡ được ảnh. Hãy tải lại dữ liệu.</p>}</div>}

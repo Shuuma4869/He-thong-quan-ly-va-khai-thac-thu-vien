@@ -514,10 +514,34 @@ test('Phase 2 Reader: lọc server, nhiều ấn bản, Author, reload và chặ
 test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ liệu sau reload', async ({ page }) => {
   test.setTimeout(120_000);
   await loginCatalog(page,'LIBRARIAN');await navigate(page,'/nhan-vien/danh-muc');
+  await page.locator('.library-sidebar-desktop').getByRole('link', { name: 'Quầy lưu thông', exact: true }).click();
+  await page.locator('.library-sidebar-desktop').getByRole('link', { name: 'Danh mục', exact: true }).click();
   const select=page.getByLabel('Loại dữ liệu');
   await page.getByRole('button', { name: 'Thêm tác phẩm', exact: true }).click();
   await expect(select).toBeDisabled();
   await page.getByLabel('Tên tác phẩm').fill('Bản nháp sẽ hủy, không ghi database');
+  const draftRoute = page.url();
+  await page.locator('.library-sidebar-desktop').getByRole('link', { name: 'Quầy lưu thông', exact: true }).click();
+  const routeConfirmation = page.getByRole('dialog', { name: 'Rời trang khi chưa hoàn tất?' });
+  await expect(routeConfirmation).toBeVisible();
+  await expect(page).toHaveURL(draftRoute);
+  const stay = routeConfirmation.getByRole('button', { name: 'Tiếp tục chỉnh sửa' });
+  await expect(stay).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(routeConfirmation.getByRole('button', { name: 'Bỏ thay đổi và rời trang' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(routeConfirmation.getByRole('button', { name: 'Đóng hộp thoại' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(routeConfirmation.getByRole('button', { name: 'Bỏ thay đổi và rời trang' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(routeConfirmation).not.toBeVisible();
+  await expect(page.getByLabel('Tên tác phẩm')).toHaveValue('Bản nháp sẽ hủy, không ghi database');
+  // Browser history is used by both createBrowserRouter and createHashRouter.
+  await page.evaluate(() => history.back());
+  await expect(routeConfirmation).toBeVisible();
+  await stay.click();
+  await expect(page).toHaveURL(draftRoute);
+  await captureFullPage(page, { path: 'test-results/catalog-draft-preserved.png', fullPage: true });
   await page.getByRole('button', { name: 'Hủy chỉnh sửa' }).click();
   const discard = page.getByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' });
   await expect(discard).toBeVisible();
@@ -528,6 +552,14 @@ test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ li�
   await page.getByRole('button', { name: 'Hủy chỉnh sửa' }).click();
   await discard.getByRole('button', { name: 'Bỏ thay đổi', exact: true }).click();
   await expect(select).toBeEnabled();
+  await page.getByRole('button', { name: 'Thêm tác phẩm', exact: true }).click();
+  await page.getByLabel('Tên tác phẩm').fill('Bản nháp bỏ khi chuyển trang');
+  await page.locator('.library-sidebar-desktop').getByRole('link', { name: 'Quầy lưu thông', exact: true }).click();
+  await routeConfirmation.getByRole('button', { name: 'Bỏ thay đổi và rời trang' }).click();
+  await expect(page.getByRole('heading', { name: 'Quầy lưu thông', exact: true })).toBeVisible();
+  await page.evaluate(() => history.back());
+  await expect(page.getByRole('button', { name: 'Thêm tác phẩm', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Tên tác phẩm')).toHaveCount(0);
   for (const [resource,label,name] of [['authors','tác giả',`A0 Writer ${suffix}`],['categories','thể loại',`A0 Topic ${suffix}`],['publishers','nhà xuất bản',`A0 Publisher ${suffix}`]]) {
     await select.selectOption(resource);await page.getByRole('button',{name:`Thêm ${label}`,exact:true}).click();
     await page.getByLabel('Tên',{exact:true}).fill(name);await page.getByRole('button',{name:'Lưu thông tin'}).click();
@@ -641,7 +673,7 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   const inboxTask = page.locator('.staff-work-item').filter({
     hasText: readyHoldRecord.hold.id.slice(0, 8).toUpperCase(),
   });
-  await expect(inboxTask).toContainText('Hold sẵn sàng nhận sách');
+  await expect(inboxTask).toContainText('Sách đã sẵn sàng bàn giao');
   for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -691,6 +723,14 @@ test('Phase 4 Reader: giữ đúng ấn bản, nhận sách, gia hạn và nhậ
   }, { timeout: 30000 }).toBe(true);
   await navigate(page, '/thong-bao');
   await expect(page.getByRole('heading', { name: 'Mượn sách thành công' }).first()).toBeVisible();
+  const expectedUnread = await request.get(`${insight}/me/notifications/unread-count`, { headers: readerHeaders });
+  expect(expectedUnread.status()).toBe(200);
+  const unreadBefore = (await expectedUnread.json()).count;
+  await expect(page.getByText(`${unreadBefore} thông báo chưa đọc`, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Đánh dấu đã đọc', exact: true }).first().click();
+  await expect(page.getByText(`${unreadBefore - 1} thông báo chưa đọc`, { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(`${unreadBefore - 1} thông báo chưa đọc`, { exact: true })).toBeVisible();
   for (const viewport of evidenceViewports) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -1506,6 +1546,7 @@ test('Tìm kiếm chung, thư viện cá nhân và điều hướng sidebar', as
 test('Hồ sơ lưu thay đổi, xử lý email theo cấu hình và đổi mật khẩu thu hồi phiên', async ({ page, request }) => {
   test.setTimeout(90_000);
   const email = `account-${randomUUID()}@example.test`;
+  let loginEmail = email;
   const updatedPassword = `Updated-${randomUUID()}`;
   const created = await request.post(`${core}/auth/register`, { data: {
     fullName: 'Người đọc đổi hồ sơ', email, password,
@@ -1513,7 +1554,8 @@ test('Hồ sơ lưu thay đổi, xử lý email theo cấu hình và đổi mậ
   expect(created.status()).toBe(201);
   const login = await request.post(`${core}/auth/login`, { data: { identifier: email, password } });
   expect(login.status()).toBe(200);
-  const oldAccess = String((await login.json()).accessToken);
+  const loggedIn = await login.json();
+  const oldAccess = String(loggedIn.accessToken);
   const accountResponse = await request.get(`${core}/me/account`, { headers: { Authorization: `Bearer ${oldAccess}` } });
   expect(accountResponse.status()).toBe(200);
   const { emailVerificationEnabled } = await accountResponse.json() as { emailVerificationEnabled: boolean };
@@ -1542,6 +1584,80 @@ test('Hồ sơ lưu thay đổi, xử lý email theo cấu hình và đổi mậ
     await expect(emailPanel.getByText(email, { exact: true })).toBeVisible();
     await emailPanel.getByRole('button', { name: 'Hủy yêu cầu' }).click();
     await expect(emailPanel.getByText(`new-${email}`, { exact: true })).not.toBeVisible();
+    const mailpitUrl = process.env.LAMS_E2E_MAILPIT_URL;
+    if (mailpitUrl) {
+      const address = new URL(mailpitUrl);
+      if (address.protocol !== 'http:' || address.hostname !== '127.0.0.1') throw new Error('Mailpit kiểm thử phải ở loopback.');
+      const userId = String(loggedIn.user.id);
+      if (!/^[0-9a-f-]{36}$/i.test(userId)) throw new Error('Định danh fixture không hợp lệ.');
+      // Only the owner-checked disposable PostgreSQL fixture is advanced; production policy stays unchanged.
+      const advanceFixture = (field: 'pending_email_requested_at' | 'pending_email_expires_at') => {
+        execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-v', 'ON_ERROR_STOP=1',
+          '-c', `UPDATE users SET ${field}=now()-interval '2 minutes' WHERE id='${userId}'`], { stdio: 'pipe' });
+      };
+      const readCode = async (recipient: string) => {
+        let mailId = '';
+        await expect.poll(async () => {
+          const response = await request.get(`${mailpitUrl}/api/v1/messages`);
+          if (!response.ok()) return false;
+          const data = await response.json() as { messages: { ID: string; To: { Address: string }[] }[] };
+          mailId = data.messages.find(message => message.To.some(to => to.Address === recipient))?.ID ?? '';
+          return !!mailId;
+        }).toBe(true);
+        const message = await request.get(`${mailpitUrl}/api/v1/message/${mailId}`);
+        const text = String((await message.json()).Text);
+        const code = /Mã xác minh đổi email của bạn: ([A-Z0-9]{12})/.exec(text)?.[1];
+        if (!code) throw new Error('Mailpit chưa có mã đúng định dạng; không ghi nội dung thư vào log.');
+        return code;
+      };
+      const sendCode = async (recipient: string) => {
+        await emailPanel.getByLabel('Email mới').fill(recipient);
+        await emailPanel.getByLabel('Mật khẩu hiện tại').fill(password);
+        await emailPanel.getByRole('button', { name: 'Gửi mã xác minh' }).click();
+        await expect(emailPanel.getByText(recipient, { exact: true })).toBeVisible();
+        return readCode(recipient);
+      };
+      const headers = { Authorization: `Bearer ${oldAccess}` };
+      const attemptCode = await sendCode(`attempt-${email}`);
+      const wrongCode = (attemptCode[0] === 'A' ? 'B' : 'A') + attemptCode.slice(1);
+      await emailPanel.getByLabel('Mã xác minh').fill(wrongCode);
+      await emailPanel.getByRole('button', { name: 'Xác minh email' }).click();
+      await expect(emailPanel.getByRole('alert')).toContainText('Mã không hợp lệ');
+      for (let attempt = 1; attempt < 5; attempt++) {
+        expect((await request.post(`${core}/me/account/email-confirm`, { headers, data: { code: wrongCode } })).status()).toBe(422);
+      }
+      expect((await request.post(`${core}/me/account/email-confirm`, { headers, data: { code: attemptCode } })).status()).toBe(422);
+      expect((await request.post(`${core}/me/account/email-request`, { headers, data: { currentPassword: password, email: `cooldown-${email}` } })).status()).toBe(429);
+      advanceFixture('pending_email_requested_at');
+      const expiredCode = await sendCode(`expired-${email}`);
+      advanceFixture('pending_email_expires_at');
+      await emailPanel.getByLabel('Mã xác minh').fill(expiredCode);
+      const expired = page.waitForResponse(response => response.url().endsWith('/me/account/email-confirm') && response.request().method() === 'POST');
+      await emailPanel.getByRole('button', { name: 'Xác minh email' }).click();
+      expect((await expired).status()).toBe(422);
+      advanceFixture('pending_email_requested_at');
+      // Concurrent requests share the account lock: exactly one delivery may win the cooldown.
+      const race = await Promise.all(['race-a', 'race-b'].map(prefix => request.post(`${core}/me/account/email-request`, {
+        headers, data: { currentPassword: password, email: `${prefix}-${email}` },
+      })));
+      expect(race.map(response => response.status()).sort()).toEqual([200, 429]);
+      advanceFixture('pending_email_requested_at');
+      loginEmail = `verified-${email}`;
+      const verifiedCode = await sendCode(loginEmail);
+      advanceFixture('pending_email_requested_at');
+      expect((await request.post(`${core}/me/account/email-request`, { headers, data: { currentPassword: password, email: `quota-${email}` } })).status()).toBe(429);
+      await emailPanel.getByLabel('Mã xác minh').fill(verifiedCode);
+      await emailPanel.getByRole('button', { name: 'Xác minh email' }).click();
+      await expect(page.getByLabel('Email hoặc mã thành viên')).toBeVisible();
+      expect((await request.get(`${core}/auth/me`, { headers })).status()).toBe(401);
+      expect((await request.post(`${core}/auth/login`, { data: { identifier: email, password } })).status()).toBe(401);
+      await page.getByLabel('Email hoặc mã thành viên').fill(loginEmail);
+      await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+      await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+      await navigate(page, '/ho-so');
+      await expect(emailPanel.getByText(loginEmail, { exact: true })).toBeVisible();
+    }
   } else {
     await expect(emailPanel.getByText(/chưa bật gửi mã xác minh/)).toBeVisible();
     await expect(emailPanel.getByLabel('Email mới')).toHaveCount(0);
@@ -1553,13 +1669,34 @@ test('Hồ sơ lưu thay đổi, xử lý email theo cấu hình và đổi mậ
   await security.getByRole('button', { name: 'Đổi mật khẩu' }).click();
   await expect(page.getByLabel('Email hoặc mã thành viên')).toBeVisible();
   expect((await request.get(`${core}/auth/me`, { headers: { Authorization: `Bearer ${oldAccess}` } })).status()).toBe(401);
-  expect((await request.post(`${core}/auth/login`, { data: { identifier: email, password } })).status()).toBe(401);
-  await page.getByLabel('Email hoặc mã thành viên').fill(email);
+  expect((await request.post(`${core}/auth/login`, { data: { identifier: loginEmail, password } })).status()).toBe(401);
+  await page.getByLabel('Email hoặc mã thành viên').fill(loginEmail);
   await page.getByLabel('Mật khẩu', { exact: true }).fill(updatedPassword);
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
   await navigate(page, '/ho-so');
   await expect(personal.getByLabel('Họ và tên')).toHaveValue('Người đọc cập nhật');
+  const mailpitContainer = process.env.LAMS_E2E_MAILPIT_CONTAINER;
+  const mailpitOwner = process.env.LAMS_E2E_MAILPIT_OWNER;
+  if (mailpitContainer && mailpitOwner) {
+    const actual = execFileSync('docker', ['inspect', '--format', '{{ index .Config.Labels "lams.smtp-acceptance" }}', mailpitContainer], { encoding: 'utf8' }).trim();
+    if (actual !== mailpitOwner) throw new Error('Không dừng SMTP không thuộc lượt kiểm thử.');
+    const failedEmail = `smtp-failure-${randomUUID()}@example.test`;
+    const failedAccount = await request.post(`${core}/auth/register`, { data: { fullName: 'Kiểm thử gián đoạn SMTP', email: failedEmail, password } });
+    expect(failedAccount.status()).toBe(201);
+    const headers = { Authorization: `Bearer ${(await failedAccount.json()).accessToken}` };
+    try {
+      execFileSync('docker', ['stop', '--time', '3', mailpitContainer], { stdio: 'pipe' });
+      const response = await request.post(`${core}/me/account/email-request`, { headers,
+        data: { currentPassword: password, email: `unavailable-${failedEmail}` } });
+      expect(response.status()).toBe(503);
+      const current = await request.get(`${core}/me/account`, { headers });
+      expect(current.status()).toBe(200);
+      const state = await current.json();
+      expect(state.pendingEmail).toBeNull();
+      expect(state.email === failedEmail).toBe(true);
+    } finally { execFileSync('docker', ['start', mailpitContainer], { stdio: 'pipe' }); }
+  }
 });
 
 const readinessWidths = [390, 768, 1024, 1366, 1440, 1920];
@@ -1576,6 +1713,77 @@ function startReadinessMeasurements() {
     observer.observe({ type: 'longtask' });
     Object.assign(window, { __lamsReadinessObserver: observer });
   }
+}
+// Opt-in only: run alone on the installed EXE, without concurrent builds or the screenshot suite.
+if (process.env.LAMS_E2E_BENCHMARK === '1') {
+  test('Benchmark EXE: đăng nhập và mở trang, 10 mẫu mỗi hành trình', async ({ page, request }, testInfo) => {
+    test.setTimeout(240_000);
+    expect(!!desktopEndpoint, 'Phép đo này chỉ dành cho EXE').toBe(true);
+    const budget = { loginMs: 3000, routeMs: 2000, apiMs: 1000, longTaskMs: 200 };
+    execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-v', 'ON_ERROR_STOP=1', '-c',
+      "INSERT INTO books(id,title,normalized_title,description) SELECT gen_random_uuid(), 'Benchmark ' || n, 'benchmark ' || n, repeat('Dữ liệu tổng hợp cho phép đo hiệu năng. ', 8) FROM generate_series(1,10000) n; ANALYZE books;"], { stdio: 'pipe' });
+    const samples: { scenario: string; elapsedMs: number; longTasks: number[]; apiMs: number[] }[] = [];
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(startReadinessMeasurements);
+    const settled = async () => {
+      await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+      await expect(page.getByRole('progressbar', { name: 'Đang tải dữ liệu' })).toHaveCount(0);
+      await expect(page.locator('.appearance-loading')).toHaveCount(0);
+    };
+    const measure = async (scenario: string, action: () => Promise<unknown>) => {
+      await page.evaluate(startReadinessMeasurements);
+      const started = performance.now();
+      await action(); await settled();
+      const elapsedMs = performance.now() - started;
+      const details = await page.evaluate(() => ({
+        longTasks: [...(window as unknown as { __lamsReadinessMetrics: { durations: number[] } }).__lamsReadinessMetrics.durations],
+        apiMs: performance.getEntriesByType('resource').filter(entry => new URL(entry.name).pathname.startsWith('/api/'))
+          .map(entry => entry.duration),
+      }));
+      samples.push({ scenario, elapsedMs, ...details });
+    };
+    for (let i = 0; i < 10; i++) {
+      await navigate(page, '/dang-nhap');
+      await page.getByLabel('Email hoặc mã thành viên').fill(accounts.READER.email);
+      await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+      await measure('reader-login', async () => {
+        await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
+      });
+      await measure('reader-home', () => navigate(page, '/'));
+      await measure('reader-library', () => navigate(page, '/thu-vien-cua-toi'));
+      await measure('catalog', () => navigate(page, '/sach'));
+      await measure('search', () => navigate(page, `/sach?query=Benchmark%20${i + 1}&sort=relevance`));
+      await expect(page.locator('a[href*="/sach/"]').first()).toBeVisible();
+      await page.getByRole('button', { name: 'Đăng xuất' }).click();
+      await expect(page.getByRole('button', { name: 'Đăng xuất' })).toHaveCount(0);
+    }
+    for (const role of ['LIBRARIAN', 'ADMIN']) {
+      await loginCatalog(page, role);
+      for (let i = 0; i < 10; i++) {
+        await navigate(page, '/ho-so'); await settled();
+        await measure(`${role.toLowerCase()}-dashboard`, () => navigate(page, '/nhan-vien/bang-dieu-khien'));
+      }
+      await page.getByRole('button', { name: 'Đăng xuất' }).click();
+      await expect(page.getByRole('button', { name: 'Đăng xuất' })).toHaveCount(0);
+    }
+    const catalog = await request.get(`${core}/public/catalog/books?size=1`);
+    expect(catalog.status()).toBe(200);
+    const catalogCount = (await catalog.json()).page.totalElements;
+    const summaries = Array.from(new Set(samples.map(sample => sample.scenario))).map(scenario => {
+      const values = samples.filter(sample => sample.scenario === scenario).map(sample => sample.elapsedMs).sort((a, b) => a - b);
+      const p95 = values[Math.ceil(0.95 * values.length) - 1];
+      return { scenario, n: values.length, medianMs: (values[4] + values[5]) / 2, p95Ms: p95,
+        budgetMs: scenario.endsWith('login') ? budget.loginMs : budget.routeMs };
+    });
+    const output = testInfo.outputPath('installed-benchmark.json');
+    await writeFile(output, JSON.stringify({ recordedAt: new Date().toISOString(), budget, catalogCount,
+      method: 'Warm backend and running EXE; 10000 synthetic Book rows in disposable database, no copies or reader history; hash-route navigation; login measured from submit through useful content and query settlement. Ten sequential samples, nearest-rank p95 equals max for n=10. No cold-process or production-workload claim.',
+      browser: await page.evaluate(() => ({ userAgent: navigator.userAgent, hardwareConcurrency: navigator.hardwareConcurrency })),
+      summaries, samples }, null, 2));
+    await testInfo.attach('installed-benchmark', { path: output, contentType: 'application/json' });
+    for (const summary of summaries) expect.soft(summary.p95Ms, summary.scenario).toBeLessThanOrEqual(summary.budgetMs);
+  });
 }
 for (const role of ['GUEST', 'READER', 'LIBRARIAN', 'ADMIN']) {
   test(`Nghiệm thu route và responsive: ${role}`, async ({ page, request }, testInfo) => {

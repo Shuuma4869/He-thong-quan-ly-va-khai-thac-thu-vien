@@ -67,7 +67,7 @@ function BookDetail({ id }: { id: string }) {
         <p className="eyebrow">Biên mục thư viện</p><h2 id="editions-heading" tabIndex={-1}>Các ấn bản</h2>
         <p>Chọn ấn bản bên dưới để giữ chỗ tại chi nhánh nhận. Khi đến thư viện, thủ thư ghi nhận lượt mượn tại quầy. Bạn có thể theo dõi yêu cầu trong mục Mượn và giữ chỗ.</p></div></div>
       <section className="availability-panel my-5" aria-labelledby="availability-heading">
-        <div className="detail-section-heading"><div><p className="eyebrow">Tình trạng theo dữ liệu Core</p>
+        <div className="detail-section-heading"><div><p className="eyebrow">Tình trạng tại thư viện</p>
           <h3 id="availability-heading">Khả dụng tại thư viện</h3></div></div>
         {availability.isPending ? <p role="status">Đang kiểm tra bản sách theo chi nhánh…</p>
           : availability.isError ? <CatalogError error={availability.error} retry={() => void availability.refetch()}/>

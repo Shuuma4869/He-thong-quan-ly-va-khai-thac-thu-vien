@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
+import { UnsavedChangesProvider } from '../../shared/navigation/UnsavedChangesProvider';
 import { AppProviders } from '../../app/providers/AppProviders';
 import { AppRouter } from '../../app/router/AppRouter';
 import type { InventorySession } from './inventory-api';
@@ -24,6 +25,37 @@ let fetchMock: ReturnType<typeof vi.fn>;
 let role = 'LIBRARIAN';
 const mediaDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
 const onlineDescriptor = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+it('phân trang bất thường không bỏ lý do đang nhập khi chưa xác nhận', async () => {
+  session = { ...initialSession, status: 'FINALIZED', closedAt: time, closedBy: staffId };
+  const current = { id: scanId, barcode: 'BC1', branchId, shelfId, status: 'AVAILABLE', version: 0 };
+  anomalies = [{ id: anomalyId, kind: 'WRONG_SHELF', copyId: scanId, detectedAt: time, resolution: null,
+    evidence: { id: anomalyId, kind: 'WRONG_SHELF', sessionId, copyId: scanId,
+      scan: { id: scanId, barcode: 'BC1', branchId, shelfId: observedShelf, scannedAt: time, actorId: staffId },
+      snapshot: current, current, firstScanId: null } }];
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (new URL(url).pathname.endsWith('/anomalies')) {
+      const number = Number(new URL(url).searchParams.get('page') ?? 0);
+      return Promise.resolve(Response.json({ items: number === 0 ? anomalies : [], page: { page: number, size: 20, totalElements: 21, totalPages: 2 } }));
+    }
+    return Promise.resolve(response(url, init));
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value(this: HTMLDialogElement) { this.open = false; } });
+  const router = createMemoryRouter([{ path: '*', element: <AppProviders><UnsavedChangesProvider><AppRouter/></UnsavedChangesProvider></AppProviders> }],
+    { initialEntries: [`/nhan-vien/kiem-ke/${sessionId}`] });
+  render(<RouterProvider router={router}/>);
+  fireEvent.change(await screen.findByLabelText('Lý do và kết quả kiểm tra'), { target: { value: 'Ghi chú chưa gửi' } });
+  const section = screen.getByRole('region', { name: 'Bất thường kiểm kê' });
+  fireEvent.click(within(section).getByText('Trang sau'));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByText('Tiếp tục chỉnh sửa'));
+  expect(screen.getByLabelText('Lý do và kết quả kiểm tra')).toHaveValue('Ghi chú chưa gửi');
+  expect(router.state.location.search).toBe('');
+  fireEvent.click(within(section).getByText('Trang sau'));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByText('Bỏ thay đổi và rời trang'));
+  await waitFor(() => expect(router.state.location.search).toBe('?anomalyPage=1'));
+  expect(await screen.findByText('Trang 2/2 · 21 mục')).toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url, init]) => url.endsWith('/resolution') && init.method === 'POST')).toBe(false);
+});
 function app(path = `/nhan-vien/kiem-ke/${sessionId}`) {
   return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRouter/></MemoryRouter></AppProviders>);
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { LibraryError } from '../my-library/LibraryError';
@@ -15,16 +15,24 @@ function Inbox({ owner }: { owner: string }) {
   const [page, setPage] = useState(0);
   const client = useQueryClient();
   const list = useQuery({ queryKey: ['notifications', owner, page],
-    queryFn: ({ signal }) => listNotifications(page, signal), retry: false });
+    queryFn: ({ signal }) => listNotifications(page, signal), retry: false,
+    refetchInterval: 60_000, refetchIntervalInBackground: false, refetchOnWindowFocus: 'always', refetchOnReconnect: 'always' });
   const unread = useQuery({ queryKey: ['notification-unread', owner],
-    queryFn: ({ signal }) => unreadCount(signal), retry: false });
+    queryFn: ({ signal }) => unreadCount(signal), retry: false, refetchOnWindowFocus: 'always', refetchOnReconnect: 'always' });
+  useEffect(() => {
+    // A list response can include an event delivered after the last bell count.
+    if (list.dataUpdatedAt) void client.invalidateQueries({ queryKey: ['notification-unread', owner] });
+  }, [client, owner, list.dataUpdatedAt]);
   const mark = useMutation({ mutationFn: markNotificationRead,
     onSuccess: () => { void client.invalidateQueries({ queryKey: ['notifications', owner] });
       void client.invalidateQueries({ queryKey: ['notification-unread', owner] }); } });
   return <section className="shell py-8" aria-labelledby="notifications-heading">
     <Link to="/thu-vien-cua-toi" className="text-link">← Thư viện của tôi</Link>
     <h1 id="notifications-heading" className="page-title mt-5">Thông báo</h1>
-    <p className="mt-2 text-muted">Cập nhật sự kiện mượn, trả, gia hạn và yêu cầu giữ chỗ đã được Core ghi nhận.</p>
+    <p className="mt-2 text-muted">Theo dõi mượn, trả, gia hạn và giữ chỗ. Thông báo có thể đến sau giao dịch; danh sách tự cập nhật mỗi phút khi cửa sổ đang hoạt động.</p>
+    <button type="button" className="button-secondary mt-3" disabled={list.isFetching || unread.isFetching || mark.isPending}
+      onClick={() => { void list.refetch(); void unread.refetch(); }}>Cập nhật thông báo</button>
+    {(list.isFetching || unread.isFetching) && <p role="status" className="text-sm mt-2">Đang cập nhật thông báo…</p>}
     {unread.isSuccess && <p className="mt-4" role="status">{unread.data.count} thông báo chưa đọc</p>}
     {unread.isError && <LibraryError error={unread.error} retry={() => void unread.refetch()}/>}
     {list.isPending ? <p role="status" className="my-6">Đang tải thông báo…</p> : list.isError
