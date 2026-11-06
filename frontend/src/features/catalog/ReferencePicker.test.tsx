@@ -9,6 +9,32 @@ const author = { id, name: 'Nguyễn Bình' };
 
 afterEach(() => vi.unstubAllGlobals());
 
+it('Enter trong lúc chờ từ khóa mới không chọn kết quả cũ hoặc gửi form cha', async () => {
+  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(
+    url.endsWith('/auth/refresh') ? Response.json({}, { status: 401 })
+      : Response.json({ items: [author], page: { number: 0, size: 20, totalElements: 1, totalPages: 1 } }))));
+  const choose = vi.fn();
+  render(<AppProviders><ReferencePicker label="Tác giả" resource="authors" value={[]} onChange={choose}/></AppProviders>);
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn tác giả' }));
+  await screen.findByRole('option', { name: 'Nguyễn Bình' });
+  const input = screen.getByRole('combobox');
+  fireEvent.change(input, { target: { value: 'Tên khác' } });
+  const allowedDefault = fireEvent.keyDown(input, { key: 'Enter', cancelable: true });
+  expect(choose).not.toHaveBeenCalled();
+  expect(allowedDefault).toBe(false);
+  expect(input).not.toHaveAttribute('aria-activedescendant');
+});
+
+it('Enter khi không có lựa chọn không gửi form cha', async () => {
+  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(
+    url.endsWith('/auth/refresh') ? Response.json({}, { status: 401 })
+      : Response.json({ items: [], page: { number: 0, size: 20, totalElements: 0, totalPages: 0 } }))));
+  render(<AppProviders><ReferencePicker label="Tác giả" resource="authors" value={[]} onChange={vi.fn()}/></AppProviders>);
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn tác giả' }));
+  await screen.findByRole('listbox');
+  expect(fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter', cancelable: true })).toBe(false);
+});
+
 it('tìm tác giả ở server, chọn bằng bàn phím và xóa chip', async () => {
   const fetchMock = vi.fn((url: string) => {
     if (url.endsWith('/auth/refresh')) return Promise.resolve(Response.json({}, { status: 401 }));

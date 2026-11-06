@@ -74,3 +74,11 @@ Thanh điều hướng và khung tìm kiếm landing có container query để c
 ## Hộp thoại và ngăn chi tiết
 
 Khi mở xác nhận quản trị trên ngăn chi tiết, hộp xác nhận nhận quyền xử lý Tab, Shift+Tab và Escape; ngăn phía sau không kéo focus về các nút của mình. Đóng xác nhận bằng Escape trả focus về nút đã mở nó. Các lớp phủ dùng chung bộ đếm khóa cuộn, chỉ trả quyền cuộn cho trang khi lớp cuối đã đóng. Cách này cũng áp dụng khi lưu thành công làm đóng cả ngăn chi tiết lẫn xác nhận trong cùng một lần cập nhật.
+
+Bộ lọc Catalog trên màn hẹp dùng hộp thoại native với nền đọc rõ, khóa tương tác nền và trả focus về nút Bộ lọc khi đóng. Các lựa chọn áp dụng ngay vào URL và truy vấn; nút Xem kết quả đóng hộp thoại. Nếu đang mở một bộ chọn tác giả hoặc thể loại, Escape đóng bộ chọn trước, giữ hộp thoại bộ lọc. Trên màn rộng, bộ lọc nằm cạnh danh sách sách.
+
+Bộ chọn tham chiếu chỉ cho chọn kết quả đã tải xong của từ khóa hiện tại. Enter trong ô tìm không được gửi biểu mẫu cha, kể cả khi danh sách rỗng hoặc đang chờ tìm kiếm. Đây là yêu cầu chung cho cả lọc danh mục và biên mục.
+
+Khi biên mục đang sửa, xác nhận xóa hoặc duyệt ảnh, bộ chọn loại dữ liệu và tác phẩm cha bị khóa để tránh đổi ngữ cảnh giữa thao tác. Hủy biểu mẫu đã thay đổi cần xác nhận; lỗi lưu giữ nguyên nội dung. Cảnh báo khi tải lại/đóng trang phụ thuộc khả năng hỗ trợ của trình duyệt hoặc WebView. Cơ chế này chưa chặn mọi điều hướng sang route khác qua sidebar.
+
+Tùy chọn ẩn/hiện widget chỉ xuất hiện với dashboard Librarian. Dashboard Admin có bố cục nhiệm vụ riêng, không dùng tùy chọn này. Trong trang Giao diện, liên kết Khám phá sách mở Catalog; các thao tác lưu, bỏ thay đổi và khôi phục mặc định chờ cấu hình tài khoản tải xong mới được dùng.

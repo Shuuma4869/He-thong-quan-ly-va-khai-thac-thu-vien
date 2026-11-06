@@ -514,6 +514,19 @@ test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ li�
   test.setTimeout(120_000);
   await loginCatalog(page,'LIBRARIAN');await navigate(page,'/nhan-vien/danh-muc');
   const select=page.getByLabel('Loại dữ liệu');
+  await page.getByRole('button', { name: 'Thêm tác phẩm', exact: true }).click();
+  await expect(select).toBeDisabled();
+  await page.getByLabel('Tên tác phẩm').fill('Bản nháp sẽ hủy, không ghi database');
+  await page.getByRole('button', { name: 'Hủy chỉnh sửa' }).click();
+  const discard = page.getByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' });
+  await expect(discard).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(discard).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hủy chỉnh sửa' })).toBeFocused();
+  await expect(page.getByLabel('Tên tác phẩm')).toHaveValue('Bản nháp sẽ hủy, không ghi database');
+  await page.getByRole('button', { name: 'Hủy chỉnh sửa' }).click();
+  await discard.getByRole('button', { name: 'Bỏ thay đổi', exact: true }).click();
+  await expect(select).toBeEnabled();
   for (const [resource,label,name] of [['authors','tác giả',`A0 Writer ${suffix}`],['categories','thể loại',`A0 Topic ${suffix}`],['publishers','nhà xuất bản',`A0 Publisher ${suffix}`]]) {
     await select.selectOption(resource);await page.getByRole('button',{name:`Thêm ${label}`,exact:true}).click();
     await page.getByLabel('Tên',{exact:true}).fill(name);await page.getByRole('button',{name:'Lưu thông tin'}).click();
@@ -543,6 +556,7 @@ test('Phase 2 staff: tạo/sửa/xóa Catalog qua giao diện và giữ dữ li�
   }
   await page.getByLabel('Loại dữ liệu').selectOption('editions');await page.getByRole('button',{name:'Chọn tác phẩm',exact:true}).click();
   await page.getByRole('radio',{name:`A0 Book ${suffix}`}).click();await page.getByRole('button',{name:'Thêm ấn bản'}).click();
+  await expect(page.getByRole('button', { name: /^(Chọn|Thay) tác phẩm$/ })).toBeDisabled();
   await page.getByLabel('ISBN-13 (không bắt buộc)').fill('9780140328721');await page.getByLabel('Năm xuất bản (không bắt buộc)').fill('1988');
   await page.getByRole('button',{name:'Chọn nhà xuất bản'}).click();await page.getByRole('radio',{name:`A0 Publisher ${suffix} edited`}).click();
   await page.getByRole('button',{name:'Lưu thông tin'}).click();await expect(page.getByRole('status')).toHaveText('Đã lưu thông tin.');
@@ -858,7 +872,11 @@ test('Phase 2 Admin: Branch/Shelf/Copy maintenance và xung đột version thậ
   const changed=await request.patch(`${core}/copies/${copy.id}`,{headers,data:{editionId:edition.id,shelfId:copy.shelfId,barcode:`UPDATED-${suffix}`,version:copy.version}});expect(changed.status()).toBe(200);
   await page.getByLabel('Mã vạch').fill(`STALE-${suffix}`);await page.getByRole('button',{name:'Lưu thông tin'}).click();
   await expect(page.getByRole('alert')).toContainText('Bản sách đã được cập nhật');await expect(page.getByRole('button',{name:'Lưu thông tin'})).toBeDisabled();
-  await page.getByRole('button',{name:'Hủy chỉnh sửa'}).click();await expect(page.getByRole('row').filter({hasText:`UPDATED-${suffix}`})).toBeVisible();
+  await page.getByRole('button',{name:'Hủy chỉnh sửa'}).click();
+  const discardConflict = page.getByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' });
+  await expect(discardConflict).toBeVisible();
+  await discardConflict.getByRole('button', { name: 'Bỏ thay đổi', exact: true }).click();
+  await expect(page.getByRole('row').filter({hasText:`UPDATED-${suffix}`})).toBeVisible();
   await captureFullPage(page, {path:'test-results/catalog-staff-copy.png',fullPage:true});
 });
 
@@ -1170,6 +1188,25 @@ test('Landing và Catalog công khai: tìm sách thật, menu mobile và sáu m�
     await captureFullPage(page, { path: `test-results/catalog-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 390, height: 900 });
+  const filterTrigger = page.getByRole('button', { name: /^Bộ lọc/ });
+  await filterTrigger.click();
+  const filterDialog = page.getByRole('dialog', { name: 'Bộ lọc sách' });
+  await expect(filterDialog).toBeVisible();
+  await expect(filterDialog.getByRole('button', { name: 'Đóng hộp thoại' })).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+  await filterDialog.getByRole('button', { name: 'Chọn thể loại' }).click();
+  await filterDialog.getByRole('option', { name: category.name, exact: true }).waitFor();
+  await page.keyboard.press('Escape');
+  await expect(filterDialog).toBeVisible();
+  await expect(filterDialog.getByRole('button', { name: 'Chọn thể loại' })).toBeFocused();
+  await filterDialog.getByRole('button', { name: 'Đóng hộp thoại' }).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(filterDialog.getByRole('button', { name: 'Xem kết quả' })).toBeFocused();
+  await captureFullPage(page, { path: 'test-results/catalog-filter-mobile.png', fullPage: true });
+  await page.keyboard.press('Escape');
+  await expect(filterDialog).toHaveCount(0);
+  await expect(filterTrigger).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
   const trigger = page.getByRole('button', { name: 'Mở menu thư viện' });
   await trigger.click();
   await expect(page.getByRole('dialog', { name: 'Menu thư viện' })).toBeVisible();

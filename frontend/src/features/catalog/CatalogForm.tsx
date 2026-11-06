@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Dialog } from '../../shared/components/Dialog';
 import { ApiError } from '../../shared/api/client';
 import { saveCatalog, type CatalogRecord, type Resource } from './catalog-api';
 import { initialValues, parseCatalogForm } from './catalog-form';
@@ -13,6 +14,14 @@ export function CatalogForm({ resource, item, bookId, onClose, onSaved }: {
   const [errors,setErrors] = useState<Record<string,string>>({});
   const [copyBook,setCopyBook] = useState('');
   const [conflict,setConflict] = useState(false);
+  const [confirmDiscard,setConfirmDiscard] = useState(false);
+  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues(resource,item));
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
   const queryClient = useQueryClient(); const submitting = useRef(false);
   const mutation = useMutation({ mutationFn: (body: unknown) => saveCatalog(resource,body,item?.id,bookId),
     onSuccess: async () => { await invalidateCatalogViews(queryClient); onSaved(); },
@@ -55,6 +64,13 @@ export function CatalogForm({ resource, item, bookId, onClose, onSaved }: {
     {mutation.isError && <div role="alert" className="form-notice mt-4">{mutation.error instanceof ApiError && mutation.error.status < 500 ? mutation.error.message : 'Chưa lưu được dữ liệu. Vui lòng tải lại để kiểm tra trước khi thử tiếp.'}
       {conflict && <p className="mt-2">Hủy chỉnh sửa, tải lại bản sách và mở lại biểu mẫu. Không tự ghi đè phiên bản mới.</p>}</div>}
     <div className="flex flex-wrap gap-3 mt-5"><button className="button-primary" type="submit" disabled={mutation.isPending || conflict}>{mutation.isPending ? 'Đang lưu…' : 'Lưu thông tin'}</button>
-      <button type="button" className="button-secondary" disabled={mutation.isPending} onClick={onClose}>Hủy chỉnh sửa</button></div>
+      <button type="button" className="button-secondary" disabled={mutation.isPending} onClick={() => dirty ? setConfirmDiscard(true) : onClose()}>Hủy chỉnh sửa</button></div>
+    {confirmDiscard && <Dialog title="Bỏ thay đổi chưa lưu?" onClose={() => setConfirmDiscard(false)}>
+      <p>Nội dung vừa chỉnh sửa chưa được lưu. Bạn có muốn bỏ những thay đổi này không?</p>
+      <div className="flex flex-wrap gap-3 mt-5">
+        <button type="button" className="button-secondary" onClick={() => setConfirmDiscard(false)}>Tiếp tục chỉnh sửa</button>
+        <button type="button" className="button-primary" onClick={onClose}>Bỏ thay đổi</button>
+      </div>
+    </Dialog>}
   </form>;
 }

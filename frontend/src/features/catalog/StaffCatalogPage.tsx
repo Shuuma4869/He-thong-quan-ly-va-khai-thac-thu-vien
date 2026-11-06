@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { ApiError } from '../../shared/api/client';
@@ -16,26 +16,30 @@ const labels: Record<Resource,string> = { books:'Tác phẩm',authors:'Tác gi�
 export function StaffCatalogPage() {
   const [historyOpen,setHistoryOpen] = useState(false);
   const [resource,setResource] = useState<Resource>('books');
+  const [busy,setBusy] = useState(false);
   return <section><p className="eyebrow">Quản lý thư mục</p><h1 className="page-title">Danh mục thư viện</h1>
-    <p className="mt-2 text-muted">Tác phẩm, ấn bản và bản sách được quản lý riêng. Các thay đổi được lưu qua Core API.</p>
+    <p className="mt-2 text-muted">Quản lý thông tin tác phẩm, các ấn bản và từng bản sách tại thư viện.</p>
     <Link className="text-link inline-block mt-3" to="/sach">Xem danh mục dành cho bạn đọc →</Link>
     <div><button className="button-secondary my-3" aria-expanded={historyOpen} onClick={()=>setHistoryOpen(!historyOpen)}>Lịch sử tra cứu ISBN</button></div>
     {historyOpen && <Suspense fallback={<p role="status">Đang mở lịch sử…</p>}><MetadataHistory /></Suspense>}
-    <label className="field my-5 max-w-sm">Loại dữ liệu<select value={resource} onChange={event => setResource(event.target.value as Resource)}>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-    <CatalogManager key={resource} resource={resource} />
+    <label className="field my-5 max-w-sm">Loại dữ liệu<select disabled={busy} aria-describedby={busy ? 'catalog-context-hint' : undefined} value={resource} onChange={event => setResource(event.target.value as Resource)}>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+    {busy && <p id="catalog-context-hint">Hoàn tất hoặc hủy thao tác đang mở trước khi chuyển loại dữ liệu hay tác phẩm.</p>}
+    <CatalogManager key={resource} resource={resource} busy={busy} onBusyChange={setBusy} />
     {resource === 'categories' && <CategoryAliasManager />}
   </section>;
 }
-function CatalogManager({ resource }: { resource: Resource }) {
+function CatalogManager({ resource, busy, onBusyChange }: { resource: Resource; busy: boolean; onBusyChange: (busy: boolean) => void }) {
   const [bookId,setBookId] = useState('');
-  return <>{resource === 'editions' && <ReferencePicker label="Tác phẩm" resource="books" value={bookId ? [bookId] : []} onChange={ids => setBookId(ids[0] ?? '')} />}
-    {resource !== 'editions' || bookId ? <ResourceManager key={bookId} resource={resource} bookId={bookId || undefined} /> : <p className="my-5">Chọn tác phẩm để xem và quản lý các ấn bản.</p>}</>;
+  return <>{resource === 'editions' && <fieldset disabled={busy}><ReferencePicker label="Tác phẩm" resource="books" value={bookId ? [bookId] : []} onChange={ids => setBookId(ids[0] ?? '')} /></fieldset>}
+    {resource !== 'editions' || bookId ? <ResourceManager key={bookId} resource={resource} bookId={bookId || undefined} onBusyChange={onBusyChange} /> : <p className="my-5">Chọn tác phẩm để xem và quản lý các ấn bản.</p>}</>;
 }
-function ResourceManager({ resource,bookId }: { resource: Resource; bookId?: string }) {
+function ResourceManager({ resource,bookId,onBusyChange }: { resource: Resource; bookId?: string; onBusyChange: (busy: boolean) => void }) {
   const { user } = useAuth(); const queryClient = useQueryClient();
   const [page,setPage] = useState(0); const [editing,setEditing] = useState<CatalogRecord | 'new' | null>(null);
   const [deleting,setDeleting] = useState<CatalogRecord | null>(null); const [notice,setNotice] = useState('');
   const [mediaItem,setMediaItem] = useState<CatalogRecord | null>(null);
+  const busy = editing !== null || deleting !== null || mediaItem !== null;
+  useEffect(() => { onBusyChange(busy); return () => onBusyChange(false); }, [busy, onBusyChange]);
   const result = useQuery({ queryKey:['catalog',user?.id,resource,bookId,page], queryFn: ({ signal }) => getCatalogPage(resource,page,signal,bookId), retry:false });
   const removal = useMutation({ mutationFn:(id: string) => deleteCatalog(resource,id,bookId), onSuccess:async () => {
     setDeleting(null); setNotice('Đã xóa dữ liệu.'); await invalidateCatalogViews(queryClient);

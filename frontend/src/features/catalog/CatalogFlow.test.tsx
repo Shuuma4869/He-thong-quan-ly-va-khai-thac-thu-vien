@@ -40,6 +40,34 @@ function response(url:string) {
   if (path.endsWith('/books')) return page([book],Number(new URL(url).searchParams.get('page')??0),21);
   return page([]);
 }
+it('giữ ngữ cảnh biên mục và xác nhận trước khi bỏ nội dung chưa lưu', async () => {
+  // jsdom does not implement native dialog presentation; browser E2E covers focus/inert behavior.
+  const prototype = HTMLDialogElement.prototype;
+  const originalShow = Object.getOwnPropertyDescriptor(prototype, 'showModal');
+  const originalClose = Object.getOwnPropertyDescriptor(prototype, 'close');
+  Object.defineProperty(prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(prototype, 'close', { configurable: true, value(this: HTMLDialogElement) { this.open = false; } });
+  try {
+  role = 'LIBRARIAN';
+  app('/nhan-vien/danh-muc');
+  fireEvent.click(await screen.findByRole('button', { name: 'Thêm tác phẩm' }));
+  expect(screen.getByLabelText('Loại dữ liệu')).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Tên tác phẩm'), { target: { value: 'Bản nháp chưa lưu' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy chỉnh sửa' }));
+  const confirmation = screen.getByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' });
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Tiếp tục chỉnh sửa' }));
+  expect(screen.getByLabelText('Tên tác phẩm')).toHaveValue('Bản nháp chưa lưu');
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy chỉnh sửa' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bỏ thay đổi' }));
+  expect(screen.queryByLabelText('Tên tác phẩm')).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Loại dữ liệu')).toBeEnabled());
+  expect(fetchMock.mock.calls.some(([url, init]) => new URL(String(url)).pathname.endsWith('/books')
+    && init?.method === 'POST')).toBe(false);
+  } finally {
+    if (originalShow) Object.defineProperty(prototype, 'showModal', originalShow); else Reflect.deleteProperty(prototype, 'showModal');
+    if (originalClose) Object.defineProperty(prototype, 'close', originalClose); else Reflect.deleteProperty(prototype, 'close');
+  }
+});
 beforeEach(() => { role='READER'; fetchMock=vi.fn((url:string) => Promise.resolve(Response.json(response(url)))); vi.stubGlobal('fetch',fetchMock); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); window.history.replaceState(null, '', '/'); });
 
