@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
+import { BarcodeFormat, QRCodeWriter } from '@zxing/library';
 
 const desktopEndpoint = process.env.LAMS_E2E_DESKTOP_CDP;
 const test = base.extend({
@@ -902,6 +903,52 @@ test('Phase 5 kiểm kê: mở phiên, quét sai kệ, chốt và xác nhận ch
   await page.getByRole('button', { name: 'Mở phiên kiểm kê' }).click();
   await expect(page).toHaveURL(/\/nhan-vien\/kiem-ke\/[a-f0-9-]{36}/);
   await expect(page.getByText(/1 bản trong snapshot/)).toBeVisible();
+  // A synthetic video tests the real decoder, not the webcam or Windows permission UI.
+  const cameraValue = 'LAMS-E2E-CAMERA-001';
+  const matrix = new QRCodeWriter().encode(cameraValue, BarcodeFormat.QR_CODE, 240, 240, new Map());
+  const pixels = Array.from({ length: 240 * 240 }, (_, index) => matrix.get(index % 240, Math.floor(index / 240)));
+  await page.evaluate(pixels => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 240;
+    const context = canvas.getContext('2d')!;
+    const drawFrame = () => {
+      context.fillStyle = 'white'; context.fillRect(0, 0, 240, 240);
+      context.fillStyle = 'black';
+      pixels.forEach((black, index) => { if (black) context.fillRect(index % 240, Math.floor(index / 240), 1, 1); });
+    };
+    drawFrame();
+    // Keep producing frames and retain the canvas for the lifetime of the stream.
+    const frames = window.setInterval(drawFrame, 100);
+    const native = Object.getOwnPropertyDescriptor(window, 'BarcodeDetector');
+    const media = Object.getOwnPropertyDescriptor(navigator.mediaDevices, 'getUserMedia');
+    const tracks: MediaStreamTrack[] = [];
+    Object.defineProperty(window, 'BarcodeDetector', { configurable: true, value: undefined });
+    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => {
+      const stream = canvas.captureStream(10); tracks.push(...stream.getTracks()); return stream;
+    } });
+    Object.assign(window, { __lamsCameraFixture: { tracks, cleanup: () => {
+      window.clearInterval(frames);
+      tracks.forEach(track => track.stop());
+      if (native) Object.defineProperty(window, 'BarcodeDetector', native); else Reflect.deleteProperty(window, 'BarcodeDetector');
+      if (media) Object.defineProperty(navigator.mediaDevices, 'getUserMedia', media); else Reflect.deleteProperty(navigator.mediaDevices, 'getUserMedia');
+    } } });
+  }, pixels);
+  try {
+    await page.getByRole('button', { name: 'Quét bằng camera', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Mã vạch' })).toHaveValue(cameraValue, { timeout: 15_000 });
+    await expect(page.getByText('Đã đọc mã ' + cameraValue + '. Kiểm tra mã và bấm Ghi nhận scan để gửi.')).toBeVisible();
+    await expect(page.getByText(/0 lượt quét/).first()).toBeVisible();
+    expect(await page.evaluate(() => {
+      const fixture = (window as unknown as { __lamsCameraFixture: { tracks: MediaStreamTrack[] } }).__lamsCameraFixture;
+      return fixture.tracks.length > 0 && fixture.tracks.every(track => track.readyState === 'ended');
+    })).toBe(true);
+    await captureFullPage(page, { path: 'test-results/camera-fallback.png', fullPage: true });
+  } finally {
+    await page.evaluate(() => {
+      const state = window as unknown as { __lamsCameraFixture?: { cleanup: () => void } };
+      state.__lamsCameraFixture?.cleanup(); delete state.__lamsCameraFixture;
+    });
+  }
   await page.getByRole('radio', { name: 'K2 · Kệ quét thấy' }).click();
   await page.getByRole('textbox', { name: 'Mã vạch' }).fill(`KK-${suffix}`);
   await page.getByRole('button', { name: 'Ghi nhận scan' }).click();

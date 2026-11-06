@@ -82,3 +82,11 @@ Bộ chọn tham chiếu chỉ cho chọn kết quả đã tải xong của từ
 Khi biên mục đang sửa, xác nhận xóa hoặc duyệt ảnh, bộ chọn loại dữ liệu và tác phẩm cha bị khóa để tránh đổi ngữ cảnh giữa thao tác. Hủy biểu mẫu đã thay đổi cần xác nhận; lỗi lưu giữ nguyên nội dung. Cảnh báo khi tải lại/đóng trang phụ thuộc khả năng hỗ trợ của trình duyệt hoặc WebView. Cơ chế này chưa chặn mọi điều hướng sang route khác qua sidebar.
 
 Tùy chọn ẩn/hiện widget chỉ xuất hiện với dashboard Librarian. Dashboard Admin có bố cục nhiệm vụ riêng, không dùng tùy chọn này. Trong trang Giao diện, liên kết Khám phá sách mở Catalog; các thao tác lưu, bỏ thay đổi và khôi phục mặc định chờ cấu hình tài khoản tải xong mới được dùng.
+
+## Đọc mã bằng camera
+
+Nút quét camera ưu tiên `BarcodeDetector` khi trình duyệt hỗ trợ. Với WebView2 không có API này, ứng dụng tải bộ đọc ZXing được đóng gói cùng frontend. Ảnh camera được giải mã trên máy, không gửi lên API hoặc CDN; khung đọc dự phòng giới hạn chiều rộng 960 px và vòng quét cách nhau 400 ms. Bộ đọc chỉ tải khi người dùng mở camera, không nằm trong luồng tải đầu trang.
+
+Nhận được mã chỉ điền ô nhập; nhân viên kiểm tra mã và chọn Ghi nhận scan để gửi. Hủy lúc đang tải bộ đọc, chờ quyền hoặc đang quét đều làm hết hiệu lực lượt cũ. Stream cấp muộn phải dừng, không được tự mở lại camera. Khi thiết bị hoặc quyền truy cập không khả dụng, người dùng vẫn nhập mã hoặc dùng máy quét bàn phím.
+
+Frontend pin `@zxing/browser` 0.1.5 và `@zxing/library` 0.21.3 để tương thích Node 22. Giữ nguyên các giấy phép đi kèm gói trong `frontend/public/licenses`, được sao chép vào bản Web và tài nguyên EXE. Kết quả giải mã video kiểm thử không thay thế nghiệm thu webcam vật lý, chất lượng ảnh thực tế hoặc thao tác rút thiết bị.

@@ -39,7 +39,7 @@ export function CameraBarcodeScanner({ onDetected, disabled }: { onDetected: (ba
     const startedAt = ++generation.current;
     setOpening(true);
     const BrowserDetector = (globalThis as typeof globalThis & { BarcodeDetector?: DetectorConstructor }).BarcodeDetector;
-    if (!navigator.mediaDevices?.getUserMedia || !BrowserDetector) {
+    if (!navigator.mediaDevices?.getUserMedia) {
       opening.current = false;
       setOpening(false);
       setMessage('Thiết bị này chưa hỗ trợ quét mã vạch bằng camera. Bạn vẫn có thể nhập mã hoặc dùng máy quét bàn phím.');
@@ -47,6 +47,9 @@ export function CameraBarcodeScanner({ onDetected, disabled }: { onDetected: (ba
     }
     setMessage('');
     try {
+      const detector: Detector = BrowserDetector ? new BrowserDetector()
+        : (await import('./barcode-decoder')).createFallbackDetector();
+      if (startedAt !== generation.current || disabledNow.current) return;
       const acquired = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
       if (startedAt !== generation.current || disabledNow.current) {
         acquired.getTracks().forEach(track => track.stop()); return;
@@ -56,7 +59,6 @@ export function CameraBarcodeScanner({ onDetected, disabled }: { onDetected: (ba
       video.current.srcObject = acquired;
       await video.current.play();
       if (startedAt !== generation.current || disabledNow.current) return;
-      const detector = new BrowserDetector();
       opening.current = false; setOpening(false); running.current = true; setActive(true);
       const inspect = async () => {
         if (startedAt !== generation.current || !running.current || !video.current) return;

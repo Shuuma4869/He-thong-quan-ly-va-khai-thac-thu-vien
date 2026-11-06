@@ -2,11 +2,40 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CameraBarcodeScanner } from './CameraBarcodeScanner';
 
+const fallback = vi.hoisted(() => ({ detect: vi.fn() }));
+vi.mock('./barcode-decoder', () => ({ createFallbackDetector: () => ({ detect: fallback.detect }) }));
+
 const mediaDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
 afterEach(() => {
+  fallback.detect.mockReset();
   vi.restoreAllMocks(); vi.unstubAllGlobals();
   if (mediaDescriptor) Object.defineProperty(navigator, 'mediaDevices', mediaDescriptor);
   else Reflect.deleteProperty(navigator, 'mediaDevices');
+});
+
+it('giải mã bằng bộ đọc dự phòng khi WebView2 không có BarcodeDetector', async () => {
+  const stop = vi.fn(), onDetected = vi.fn(), getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] });
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia } });
+  vi.stubGlobal('BarcodeDetector', undefined);
+  fallback.detect.mockResolvedValue([{ rawValue: 'LAMS-FALLBACK-001' }]);
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  render(<CameraBarcodeScanner onDetected={onDetected} disabled={false}/>);
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Quét bằng camera' })); });
+  expect(getUserMedia).toHaveBeenCalledOnce();
+  expect(onDetected).toHaveBeenCalledExactlyOnceWith('LAMS-FALLBACK-001');
+  expect(stop).toHaveBeenCalledOnce();
+  expect(screen.getByRole('status')).toHaveTextContent('Kiểm tra mã và bấm Ghi nhận scan');
+});
+
+it('hủy khi đang tải bộ giải mã không mở camera muộn', async () => {
+  const getUserMedia = vi.fn();
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia } });
+  vi.stubGlobal('BarcodeDetector', undefined);
+  render(<CameraBarcodeScanner onDetected={vi.fn()} disabled={false}/>);
+  fireEvent.click(screen.getByRole('button', { name: 'Quét bằng camera' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy mở camera' }));
+  await act(async () => {});
+  expect(getUserMedia).not.toHaveBeenCalled();
 });
 
 it('bỏ kết quả mở camera đến muộn sau khi thao tác quét bị khóa rồi mở lại', async () => {
