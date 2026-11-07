@@ -1,5 +1,7 @@
 # Chiến lược kiểm thử
 
+Launcher Windows có các bài `desktop-readiness.test.ps1`, `core-build-state.test.ps1`, `service-runtime.test.ps1`, `local-launcher.test.ps1`, `stop-local-services.test.ps1` và `bootstrap-config.test.ps1` trong `scripts/`. Chúng kiểm timeout, JAR/manifest cũ, PID bị tái sử dụng, tiến trình ngoài checkout, khởi động lặp và đường dẫn có khoảng trắng/dấu tiếng Việt. Các fixture này không thay cho nghiệm thu clone sạch: phải chạy `lams.ps1 Setup`, `Web`, `Stop`, mở lại và đối chiếu API/database trong môi trường riêng. Không dùng `.env` hoặc artifact từ workspace đang phát triển cho lượt nghiệm thu đó.
+
 | Lớp | Mục tiêu | Công cụ/định hướng |
 |---|---|---|
 | Unit | rule/domain function nhanh, deterministic | JUnit/Mockito, Jest, Vitest |

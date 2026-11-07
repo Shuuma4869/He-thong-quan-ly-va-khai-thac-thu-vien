@@ -1,8 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../app/providers/AppProviders';
 import { AppRouter } from '../../app/router/AppRouter';
+
+// Việc transform module của runner không thuộc thời gian phản hồi nghiệp vụ.
+beforeAll(async () => { await import('./StaffCirculationPage'); });
 
 const id = '11111111-1111-4111-8111-111111111111', copyId = '22222222-2222-4222-8222-222222222222';
 const branchId = '33333333-3333-4333-8333-333333333333', readerId = '44444444-4444-4444-8444-444444444444';

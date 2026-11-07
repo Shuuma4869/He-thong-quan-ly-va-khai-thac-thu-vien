@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MetadataHistory } from './MetadataHistory';
@@ -19,10 +19,19 @@ it('empty, filter và reload dùng API, không giả dữ liệu',async()=>{
   await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('isbn=978'),expect.anything()));
 });
 it('chỉ báo lưu sau response thành công',async()=>{
-  fetchMock.mockImplementation(async(_url:string,init:RequestInit)=>init.method==='POST'?Response.json({record,lookup:{attempts:record.attempts,candidates:[]}}):Response.json(empty));
+  let finish!: (value: Response) => void;
+  fetchMock.mockImplementation((_url:string,init:RequestInit)=>init.method==='POST'
+    ?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(Response.json(empty)));
   show();await screen.findByText('Chưa có bản ghi ở trang này.');
   fireEvent.change(screen.getByLabelText('ISBN-13 cần tra và lưu'),{target:{value:record.isbn13}});
   fireEvent.click(screen.getByRole('button',{name:'Tra cứu và lưu lịch sử'}));
+  const pending=await screen.findByRole('status');
+  expect(pending).toHaveTextContent('Đang xử lý');
+  expect(pending.querySelector('.spinner-border')?.tagName).toBe('SPAN');
+  expect(pending.querySelector('div')).toBeNull();
+  expect(screen.queryByText(/Đã lưu lịch sử tra cứu/)).not.toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Tra cứu và lưu lịch sử'})).toBeDisabled();
+  await act(async()=>finish(Response.json({record,lookup:{attempts:record.attempts,candidates:[]}})));
   expect(await screen.findByText(/Đã lưu lịch sử tra cứu/)).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/metadata/history'),expect.objectContaining({method:'POST',body:JSON.stringify({isbn13:record.isbn13})}));
 });

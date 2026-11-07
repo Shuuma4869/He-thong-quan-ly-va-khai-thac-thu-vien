@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -28,6 +28,22 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); sessionStorage.clear(); });
 
 describe('luồng xác thực giao diện', () => {
+  it('phản hồi đăng xuất về muộn không đóng trang đăng nhập người đọc vừa mở', async () => {
+    let finishLogout!: (response: Response) => void;
+    fetchMock.mockImplementation((url: string) => url.endsWith('/auth/logout')
+      ? new Promise<Response>(resolve => { finishLogout = resolve; })
+      : Promise.resolve(url.endsWith('/auth/refresh') ? json(session)
+        : json({ items: [], page: { number: 0, size: 20, totalElements: 0, totalPages: 0 } })));
+    app('/sach');
+    fireEvent.click(await screen.findByRole('button', { name: 'Đăng xuất' }));
+    await waitFor(() => expect(finishLogout).toBeTypeOf('function'));
+    fireEvent.click(screen.getAllByRole('link', { name: /Đăng nhập/ })[0]);
+    const identifier = await screen.findByLabelText('Email hoặc mã thành viên');
+    fireEvent.change(identifier, { target: { value: 'reader-next@example.test' } });
+    await act(async () => { finishLogout(new Response(null, { status: 204 })); });
+    expect(screen.getByLabelText('Email hoặc mã thành viên')).toHaveValue('reader-next@example.test');
+    expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument();
+  });
   it('không khôi phục phiên vừa đăng xuất lỗi khi trình duyệt chặn sessionStorage', async () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked'); });

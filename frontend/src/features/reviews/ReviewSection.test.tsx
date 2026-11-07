@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../app/providers/AppProviders';
 import { ReviewSection } from './ReviewSection';
 
@@ -22,7 +23,7 @@ it('người đọc gửi lý do báo cáo đánh giá của người khác', as
             : Response.json({ items: [{ reviewId: review, bookId: book, body: 'Đánh giá cần xem lại', rating: 4,
               createdAt: '2026-10-28T00:00:00Z', updatedAt: '2026-10-28T00:00:00Z', mine: false }], page })));
   vi.stubGlobal('fetch', fetchMock);
-  render(<AppProviders><ReviewSection bookId={book}/></AppProviders>);
+  render(<AppProviders><MemoryRouter><ReviewSection bookId={book}/></MemoryRouter></AppProviders>);
   fireEvent.click(await screen.findByRole('button', { name: 'Báo cáo đánh giá' }));
   fireEvent.change(screen.getByLabelText('Lý do báo cáo'), { target: { value: 'Nội dung có thông tin cá nhân' } });
   fireEvent.click(screen.getByRole('button', { name: 'Gửi báo cáo' }));

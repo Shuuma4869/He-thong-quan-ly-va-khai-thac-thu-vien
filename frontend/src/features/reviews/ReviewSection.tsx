@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { ApiError } from '../../shared/api/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +16,15 @@ export function ReviewSection({ bookId }: { bookId: string }) {
   return user ? <Reviews key={`${user.id}:${bookId}`} book={bookId} owner={user.id}/> : null;
 }
 function Reviews({ book, owner }: { book: string; owner: string }) {
-  const [page, setPage] = useState(0);
+  const [params, setParams] = useSearchParams();
+  const requestedPage = Number(params.get('reviewPage') ?? 0);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
+  const setPage = (next: number) => {
+    const updated = new URLSearchParams(params);
+    if (next === 0) updated.delete('reviewPage');
+    else updated.set('reviewPage', String(next));
+    setParams(updated);
+  };
   const [notice, setNotice] = useState('');
   const client = useQueryClient();
   const list = useQuery({ queryKey: ['reviews', owner, book, 'list', page], queryFn: ({ signal }) => listReviews(book, page, signal), retry: false });
@@ -52,21 +61,29 @@ function Reviews({ book, owner }: { book: string; owner: string }) {
 function ReportReview({ book, reviewId }: { book: string; reviewId: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const sending = useRef(false);
   const send = useMutation({ mutationFn: () => reportReview(book, reviewId, reason.trim()) });
   const leave = useUnsavedChanges({ dirty: open && !!reason && !send.isSuccess, busy: send.isPending,
     uncertain: send.isError && (!(send.error instanceof ApiError) || send.error.status === 0 || send.error.status >= 500),
     label: 'Lý do báo cáo đánh giá' });
   const valid = [...reason.trim()].length >= 10 && [...reason.trim()].length <= 500;
+  const submit = async () => {
+    if (!valid || sending.current || send.isSuccess) return;
+    sending.current = true;
+    try { await send.mutateAsync(); }
+    catch { /* Giữ nội dung và lỗi để người đọc kiểm tra trước khi gửi lại. */ }
+    finally { sending.current = false; }
+  };
   return <div className="mt-3">
     {!open && !send.isSuccess && <button type="button" className="text-link" onClick={() => setOpen(true)}>Báo cáo đánh giá</button>}
     {send.isSuccess && <p role="status">Đã gửi báo cáo. Quản trị viên sẽ xem xét.</p>}
-    {open && !send.isSuccess && <form onSubmit={event => { event.preventDefault(); if (valid) send.mutate(); }}>
+    {open && !send.isSuccess && <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="field">Lý do báo cáo<textarea rows={2} value={reason} maxLength={500}
         onChange={event => setReason(event.target.value)} disabled={send.isPending} required/></label>
       <p className="text-sm text-muted">Nêu lý do cụ thể, 10–500 ký tự.</p>
       <div className="mt-2 flex gap-2"><button type="submit" className="button-primary" disabled={!valid || send.isPending}>Gửi báo cáo</button>
         <button type="button" className="button-secondary" disabled={send.isPending} onClick={() => leave(() => { setOpen(false); setReason(''); send.reset(); })}>Hủy</button></div>
-      {send.isError && <LibraryError error={send.error}/>}
+      {send.isError && <LibraryError error={send.error} context="report"/>}
     </form>}
   </div>;
 }

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Menu, X } from 'lucide-react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useLogoutNavigation } from '../../features/auth/useLogoutNavigation';
 import { useAuth } from '../../features/auth/auth-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
 
 export function PublicLayout() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   useEffect(() => { setOpen(false); }, [location.pathname, location.hash]);
@@ -25,7 +25,7 @@ export function PublicLayout() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
-  const signOut = async () => { await logout().catch(() => {}); navigate('/', { replace: true }); };
+  const signOut = useLogoutNavigation('/');
   return <div className="landing-page">
     <header className="landing-header">
       <div className="landing-container landing-header-inner">

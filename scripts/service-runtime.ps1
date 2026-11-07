@@ -1,12 +1,15 @@
 # Chỉ tái sử dụng dịch vụ do script trong workspace này khởi động và còn khớp đầu vào.
 function Get-LamsServiceFingerprint {
-    param([string]$Root, [ValidateSet('core', 'insight')][string]$Service)
+    param([string]$Root, [ValidateSet('core', 'insight', 'web')][string]$Service)
     $relative = if ($Service -eq 'core') {
         @('.env', 'backend/core-service/src', 'backend/core-service/pom.xml', 'backend/core-service/target/lams-core-build.json')
-    } else {
+    } elseif ($Service -eq 'insight') {
         @('.env', 'backend/insight-service/src', 'backend/insight-service/prisma',
           'backend/insight-service/package.json', 'backend/insight-service/package-lock.json',
           'backend/insight-service/tsconfig.json', 'backend/insight-service/tsconfig.build.json', 'backend/insight-service/nest-cli.json')
+    } else {
+        @('.env', 'frontend/.env', 'frontend/.env.local', 'frontend/src', 'frontend/public',
+          'frontend/package.json', 'frontend/package-lock.json', 'frontend/vite.config.ts', 'frontend/index.html')
     }
     $entries = foreach ($path in $relative) {
         $full = Join-Path $Root $path
@@ -24,7 +27,7 @@ function Get-LamsServiceFingerprint {
 }
 
 function New-LamsServiceRuntime {
-    param([string]$Root, [ValidateSet('core', 'insight')][string]$Service)
+    param([string]$Root, [ValidateSet('core', 'insight', 'web')][string]$Service)
     $directory = Join-Path $Root '.tools\desktop-launch'
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $PID" -Property CreationDate
@@ -53,7 +56,7 @@ function Test-LamsRuntimeChain {
 }
 
 function Assert-LamsServiceRuntime {
-    param([string]$Root, [ValidateSet('core', 'insight')][string]$Service, [int]$Port)
+    param([string]$Root, [ValidateSet('core', 'insight', 'web')][string]$Service, [int]$Port)
     $reason = 'không có thông tin khởi động từ workspace này'
     try {
         $record = Get-Content -LiteralPath (Join-Path $Root ".tools\desktop-launch\$Service-runtime.json") -Raw -ErrorAction Stop | ConvertFrom-Json
@@ -67,5 +70,5 @@ function Assert-LamsServiceRuntime {
         }
         return
     } catch { $reason = $_.Exception.Message }
-    throw "Không tái sử dụng $Service tại cổng ${Port}: $reason. Đóng dịch vụ cũ trong cửa sổ đã chạy nó, rồi chạy lại scripts/start-$Service.ps1 tại $Root. Launcher không tự dừng tiến trình khác."
+    throw "Không tái sử dụng $Service tại cổng ${Port}: $reason. Chạy .\lams.ps1 Stop tại checkout đã mở dịch vụ, rồi khởi động lại. Với tiến trình ngoài launcher, đóng trong cửa sổ đã chạy nó. Launcher không tự dừng tiến trình khác."
 }

@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
+import { UnsavedChangesProvider } from '../../shared/navigation/UnsavedChangesProvider';
 import { AppProviders } from '../../app/providers/AppProviders';
 import { AppRouter } from '../../app/router/AppRouter';
 
@@ -47,6 +48,34 @@ function app(path = `/sach/${bookId}`) { return render(<AppProviders><MemoryRout
 const writes = (method: string) => fetchMock.mock.calls.filter(([, init]) => init?.method === method);
 beforeEach(() => { saved = false; review = undefined; fetchMock = vi.fn((url: string, init: RequestInit) => Promise.resolve(result(url, init))); vi.stubGlobal('fetch', fetchMock); });
 afterEach(() => vi.unstubAllGlobals());
+
+it('phân trang đánh giá giữ lý do báo cáo cho tới khi bạn đọc xác nhận bỏ', async () => {
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    const target = new URL(url);
+    if (target.pathname.endsWith(`/books/${bookId}/reviews`) && init.method === 'GET') {
+      const number = Number(target.searchParams.get('page') ?? 0);
+      return Promise.resolve(Response.json(page(number === 0 ? [otherReview] : [], number, 11)));
+    }
+    return Promise.resolve(result(url, init));
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value(this: HTMLDialogElement) { this.open = false; } });
+  const router = createMemoryRouter([{ path: '*', element: <AppProviders><UnsavedChangesProvider><AppRouter/></UnsavedChangesProvider></AppProviders> }],
+    { initialEntries: [`/sach/${bookId}?source=library`] });
+  render(<RouterProvider router={router}/>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Báo cáo đánh giá' }));
+  fireEvent.change(screen.getByLabelText('Lý do báo cáo'), { target: { value: 'Nội dung cần được kiểm tra lại' } });
+  const section = screen.getByRole('region', { name: 'Đánh giá của bạn đọc' });
+  fireEvent.click(within(section).getByText('Trang sau'));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByText('Tiếp tục chỉnh sửa'));
+  expect(screen.getByLabelText('Lý do báo cáo')).toHaveValue('Nội dung cần được kiểm tra lại');
+  expect(router.state.location.search).toBe('?source=library');
+  fireEvent.click(within(section).getByText('Trang sau'));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByText('Bỏ thay đổi và rời trang'));
+  await waitFor(() => expect(router.state.location.search).toBe('?source=library&reviewPage=1'));
+  expect(await within(section).findByText('Trang 2 / 2 · 11 kết quả')).toBeInTheDocument();
+  expect(writes('POST').filter(([url]) => new URL(url).pathname.includes('/reviews/'))).toHaveLength(0);
+});
 
 it('yêu thích chờ server, chặn double click và tải lại trạng thái', async () => {
   let finish!: (response: Response) => void;

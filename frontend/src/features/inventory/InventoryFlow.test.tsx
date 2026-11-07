@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { UnsavedChangesProvider } from '../../shared/navigation/UnsavedChangesProvider';
 import { AppProviders } from '../../app/providers/AppProviders';
@@ -25,6 +25,8 @@ let fetchMock: ReturnType<typeof vi.fn>;
 let role = 'LIBRARIAN';
 const mediaDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
 const onlineDescriptor = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+// Biên dịch route lazy trước khi đo thời gian chờ phản hồi của giao diện trong jsdom.
+beforeAll(async () => { await import('./InventorySessionPage'); });
 it('phân trang bất thường không bỏ lý do đang nhập khi chưa xác nhận', async () => {
   session = { ...initialSession, status: 'FINALIZED', closedAt: time, closedBy: staffId };
   const current = { id: scanId, barcode: 'BC1', branchId, shelfId, status: 'AVAILABLE', version: 0 };

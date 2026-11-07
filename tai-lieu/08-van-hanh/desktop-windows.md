@@ -6,7 +6,7 @@ LAMS dùng Tauri 2 và WebView2 để mở React trong cửa sổ riêng. Bản 
 
 Hỗ trợ Windows x64, WebView2 Evergreen, Java 21 và Docker Desktop chạy Linux containers. Cần Git, quyền cài prerequisite và kết nối mạng cho lần thiết lập đầu. Không cần Maven hệ thống.
 
-Clone repository, checkout nhánh được giao và mở PowerShell tại root. Khi PR chưa merge, phần desktop nằm trên `Tuan/core-platform`; sau review/merge, các nhánh thành viên đồng bộ từ main.
+Clone repository từ main và mở PowerShell 7 tại root. Người chỉ chạy bộ cài đã được nghiệm thu không cần Rust/C++ Build Tools; backend và database vẫn phải được cung cấp riêng.
 
 ```powershell
 .\scripts\setup-desktop.ps1
@@ -56,7 +56,7 @@ File `Khoi chay ung dung LAMS.cmd` ở root gọi cùng `scripts/start-local-des
 
 Launcher chặn hai lượt khởi động đồng thời trong cùng phiên Windows. Sau khi hạ tầng chạy, nó kiểm tên dịch vụ và trạng thái `UP` của Core/Insight, rồi kiểm health tổng hợp của Core để không mở ứng dụng khi database chưa sẵn sàng. Insight trả HTTP 200 nhưng trạng thái `DEGRADED` vẫn chưa được chấp nhận. Mỗi bước chờ API có giới hạn 90 giây; khi hết hạn, đọc log tại `.tools/desktop-launch` để xử lý rồi chạy lại.
 
-Khi Core chưa chạy, launcher kiểm source và checksum JAR qua `backend/core-service/target/lams-core-build.json`. Nếu thiếu hoặc không khớp, dùng `scripts/start-local-desktop.ps1 -RebuildCore` một lần; các lần mở sau có thể dùng lại bản đã xác minh. Script `start-core.ps1` ghi manifest sau khi package thành công và từ chối source thay đổi giữa lúc build.
+Khi Core chưa chạy, launcher kiểm source và checksum JAR qua `backend/core-service/target/lams-core-build.json`. Nếu thiếu hoặc không khớp, launcher tự build lại trước khi chạy. Có thể dùng `lams.ps1 Desktop -RebuildCore` để yêu cầu build lại khi Core chưa chạy; các lần mở sau dùng bản đã xác minh. Script `start-core.ps1` ghi manifest sau khi package thành công và từ chối source thay đổi giữa lúc build.
 
 Các script Core/Insight ghi thông tin lượt khởi động vào `.tools/desktop-launch`: workspace, PID và thời điểm tạo tiến trình cha, cùng fingerprint đầu vào. Launcher đối chiếu tiến trình đang nghe cổng 8080/3000 với chuỗi tiến trình con của lượt đó, đồng thời kiểm source/cấu hình và binary Core. Dịch vụ chỉ trả health tốt nhưng không có bản ghi phù hợp vẫn bị từ chối. Cơ chế này giúp tránh dùng nhầm backend cũ hoặc backend của checkout khác; không phải cơ chế xác thực bảo mật giữa các tài khoản Windows.
 

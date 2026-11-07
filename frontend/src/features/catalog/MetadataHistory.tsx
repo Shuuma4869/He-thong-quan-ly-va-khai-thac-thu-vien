@@ -54,7 +54,7 @@ function HistoryContent({ownerId}:{ownerId:string}) {
         <Form.Control value={draftFilter} onChange={event=>setDraftFilter(event.target.value)} pattern="[0-9]{0,13}" maxLength={13} inputMode="numeric"/>
       </Form.Group><Button variant="secondary" type="submit" disabled={busy}>Lọc lịch sử</Button>
     </Form>
-    {busy&&<p role="status"><Spinner animation="border" size="sm" aria-hidden="true"/> Đang xử lý…</p>}
+    {busy&&<p role="status"><Spinner as="span" animation="border" size="sm" aria-hidden="true"/> Đang xử lý…</p>}
     {notice&&<p role="status">{notice}</p>}
     {(lookup.isError||replay.isError||removal.isError)&&<Alert variant="danger">Không hoàn tất thao tác. Kiểm tra ISBN, kết nối và quyền; tải lại lịch sử trước khi thử lại nếu đã chờ quá lâu.</Alert>}
     {books.map(book=>{

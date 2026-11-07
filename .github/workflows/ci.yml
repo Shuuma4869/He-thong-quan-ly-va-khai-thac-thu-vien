@@ -55,6 +55,9 @@ jobs:
           ./scripts/desktop-readiness.test.ps1
           ./scripts/core-build-state.test.ps1
           ./scripts/service-runtime.test.ps1
+          ./scripts/local-launcher.test.ps1
+          ./scripts/stop-local-services.test.ps1
+          ./scripts/bootstrap-config.test.ps1
       - run: npm run build:desktop
         working-directory: frontend
       - run: cargo fmt --check

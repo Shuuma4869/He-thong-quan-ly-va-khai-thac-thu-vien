@@ -482,6 +482,74 @@ test('Phase 3: yêu thích, review, rating và đổi tài khoản trên dữ li
   await expect(page.getByText('Bạn chưa có đánh giá ở trang này.')).toBeVisible();
 });
 
+test('Bản nháp báo cáo đánh giá: phân trang và quay lại không tự bỏ nội dung', async ({ page, request }) => {
+  const headers = await staffApi(request);
+  const book = await createCatalog(request, headers, '/books', { title: `Phân trang đánh giá ${suffix}`, authorIds: [], categoryIds: [] });
+  expect(book.id).toMatch(/^[0-9a-f-]{36}$/i);
+  // Fixture chỉ nằm trong container đã xác minh owner ở đầu suite; các tài khoản này không có mật khẩu đăng nhập.
+  execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-v', 'ON_ERROR_STOP=1', '-c',
+    `WITH readers AS (INSERT INTO users(id,member_code,email,email_normalized,full_name,password_hash,status,created_at,updated_at)
+      SELECT gen_random_uuid(),'P${suffix}' || n,'page-${suffix}-' || n || '@example.test','page-${suffix}-' || n || '@example.test',
+      'Bạn đọc kiểm thử','!disabled-test-login','ACTIVE',now(),now() FROM generate_series(1,11) n RETURNING id)
+      INSERT INTO reviews(id,user_id,book_id,body,rating) SELECT gen_random_uuid(),id,'${book.id}','Nội dung kiểm thử phân trang',4 FROM readers;`], { stdio: 'pipe' });
+  await loginCatalog(page, 'READER');
+  await navigate(page, `/sach/${book.id}`);
+  const reviews = page.getByRole('region', { name: 'Đánh giá của bạn đọc' });
+  await reviews.getByRole('button', { name: 'Báo cáo đánh giá', exact: true }).first().click();
+  await reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true }).fill('Nội dung cần được kiểm tra lại');
+  await reviews.getByRole('button', { name: 'Trang sau', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Rời trang khi chưa hoàn tất?' });
+  await expect(confirmation.getByRole('button', { name: 'Tiếp tục chỉnh sửa' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true })).toHaveValue('Nội dung cần được kiểm tra lại');
+  await reviews.getByRole('button', { name: 'Trang sau', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Bỏ thay đổi và rời trang' }).click();
+  await expect(reviews.getByText('Trang 2 / 2 · 11 kết quả', { exact: true })).toBeVisible();
+  await expect(reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true })).toHaveCount(0);
+  await page.goBack();
+  await expect(reviews.getByText('Trang 1 / 2 · 11 kết quả', { exact: true })).toBeVisible();
+  expect(execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-At', '-c',
+    `SELECT count(*) FROM review_reports WHERE review_id IN (SELECT id FROM reviews WHERE book_id='${book.id}');`], { encoding: 'utf8' }).trim()).toBe('0');
+  const reportRequests: string[] = [];
+  page.on('request', event => {
+    if (event.method() === 'POST' && new URL(event.url()).pathname.endsWith('/reports')) reportRequests.push(event.url());
+  });
+  await reviews.getByRole('button', { name: 'Báo cáo đánh giá', exact: true }).first().click();
+  await reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true }).fill('Nội dung cần được kiểm tra lại');
+  await reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true }).evaluate(element => {
+    const form = element.closest('form')!;
+    form.requestSubmit(); form.requestSubmit();
+  });
+  await expect(reviews.getByText('Đã gửi báo cáo. Quản trị viên sẽ xem xét.', { exact: true })).toBeVisible();
+  expect(reportRequests).toHaveLength(1);
+  const reportedId = new URL(reportRequests[0]).pathname.split('/').slice(-2)[0];
+  expect(reportedId).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-At', '-c',
+    `SELECT count(*) FROM review_reports WHERE book_id='${book.id}' AND review_id='${reportedId}' AND reason='Nội dung cần được kiểm tra lại';`], { encoding: 'utf8' }).trim()).toBe('1');
+  await page.reload();
+  await reviews.getByRole('button', { name: 'Báo cáo đánh giá', exact: true }).first().click();
+  await reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true }).fill('Nội dung cần được kiểm tra lại');
+  const conflict = page.waitForResponse(response => response.request().method() === 'POST' && response.url() === reportRequests[0]);
+  await reviews.getByRole('button', { name: 'Gửi báo cáo', exact: true }).click();
+  expect((await conflict).status()).toBe(409);
+  await expect(reviews.getByRole('alert')).toBeVisible();
+  await expect(reviews.getByRole('textbox', { name: 'Lý do báo cáo', exact: true })).toHaveValue('Nội dung cần được kiểm tra lại');
+  await expect(reviews.getByText('Đã gửi báo cáo. Quản trị viên sẽ xem xét.', { exact: true })).toHaveCount(0);
+  expect(reportRequests).toHaveLength(2);
+  // Đóng đúng báo cáo của fixture, không để hàng đợi OPEN ảnh hưởng bài kiểm duyệt kế tiếp.
+  const reportId = execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-At', '-c',
+    `SELECT id FROM review_reports WHERE book_id='${book.id}' AND review_id='${reportedId}';`], { encoding: 'utf8' }).trim();
+  expect(reportId).toMatch(/^[0-9a-f-]{36}$/i);
+  const adminLogin = await request.post(`${core}/auth/login`, { data: { identifier: accounts.ADMIN.email, password, remember: false } });
+  expect(adminLogin.status()).toBe(200);
+  const resolved = await request.post(`${core}/admin/review-reports/${reportId}/decisions`, {
+    headers: { Authorization: `Bearer ${(await adminLogin.json()).accessToken}` },
+    data: { action: 'DISMISS', reason: 'Đã kiểm tra xong báo cáo của fixture phân trang.' },
+  });
+  expect(resolved.status()).toBe(200);
+  expect((await resolved.json()).action).toBe('DISMISS');
+});
+
 test('Phase 2 Reader: lọc server, nhiều ấn bản, Author, reload và chặn ghi', async ({ page, request }) => {
   const headers=await staffApi(request);
   const author=await createCatalog(request,headers,'/authors',{name:`Author ${suffix}`});
@@ -1720,23 +1788,31 @@ if (process.env.LAMS_E2E_BENCHMARK === '1') {
     test.setTimeout(240_000);
     expect(!!desktopEndpoint, 'Phép đo này chỉ dành cho EXE').toBe(true);
     const budget = { loginMs: 3000, routeMs: 2000, apiMs: 1000, longTaskMs: 200 };
+    const pendingApi = new Set<import('@playwright/test').Request>();
+    page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) pendingApi.add(request); });
+    page.on('requestfinished', request => pendingApi.delete(request));
+    page.on('requestfailed', request => pendingApi.delete(request));
     execFileSync('docker', ['exec', container!, 'psql', '-U', 'lams', '-d', 'lams_core', '-v', 'ON_ERROR_STOP=1', '-c',
       "INSERT INTO books(id,title,normalized_title,description) SELECT gen_random_uuid(), 'Benchmark ' || n, 'benchmark ' || n, repeat('Dữ liệu tổng hợp cho phép đo hiệu năng. ', 8) FROM generate_series(1,10000) n; ANALYZE books;"], { stdio: 'pipe' });
-    const samples: { scenario: string; elapsedMs: number; longTasks: number[]; apiMs: number[] }[] = [];
+    const samples: { scenario: string; elapsedMs: number; longTasks: number[]; longTasksSupported: boolean; apiMs: number[] }[] = [];
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(startReadinessMeasurements);
     const settled = async () => {
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
       await expect(page.getByRole('progressbar', { name: 'Đang tải dữ liệu' })).toHaveCount(0);
       await expect(page.locator('.appearance-loading')).toHaveCount(0);
+      await expect.poll(() => pendingApi.size, { message: 'Các API của hành trình phải hoàn tất' }).toBe(0);
     };
-    const measure = async (scenario: string, action: () => Promise<unknown>) => {
+    const measure = async (scenario: string, action: () => Promise<unknown>, heading: string | RegExp) => {
       await page.evaluate(startReadinessMeasurements);
       const started = performance.now();
-      await action(); await settled();
+      await action();
+      await expect(page.getByRole('heading', { level: 1, name: heading, exact: true })).toBeVisible();
+      await settled();
       const elapsedMs = performance.now() - started;
       const details = await page.evaluate(() => ({
         longTasks: [...(window as unknown as { __lamsReadinessMetrics: { durations: number[] } }).__lamsReadinessMetrics.durations],
+        longTasksSupported: (window as unknown as { __lamsReadinessMetrics: { supported: boolean } }).__lamsReadinessMetrics.supported,
         apiMs: performance.getEntriesByType('resource').filter(entry => new URL(entry.name).pathname.startsWith('/api/'))
           .map(entry => entry.duration),
       }));
@@ -1749,12 +1825,21 @@ if (process.env.LAMS_E2E_BENCHMARK === '1') {
       await measure('reader-login', async () => {
         await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
         await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
-      });
-      await measure('reader-home', () => navigate(page, '/'));
-      await measure('reader-library', () => navigate(page, '/thu-vien-cua-toi'));
-      await measure('catalog', () => navigate(page, '/sach'));
-      await measure('search', () => navigate(page, `/sach?query=Benchmark%20${i + 1}&sort=relevance`));
+      }, /Cuốn sách tiếp theo/);
+      await navigate(page, '/ho-so'); await settled();
+      await measure('reader-home', () => navigate(page, '/'), /Cuốn sách tiếp theo/);
+      await measure('reader-library', () => navigate(page, '/thu-vien-cua-toi'), 'Thư viện của tôi');
+      await measure('catalog', () => navigate(page, '/sach'), 'Khám phá sách');
+      await measure('search', async () => {
+        const response = page.waitForResponse(value => value.url().includes('/public/catalog/books?')
+          && new URL(value.url()).searchParams.get('query') === `Benchmark ${i + 1}`);
+        await navigate(page, `/sach?query=Benchmark%20${i + 1}&sort=relevance`);
+        expect((await response).status()).toBe(200);
+      }, 'Khám phá sách');
       await expect(page.locator('a[href*="/sach/"]').first()).toBeVisible();
+      const detailPath = await page.locator('a[href*="/sach/"]').first().getAttribute('href');
+      expect(detailPath).toBeTruthy();
+      await measure('book-detail', () => page.locator(`a[href="${detailPath}"]`).first().click(), /^Benchmark \d+$/);
       await page.getByRole('button', { name: 'Đăng xuất' }).click();
       await expect(page.getByRole('button', { name: 'Đăng xuất' })).toHaveCount(0);
     }
@@ -1762,7 +1847,7 @@ if (process.env.LAMS_E2E_BENCHMARK === '1') {
       await loginCatalog(page, role);
       for (let i = 0; i < 10; i++) {
         await navigate(page, '/ho-so'); await settled();
-        await measure(`${role.toLowerCase()}-dashboard`, () => navigate(page, '/nhan-vien/bang-dieu-khien'));
+        await measure(`${role.toLowerCase()}-dashboard`, () => navigate(page, '/nhan-vien/bang-dieu-khien'), role === 'ADMIN' ? 'Quản trị hệ thống' : 'Bảng điều khiển');
       }
       await page.getByRole('button', { name: 'Đăng xuất' }).click();
       await expect(page.getByRole('button', { name: 'Đăng xuất' })).toHaveCount(0);
@@ -1846,6 +1931,28 @@ for (const role of ['GUEST', 'READER', 'LIBRARIAN', 'ADMIN']) {
     expect(errors).toEqual([]);
   });
 }
+
+test('Đăng xuất về muộn không đóng trang đăng nhập vừa mở', async ({ page }) => {
+  await loginCatalog(page, 'READER');
+  let releaseLogout!: () => void;
+  await page.route('**/auth/logout', async route => {
+    await new Promise<void>(resolve => { releaseLogout = resolve; });
+    await route.continue();
+  });
+  await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+  await expect.poll(() => typeof releaseLogout).toBe('function');
+  await expect(page.getByRole('button', { name: 'Đăng xuất', exact: true })).toHaveCount(0);
+  // Dùng liên kết SPA: page.goto trên Web sẽ unload và hủy request đang giữ.
+  await page.getByRole('link', { name: 'Đăng nhập', exact: true }).filter({ visible: true }).first().click();
+  await page.getByLabel('Email hoặc mã thành viên').fill(accounts.READER.email);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+  const response = page.waitForResponse(value => value.url().endsWith('/auth/logout'));
+  releaseLogout();
+  expect((await response).status()).toBe(204);
+  await expect(page.getByLabel('Email hoặc mã thành viên')).toHaveValue(accounts.READER.email);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click({ timeout: 5000 });
+  await expect(page.getByRole('button', { name: 'Đăng xuất', exact: true })).toBeVisible();
+});
 
 test('Nghiệm thu phục hồi: đăng nhập giữ đường quay lại và đăng xuất khi mất mạng', async ({ page }) => {
   await navigate(page, '/muon-va-giu-cho?holdPage=2#holds');

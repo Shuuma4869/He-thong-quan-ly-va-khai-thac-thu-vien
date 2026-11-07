@@ -27,6 +27,11 @@ try {
     $before = Get-LamsServiceFingerprint $fixture 'core'
     Set-Content -LiteralPath (Join-Path $fixture 'backend/core-service/target/core-service-test.jar') 'binary'
     if ($before -eq (Get-LamsServiceFingerprint $fixture 'core')) { throw 'Binary change missed' }
+    New-Item -ItemType Directory -Path (Join-Path $fixture 'frontend/src') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $fixture 'frontend/src/main.tsx') 'web before'
+    $before = Get-LamsServiceFingerprint $fixture 'web'
+    Set-Content -LiteralPath (Join-Path $fixture 'frontend/src/main.tsx') 'web after'
+    if ($before -eq (Get-LamsServiceFingerprint $fixture 'web')) { throw 'Web source change missed' }
     Write-Output 'PASS: service ancestry, unknown process, reused PID, broken/cyclic ancestry, stable fingerprint, source/configuration/binary changes'
 } finally {
     $resolved = (Resolve-Path -LiteralPath $fixture).Path
