@@ -21,7 +21,7 @@ Web và Windows dùng chung React; Windows dùng HashRouter. Bảng dưới mô 
 | Librarian/Admin | `/nhan-vien/giu-cho` | Danh sách/lọc Hold, lịch sử trạng thái và xác nhận bàn giao Copy READY |
 | Librarian/Admin | `/nhan-vien/bao-cao-luu-thong` | Báo cáo lượt mượn và CSV |
 | Librarian/Admin | `/nhan-vien/bao-cao-giu-cho` | Báo cáo sự kiện giữ chỗ, lọc ngày/chi nhánh/tác phẩm và CSV |
-| Librarian/Admin | `/nhan-vien/kiem-ke`, `/nhan-vien/kiem-ke/:sessionId` | Mở phiên, snapshot, quét, chốt và xác nhận xử lý bất thường; camera/offline tùy khả năng thiết bị |
+| Librarian/Admin | `/nhan-vien/kiem-ke`, `/nhan-vien/kiem-ke/:sessionId` | Mở phiên, snapshot, nhập/quét mã, chốt và xác nhận xử lý bất thường; camera cần quyền và thiết bị hỗ trợ, mã chờ khi mất mạng chỉ giữ trong bộ nhớ trang |
 | Librarian/Admin | `/nhan-vien/de-xuat-bo-sung` | Phân tích tín hiệu thật, lập đề xuất, xét duyệt nội bộ, audit và CSV |
 | Admin | `/nhan-vien/tai-khoan` | Khóa/mở tài khoản, đổi vai trò có lý do và lịch sử |
 | Admin | `/nhan-vien/bao-cao-danh-gia` | Xử lý nội dung đánh giá bị báo cáo |
