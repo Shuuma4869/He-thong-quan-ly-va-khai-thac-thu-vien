@@ -1,3 +1,4 @@
+param([switch]$ConfigureOnly)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
@@ -17,6 +18,10 @@ if (-not (Test-Path -LiteralPath $envPath)) {
 }
 Import-LamsEnv $envPath -OverrideExisting
 Test-LamsLocalConfiguration
+if ($ConfigureOnly) {
+    Write-Host '[OK] Cấu hình đã sẵn sàng; chưa cài dependency hoặc khởi động Docker. Có thể chỉnh cổng trong .env rồi chạy Setup.'
+    return
+}
 & (Join-Path $PSScriptRoot 'doctor.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Môi trường chưa đạt yêu cầu; bootstrap đã dừng.' }
 
@@ -46,8 +51,5 @@ try { Invoke-LamsNative 'npm' @('run', 'prisma:deploy') 'Prisma migrate deploy t
 
 Write-Host ''
 Write-Host 'Bootstrap hoàn tất. Flyway sẽ tự migrate khi Core Service khởi động.' -ForegroundColor Green
-Write-Host 'Chạy ba ứng dụng ở ba terminal:'
-Write-Host '  .\scripts\start-core.ps1'
-Write-Host '  .\scripts\start-insight.ps1'
-Write-Host '  .\scripts\start-desktop.ps1'
-Write-Host 'Desktop cần chạy setup-desktop.ps1 một lần trước đó; xem tai-lieu/08-van-hanh/desktop-windows.md.'
+Write-Host 'Chạy .\lams.ps1 Web để mở giao diện; launcher tự build Core còn thiếu và chờ các dịch vụ.'
+Write-Host 'Desktop: chuẩn bị toolchain, chạy scripts/build-desktop.ps1 rồi .\lams.ps1 Desktop.'

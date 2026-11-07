@@ -24,6 +24,7 @@ function Counter({ owner }: { owner: string }) {
     queryFn: ({ signal }) => findCopy(barcode, signal), enabled: !!barcode, retry: false });
   const loans = useQuery({ queryKey: ['circulation', owner, 'staff-loans', member?.userId, branch, copyFilter?.id, status, page],
     queryFn: ({ signal }) => getLoans({ readerId: member?.userId, branchId: branch, copyId: copyFilter?.id, status, page }, true, signal), retry: false });
+  const borrowMessage = copy.data ? borrowEligibilityMessage(member, copy.data.status, copy.isFetching) : null;
   return <section><h1 className="page-title">Quầy lưu thông</h1>
     <p className="text-muted my-3">Đối chiếu thẻ bạn đọc và mã vạch trước khi xác nhận giao dịch. Nhận/trả tại chi nhánh của bản sách và lượt mượn.</p>
     <Link className="text-link" to="/nhan-vien/bao-cao-luu-thong">Xem báo cáo mượn theo chi nhánh</Link>
@@ -42,7 +43,8 @@ function Counter({ owner }: { owner: string }) {
           }}>Tìm lượt đang mượn của bản này</button>
           <button className="button-primary mt-4" disabled={!member || member.status !== 'ACTIVE' || !['AVAILABLE', 'ON_HOLD'].includes(copy.data.status) || copy.isFetching || !!confirmation}
             onClick={() => member && setConfirmation({ copy: copy.data, member })}>Cho mượn bản sách này</button>
-          {copy.data.status === 'ON_HOLD' && <p className="text-sm my-3">Chỉ nhận sách khi giữ chỗ thuộc đúng người mượn và chưa hết hạn.</p>}
+          {copy.data.status === 'ON_HOLD' && <p className="text-sm my-3">Chỉ bàn giao cho đúng người đọc được phân bổ trong yêu cầu sẵn sàng nhận còn hạn.</p>}
+          {borrowMessage && <p id="borrow-eligibility-message" role="status" className="text-sm my-3">{borrowMessage}</p>}
         </div>)}
       {confirmation && <BorrowConfirmation owner={owner} copy={confirmation.copy} member={confirmation.member}
         close={() => setConfirmation(null)} reload={() => void copy.refetch()}/>}
@@ -59,6 +61,13 @@ function Counter({ owner }: { owner: string }) {
           <Pagination page={loans.data.page} onChange={setPage}/><p className="text-sm text-muted">Trạng thái tính lúc {formatTime(loans.data.asOf)}.</p></>}
     </section>
   </section>;
+}
+function borrowEligibilityMessage(member: SelectedMember | null, status: string, checking: boolean) {
+  if (checking) return 'Đang xác minh trạng thái bản sách…';
+  if (!member) return 'Chọn một người đọc đang hoạt động trước khi tạo lượt mượn.';
+  if (member.status !== 'ACTIVE') return `Không thể cho mượn: thẻ người đọc đang ở trạng thái ${member.status}.`;
+  if (!['AVAILABLE', 'ON_HOLD'].includes(status)) return `Không thể cho mượn: bản sách ${copyLabels[status] ?? status.toLowerCase()}.`;
+  return null;
 }
 function BranchName({ owner, id }: { owner: string; id: string }) {
   const branch = useQuery({ queryKey: ['catalog', owner, 'branches', undefined, 'item', id], queryFn: ({ signal }) => getCatalogItem('branches', id, signal), retry: false });

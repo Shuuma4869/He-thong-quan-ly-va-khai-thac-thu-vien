@@ -8,7 +8,7 @@ import { getCatalogPage } from '../catalog/catalog-api';
 import { listSessions } from '../inventory/inventory-api';
 import { getLoans } from '../circulation/circulation-api';
 import { eventLabels, getHoldReport, localDate } from '../circulation/hold-report-api';
-import { formatTime } from '../circulation/circulation-labels';
+import { formatDate, formatTime } from '../circulation/circulation-labels';
 import { listRecommendations } from '../acquisition/acquisition-api';
 import { useState } from 'react';
 
@@ -48,7 +48,7 @@ export function StaffDashboardPage() {
       <button className="button-secondary mt-4" disabled={refreshing} onClick={() => void Promise.all(queries.map(query => query.refetch()))}><RefreshCw size={16}/>{refreshing ? 'Đang cập nhật…' : 'Cập nhật số liệu'}</button></div>
       <BookOpen size={95} strokeWidth={1} aria-hidden="true"/></header>
     <p className="dashboard-data-note">Mỗi nguồn được đọc độc lập; các thẻ không phải một snapshot toàn hệ thống. {active.data && `Lưu thông cập nhật ${formatTime(active.data.asOf)}.`}</p>
-    {values.widgets.includes('overview') && <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    {values.widgets.includes('overview') && <div className="staff-dashboard-metrics">
       <Metric title="Tác phẩm trong danh mục" href="/nhan-vien/danh-muc" icon={<BookOpen aria-hidden="true" />}
         value={books.data?.page.totalElements} pending={books.isPending} error={books.isError} retry={() => void books.refetch()} />
       <Metric title="Bản sách đã đăng ký" href="/nhan-vien/danh-muc" icon={<Boxes aria-hidden="true" />}
@@ -89,7 +89,7 @@ export function StaffDashboardPage() {
           : sessions.isError ? <button type="button" className="button-secondary mt-5" onClick={() => void sessions.refetch()}>Tải lại phiên kiểm kê</button>
             : sessions.data.items.length ? <ul className="staff-session-list">{sessions.data.items.slice(0, 3).map(item =>
               <li key={item.id}><ClipboardList size={21}/><div><strong>Phiên {item.id.slice(0, 8)}</strong>
-                <small>{item.scanCount.toLocaleString('vi-VN')} lượt quét · {item.snapshotCount.toLocaleString('vi-VN')} bản trong snapshot · Mở {new Date(item.openedAt).toLocaleDateString('vi-VN')}</small></div>
+                <small>{item.scanCount.toLocaleString('vi-VN')} lượt quét · {item.snapshotCount.toLocaleString('vi-VN')} bản trong snapshot · Mở {formatDate(item.openedAt)}</small></div>
                 <Link to={`/nhan-vien/kiem-ke/${item.id}`} aria-label={`Mở phiên ${item.id.slice(0, 8)}`}><ArrowUpRight size={19}/></Link></li>)}</ul>
               : <div className="staff-empty-session"><CircleCheck size={23}/><p>Hiện không có phiên kiểm kê nào đang mở.</p></div>}
       </section>}

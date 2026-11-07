@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../auth/auth-context';
 import { useAppearance } from './appearance-context';
@@ -55,7 +56,7 @@ export function AppearancePage() {
           className={draft[field.key] === value ? 'is-selected' : ''} aria-pressed={draft[field.key] === value}
           onClick={() => change(field.key, value as never)}>{draft[field.key] === value && <Check size={14}/>} {label}</button>)}</div>
       </fieldset>)}
-      {user?.roles.some(role => role === 'ADMIN' || role === 'LIBRARIAN') && <fieldset disabled={appearance.saving || appearance.loading} className="appearance-field"><legend>Widget bảng điều khiển</legend>
+      {user?.roles.includes('LIBRARIAN') && !user.roles.includes('ADMIN') && <fieldset disabled={appearance.saving || appearance.loading} className="appearance-field"><legend>Widget bảng điều khiển thủ thư</legend>
         <div className="appearance-options">{Object.entries(widgetLabels).map(([key, label]) => <button key={key} type="button"
           aria-pressed={draft.widgets.includes(key)} className={draft.widgets.includes(key) ? 'is-selected' : ''}
           onClick={() => toggleWidget(key)}>{draft.widgets.includes(key) && <Check size={14}/>} {label}</button>)}</div>
@@ -63,16 +64,16 @@ export function AppearancePage() {
     </div><aside className="appearance-preview" aria-label="Xem trước giao diện"><p className="eyebrow">Xem trước</p>
       <div className="appearance-preview-card"><span className="appearance-preview-tag">Thư viện LAMS</span>
         <h2>Một góc đọc của riêng bạn</h2><p>Thay đổi màu, bề mặt và khoảng cách để chọn cách đọc thoải mái nhất.</p>
-        <span className="appearance-preview-button">Khám phá sách</span></div>
+        <Link className="appearance-preview-button" to="/sach">Khám phá sách</Link></div>
       <p className="appearance-help">{user ? 'Thiết lập được lưu trong tài khoản và dùng trên các thiết bị.'
         : 'Bạn đang dùng chế độ khách. Thiết lập chỉ lưu trong trình duyệt này.'}</p></aside></div>
     {appearance.error && <p role="alert" className="appearance-error">{appearance.error}</p>}
     {notice && <p role="status" className="appearance-notice">{notice}</p>}
     {dirty && <p role="status" className="appearance-dirty">Có thay đổi chưa lưu. Bạn có thể chuyển trang để xem thử rồi quay lại đây; tải lại ứng dụng sẽ bỏ bản xem thử.</p>}
-    <div className="appearance-actions"><button type="button" className="button-primary" disabled={appearance.saving}
+    <div className="appearance-actions"><button type="button" className="button-primary" disabled={appearance.saving || appearance.loading}
       onClick={() => void save()}>{appearance.saving ? 'Đang lưu…' : 'Lưu giao diện'}</button>
-      <button type="button" disabled={appearance.saving} className="button-secondary" onClick={() => { appearance.discard(); setNotice('Đã bỏ thay đổi chưa lưu.'); }}>Bỏ thay đổi</button>
-      <button type="button" disabled={appearance.saving} className="button-secondary" onClick={() => void save({ accent: 'blue', glass: 'standard', blur: 'on',
+      <button type="button" disabled={appearance.saving || appearance.loading} className="button-secondary" onClick={() => { appearance.discard(); setNotice('Đã bỏ thay đổi chưa lưu.'); }}>Bỏ thay đổi</button>
+      <button type="button" disabled={appearance.saving || appearance.loading} className="button-secondary" onClick={() => void save({ accent: 'blue', glass: 'standard', blur: 'on',
         sidebarStyle: 'floating', sidebarState: 'expanded', density: 'comfortable', radius: 'soft', fontSize: 'standard',
         motion: 'normal', bookView: 'grid', widgets: ['overview', 'circulation', 'inventory', 'acquisition'] })}>
         <RotateCcw size={15}/> Khôi phục mặc định</button></div>

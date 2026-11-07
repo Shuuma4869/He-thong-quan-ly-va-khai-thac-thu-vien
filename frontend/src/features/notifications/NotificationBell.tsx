@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
@@ -12,10 +12,16 @@ export function NotificationBell() {
 }
 function InboxPreview({ owner }: { owner: string }) {
   const [open, setOpen] = useState(false);
+  const client = useQueryClient();
   const count = useQuery({ queryKey: ['notification-unread', owner], queryFn: ({ signal }) => unreadCount(signal),
-    staleTime: 30_000, refetchInterval: 60_000, refetchIntervalInBackground: false, retry: false });
+    staleTime: 30_000, refetchInterval: 60_000, refetchIntervalInBackground: false, retry: false,
+    refetchOnWindowFocus: 'always', refetchOnReconnect: 'always' });
   const recent = useQuery({ queryKey: ['notifications', owner, 0], queryFn: ({ signal }) => listNotifications(0, signal),
-    enabled: open, staleTime: 30_000, retry: false });
+    enabled: open, staleTime: 0, retry: false, refetchInterval: open ? 60_000 : false,
+    refetchIntervalInBackground: false, refetchOnWindowFocus: 'always', refetchOnReconnect: 'always' });
+  useEffect(() => {
+    if (open && recent.dataUpdatedAt) void client.invalidateQueries({ queryKey: ['notification-unread', owner] });
+  }, [client, open, owner, recent.dataUpdatedAt]);
   return <>
     <button type="button" className="notification-bell icon-button" onClick={() => setOpen(true)} aria-haspopup="dialog"
       aria-label={count.data ? `Thông báo, ${count.data.count} chưa đọc` : 'Thông báo'}>

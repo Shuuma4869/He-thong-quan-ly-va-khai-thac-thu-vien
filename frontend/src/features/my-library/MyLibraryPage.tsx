@@ -47,7 +47,7 @@ function Library({ owner }: { owner: string }) {
         {favorites.isSuccess && <p>{favorites.data.page.totalElements.toLocaleString('vi-VN')} tác phẩm đã lưu</p>}</div>
       {favorites.isPending ? <p role="status">Đang tải sách yêu thích…</p> : favorites.isError
         ? <LibraryError error={favorites.error} retry={() => void favorites.refetch()}/>
-        : <>{!favorites.data.items.length ? <p className="editorial-card">Chưa có sách yêu thích ở trang này.</p>
+        : <>{!favorites.data.items.length ? <div className="editorial-card"><p>{favoritePage > 0 ? 'Chưa có sách yêu thích ở trang này.' : 'Bạn chưa lưu cuốn sách nào. Khám phá danh mục để thêm sách vào thư viện của mình.'}</p><Link className="text-link mt-3" to="/sach">Khám phá sách →</Link></div>
           : cards.isPending ? <p role="status">Đang tải thông tin sách đã lưu…</p>
             : cards.isError ? <LibraryError error={cards.error} retry={() => void cards.refetch()}/>
               : <BookList books={favorites.data.items.flatMap(item => byId.get(item.bookId) ?? [])}

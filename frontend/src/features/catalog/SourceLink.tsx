@@ -1,11 +1,21 @@
 import { useState, type ReactNode } from 'react';
 import { safeMediaUrl } from './media-api';
 
+function safeSourceUrl(value: string) {
+  if (safeMediaUrl(value)) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port
+      && ['gutenberg.org', 'www.gutenberg.org'].includes(url.hostname);
+  } catch { return false; }
+}
+
 export function SourceLink({ href,children }: { href:string;children:ReactNode }) {
   const [error,setError]=useState(false);
-  if (!safeMediaUrl(href)) return <span>Nguồn không hợp lệ</span>;
+  if (!safeSourceUrl(href)) return <span>Nguồn không hợp lệ</span>;
   return <><a className="text-link" href={href} target="_blank" rel="noopener noreferrer" onClick={event => {
     const native=window as unknown as {__TAURI__?:{core:{invoke:(command:string,args:unknown)=>Promise<unknown>}}};
+    setError(false);
     if (native.__TAURI__) { event.preventDefault(); void native.__TAURI__.core.invoke('open_catalog_source',{url:href}).catch(() => setError(true)); }
   }}>{children}</a>{error && <small role="alert">Không mở được trình duyệt. Nguồn: {href}</small>}</>;
 }

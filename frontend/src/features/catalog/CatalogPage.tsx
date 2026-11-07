@@ -9,6 +9,7 @@ import { CatalogError, Pagination } from './CatalogStates';
 import { catalogParams, getBooks, getSearchSuggestions, parseCatalogQuery, type CatalogQuery } from './catalog-api';
 import { BookGridSkeleton } from './BookGridSkeleton';
 import booksPhoto from '../../assets/img/editorial/books-table.jpg';
+import { Dialog } from '../../shared/components/Dialog';
 
 export function CatalogPage() {
   const [params, setParams] = useSearchParams(); const parsed = parseCatalogQuery(params);
@@ -29,9 +30,9 @@ function CatalogResults({ value, onNavigate }: { value: CatalogQuery; onNavigate
   useEffect(() => setQuickSearch(query), [query]);
   useEffect(() => {
     if (!filtersOpen) return;
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setFiltersOpen(false); };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
+    const resize = () => { if (window.innerWidth >= 1000) setFiltersOpen(false); };
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
   }, [filtersOpen]);
   const update = useCallback((patch: Partial<CatalogQuery>) => onNavigate(catalogParams({ query, authorId, categoryId, categoryTerm, page, size, sort, ...patch })), [query,authorId,categoryId,categoryTerm,page,size,sort,onNavigate]);
   const result = useQuery({ queryKey: ['catalog',user?.id,'books',value], queryFn: ({ signal }) => getBooks(value,signal), retry: false });
@@ -52,15 +53,18 @@ function CatalogResults({ value, onNavigate }: { value: CatalogQuery; onNavigate
     <button type="submit">Tìm trong thư viện <ArrowRight size={17} aria-hidden="true"/></button>
   </form><div className="catalog-explore-layout">
     <button type="button" className="catalog-filter-toggle button-secondary" aria-expanded={filtersOpen}
-      aria-controls="catalog-filter-panel" onClick={() => setFiltersOpen(open => !open)}>
+      aria-haspopup="dialog" onClick={() => setFiltersOpen(open => !open)}>
       <SlidersHorizontal size={17} aria-hidden="true"/> Bộ lọc {active.length > 0 && `(${active.length})`}
     </button>
-    {filtersOpen && <button type="button" className="catalog-filter-backdrop" aria-label="Đóng bộ lọc" onClick={() => setFiltersOpen(false)} />}
-    <aside id="catalog-filter-panel" className={`catalog-filter-panel ${filtersOpen ? 'is-open' : ''}`} aria-label="Bộ lọc sách">
+    {filtersOpen ? <Dialog title="Bộ lọc sách" className="catalog-filter-dialog" onClose={() => setFiltersOpen(false)}>
+      <p className="text-sm text-muted">Các lựa chọn được áp dụng vào danh mục ngay khi thay đổi.</p>
+      <BookFilters value={value} onChange={update}/>
+      <button type="button" className="button-primary mt-4" onClick={() => setFiltersOpen(false)}>Xem kết quả</button>
+    </Dialog> : <aside id="catalog-filter-panel" className="catalog-filter-panel" aria-label="Bộ lọc sách">
       <div className="catalog-filter-heading"><div><p className="eyebrow">Khám phá chính xác hơn</p><h2>Lọc danh mục</h2></div>
-        <button type="button" className="catalog-filter-close" onClick={() => setFiltersOpen(false)}>Đóng</button></div>
+      </div>
       <BookFilters value={value} onChange={update} />
-    </aside>
+    </aside>}
     <div className="catalog-results-panel">
       <div className="catalog-results-heading"><div><p className="eyebrow">Kết quả trong thư mục</p><h2 className="section-title">Tác phẩm trong danh mục</h2></div>
         <p role="status" aria-live="polite">{result.isPending ? 'Đang tìm sách…' : result.isError ? 'Không tải được kết quả' : `${result.data.page.totalElements.toLocaleString('vi-VN')} tác phẩm`}</p></div>

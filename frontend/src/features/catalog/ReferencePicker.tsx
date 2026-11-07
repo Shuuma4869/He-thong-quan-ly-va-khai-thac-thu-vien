@@ -28,6 +28,7 @@ export function ReferencePicker({ label, resource, value, onChange, multiple = f
     queryFn: ({ signal }) => getCatalogPage(resource, page, signal, bookId, canSearch ? query : ''),
     enabled: open && !disabled && !needsBook, retry: false, staleTime: 30_000 });
   const items = result.data?.items ?? [];
+  const ready = (!canSearch || input.trim() === query) && result.isSuccess && !result.isFetching;
   const choose = (itemId: string) => {
     onChange(multiple ? value.includes(itemId) ? value.filter(v => v !== itemId) : [...value, itemId] : [itemId]);
     if (!multiple) { setOpen(false); trigger.current?.focus(); } else search.current?.focus();
@@ -46,26 +47,26 @@ export function ReferencePicker({ label, resource, value, onChange, multiple = f
     {open && <div id={`${id}-panel`} className="reference-options">
       {canSearch && <label className="field">Tìm trong {label.toLowerCase()}
         <input ref={search} type="search" role="combobox" aria-autocomplete="list" aria-expanded={open}
-          aria-controls={`${id}-list`} aria-activedescendant={items[active] ? `${id}-option-${active}` : undefined}
+          aria-controls={`${id}-list`} aria-activedescendant={ready && items[active] ? `${id}-option-${active}` : undefined}
           value={input} maxLength={150} placeholder="Gõ tên để tìm trong toàn bộ danh mục"
           onChange={event => setInput(event.target.value)}
           onKeyDown={event => {
-            if (event.key === 'Escape') { event.preventDefault(); close(); }
-            if (event.key === 'ArrowDown' && items.length) { event.preventDefault(); setActive(Math.min(items.length - 1, active + 1)); }
-            if (event.key === 'ArrowUp') { event.preventDefault(); setActive(Math.max(0, active - 1)); }
-            if (event.key === 'Enter' && items[active]) { event.preventDefault(); choose(items[active].id); }
+            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
+            if (event.key === 'ArrowDown' && ready && items.length) { event.preventDefault(); setActive(Math.min(items.length - 1, active + 1)); }
+            if (event.key === 'ArrowUp' && ready) { event.preventDefault(); setActive(Math.max(0, active - 1)); }
+            if (event.key === 'Enter') { event.preventDefault(); if (ready && items[active]) choose(items[active].id); }
           }}/>
       </label>}
       {canSearch && input.trim() !== query ? <p role="status">Đang tìm {label.toLowerCase()}…</p>
         : result.isPending ? <p role="status">Đang tải {label.toLowerCase()}…</p>
         : result.isError ? <CatalogError error={result.error} retry={() => void result.refetch()} />
         : <><div id={`${id}-list`} role="listbox" aria-label={label} aria-multiselectable={multiple} className="reference-list">
-          {items.length === 0 && <p className="reference-feedback">Không tìm thấy {label.toLowerCase()} phù hợp. {query ? 'Thử từ khóa khác.' : 'Kiểm tra dữ liệu Catalog demo.'}</p>}
+          {items.length === 0 && <p className="reference-feedback">Không tìm thấy {label.toLowerCase()} phù hợp. {query ? 'Thử từ khóa khác.' : 'Danh mục này chưa có mục để chọn.'}</p>}
           {items.map((item, index) => <label key={item.id} id={`${id}-option-${index}`}
             role="option" aria-selected={value.includes(item.id)}
             className={`reference-option ${index === active ? 'reference-option-active' : ''}`}>
             <input type={multiple ? 'checkbox' : 'radio'} name={`reference-${id}`} checked={value.includes(item.id)}
-              onFocus={() => setActive(index)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); close(); } }}
+              disabled={!ready} onFocus={() => setActive(index)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); } }}
               onChange={() => choose(item.id)} />
             <span>{recordLabel(item)}</span></label>)}
           </div>

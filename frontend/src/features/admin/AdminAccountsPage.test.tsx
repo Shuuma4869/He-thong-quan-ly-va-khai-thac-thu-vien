@@ -29,6 +29,13 @@ it('chỉ quản trị viên thấy màn tài khoản và lưu thay đổi kèm 
   fireEvent.click(within(panel).getByRole('button', { name: 'Khóa tài khoản' }));
   const confirmation = await screen.findByRole('alertdialog', { name: 'Khóa tài khoản?' });
   expect(confirmation).toHaveTextContent('được ghi lại cùng lý do');
+  const confirmButton = within(confirmation).getByRole('button', { name: 'Xác nhận khóa' });
+  const cancelButton = within(confirmation).getByRole('button', { name: 'Quay lại' });
+  expect(cancelButton).toHaveFocus();
+  fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+  expect(confirmButton).toHaveFocus();
+  fireEvent.keyDown(document, { key: 'Tab' });
+  expect(cancelButton).toHaveFocus();
   fireEvent.click(within(confirmation).getByRole('button', { name: 'Xác nhận khóa' }));
   await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
     String(url).endsWith(`/admin/accounts/${target.id}/status`) && init.method === 'PATCH'

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { LogIn, Menu, SlidersHorizontal } from 'lucide-react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useLogoutNavigation } from '../../features/auth/useLogoutNavigation';
 import { useAuth } from '../../features/auth/auth-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
 import { LibrarySidebar } from './LibrarySidebar';
@@ -10,12 +11,11 @@ import { NotificationBell } from '../../features/notifications/NotificationBell'
 
 export function ReaderLayout() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const signOut = async () => { await auth.logout(); navigate('/', { replace: true }); };
+  const signOut = useLogoutNavigation('/');
   return (
     <div className="library-workspace">
       <LibrarySidebar mode="reader" open={menuOpen} onClose={closeMenu} trigger={trigger}/>

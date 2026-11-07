@@ -15,7 +15,7 @@ flowchart TB
       PG[(PostgreSQL)]
       Redis[(Redis)]
       Kafka[Kafka KRaft]
-      MinIO[MinIO]
+      MinIO[MinIO: profile tùy chọn, mặc định tắt]
     end
     Vite -.hot reload dev.-> FE
     FE --> Core
@@ -23,7 +23,8 @@ flowchart TB
     Core --> PG
     Insight --> PG
     Core -.planned.-> Redis
-    Insight -.planned consumer.-> Kafka
+    Core -->|Outbox khi bật job| Kafka
+    Kafka -->|Consumer khi bật thông báo| Insight
   end
   Prod[Production topology: chưa quyết định] -.sau này.-> LB[Reverse proxy / orchestrator / managed data services]
 ```

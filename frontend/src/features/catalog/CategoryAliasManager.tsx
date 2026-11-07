@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/auth-context';
 import { ApiError } from '../../shared/api/client';
@@ -6,7 +7,7 @@ import { getCatalogItem } from './catalog-api';
 import { ReferencePicker } from './ReferencePicker';
 import { deleteCategoryAlias, listCategoryAliases, saveCategoryAlias, type CategoryAlias } from './category-alias-api';
 
-export function CategoryAliasManager() {
+export function CategoryAliasManager({ onBusyChange }: { onBusyChange?: (busy: boolean) => void }) {
   const { user } = useAuth();
   const client = useQueryClient();
   const [page, setPage] = useState(0);
@@ -17,6 +18,15 @@ export function CategoryAliasManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [uncertain, setUncertain] = useState(false);
+  const open = !!editing || !!deleting;
+  useEffect(() => { onBusyChange?.(open); return () => onBusyChange?.(false); }, [open, onBusyChange]);
+  const leave = useUnsavedChanges({ dirty: !!editing && (categoryId !== (editing === 'new' ? '' : editing.categoryId)
+    || name !== (editing === 'new' ? '' : editing.name)), busy, uncertain, label: 'Bí danh thể loại chưa hoàn tất' });
+  const failed = (cause: unknown) => {
+    setError(message(cause));
+    setUncertain(!(cause instanceof ApiError) || cause.status === 0 || cause.status >= 500);
+  };
   const result = useQuery({ queryKey: ['category-aliases', user?.id, page],
     queryFn: ({ signal }) => listCategoryAliases(page, signal), retry: false });
 
@@ -31,20 +41,20 @@ export function CategoryAliasManager() {
   };
   const save = async () => {
     if (!editing || busy || !categoryId || !name.trim()) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setUncertain(false);
     try {
       await saveCategoryAlias(categoryId, name, editing === 'new' ? undefined : editing.id);
       setEditing(null); setNotice('Đã lưu bí danh thể loại.'); await refresh();
-    } catch (cause) { setError(message(cause)); }
+    } catch (cause) { failed(cause); }
     finally { setBusy(false); }
   };
   const remove = async () => {
     if (!deleting || busy) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setUncertain(false);
     try {
       await deleteCategoryAlias(deleting.id);
       setDeleting(null); setNotice('Đã xóa bí danh thể loại.'); await refresh();
-    } catch (cause) { setError(message(cause)); }
+    } catch (cause) { failed(cause); }
     finally { setBusy(false); }
   };
 
@@ -55,20 +65,20 @@ export function CategoryAliasManager() {
     {notice && <p role="status">{notice}</p>}
     {editing && <div className="editorial-card my-4">
       <h3 className="section-title">{editing === 'new' ? 'Thêm bí danh' : 'Sửa bí danh'}</h3>
-      <ReferencePicker label="Thể loại chuẩn" resource="categories" value={categoryId ? [categoryId] : []}
+      <fieldset disabled={busy}><ReferencePicker label="Thể loại chuẩn" resource="categories" value={categoryId ? [categoryId] : []}
         onChange={ids => setCategoryId(ids[0] ?? '')}/>
       <label className="field my-3">Tên bí danh<input value={name} maxLength={150}
-        onChange={event => setName(event.target.value)} placeholder="Ví dụ: Truyện trinh thám"/></label>
+        onChange={event => setName(event.target.value)} placeholder="Ví dụ: Truyện trinh thám"/></label></fieldset>
       {error && <p role="alert">{error}</p>}
       <div className="flex gap-3 my-3"><button type="button" className="button-primary" disabled={busy || !categoryId || !name.trim()}
         onClick={() => void save()}>Lưu bí danh</button>
-        <button type="button" className="button-secondary" disabled={busy} onClick={() => { setEditing(null); setError(''); }}>Hủy</button></div>
+        <button type="button" className="button-secondary" disabled={busy} onClick={() => leave(() => { setEditing(null); setError(''); setUncertain(false); })}>Hủy</button></div>
     </div>}
     {deleting && <div role="alertdialog" aria-label="Xác nhận xóa bí danh" className="editorial-card my-4">
       <p>Xóa bí danh “{deleting.name}”?</p>{error && <p role="alert">{error}</p>}
       <div className="flex gap-3 my-3"><button type="button" className="button-primary" disabled={busy}
         onClick={() => void remove()}>Xác nhận xóa bí danh</button>
-        <button type="button" className="button-secondary" disabled={busy} onClick={() => { setDeleting(null); setError(''); }}>Giữ lại</button></div>
+        <button type="button" className="button-secondary" disabled={busy} onClick={() => leave(() => { setDeleting(null); setError(''); setUncertain(false); })}>Giữ lại</button></div>
     </div>}
     {result.isPending ? <p role="status">Đang tải bí danh…</p> : result.isError
       ? <p role="alert">Không tải được bí danh. <button type="button" className="text-link" onClick={() => void result.refetch()}>Thử lại</button></p>

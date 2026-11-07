@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Menu, SlidersHorizontal } from 'lucide-react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useLogoutNavigation } from '../../features/auth/useLogoutNavigation';
 import { useAuth } from '../../features/auth/auth-context';
 import { LibrarySidebar } from './LibrarySidebar';
 import { SearchCommand } from '../../features/catalog/SearchCommand';
@@ -9,12 +10,11 @@ import { StaffWorkInboxBell } from '../../features/notifications/StaffWorkInboxB
 
 export function StaffLayout() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const signOut = async () => { await auth.logout(); navigate('/dang-nhap', { replace: true }); };
+  const signOut = useLogoutNavigation('/dang-nhap');
   return (
     <div className="library-workspace staff-workspace">
       <LibrarySidebar mode="staff" open={menuOpen} onClose={closeMenu} trigger={trigger}/>

@@ -1,10 +1,15 @@
 import { fireEvent,render,screen,waitFor } from '@testing-library/react';
 import { afterEach,beforeEach,expect,it,vi } from 'vitest';
-import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient,QueryClientProvider,useQuery } from '@tanstack/react-query';
+import { getRecentBooks } from './catalog-api';
 import { CatalogMedia } from './CatalogMedia';
 import { MediaEditor } from './MediaEditor';
 import { GoogleAttribution,SourceLink } from './SourceLink';
 import { configureCoreAuth } from '../../shared/api/client';
+import { ReferencePicker } from './ReferencePicker';
+import { invalidateCatalogViews } from './catalog-cache';
+import { MemoryRouter } from 'react-router-dom';
+import { SearchCommand } from './SearchCommand';
 
 vi.mock('../auth/auth-context',()=>({useAuth:()=>({user:{id:'11111111-1111-4111-8111-111111111111',roles:['LIBRARIAN']}})}));
 const id='22222222-2222-4222-8222-222222222222';
@@ -15,6 +20,63 @@ const renderQuery=(child:React.ReactNode)=>render(<QueryClientProvider client={n
 let fetchMock:ReturnType<typeof vi.fn>;
 beforeEach(()=>{fetchMock=vi.fn().mockImplementation(async()=>Response.json({media:null}));vi.stubGlobal('fetch',fetchMock);configureCoreAuth({token:()=> 'staff-token',refresh:async()=>false,clear:vi.fn()});});
 afterEach(()=>{configureCoreAuth(null);vi.unstubAllGlobals();});
+
+it('tìm kiếm chung bỏ tên sách cũ ngay sau khi danh mục được sửa', async () => {
+  let title = 'Sách trước cập nhật';
+  fetchMock.mockImplementation(async (url: string) => {
+    const items = new URL(url).pathname.endsWith('/books') ? [{ id, title, description: null, authors: [], categories: [] }] : [];
+    return Response.json({ items, page: { number: 0, size: 4, totalElements: items.length, totalPages: items.length ? 1 : 0 } });
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><MemoryRouter><SearchCommand/>
+    <button onClick={() => { title = 'Sách sau cập nhật'; void invalidateCatalogViews(client); }}>Hoàn tất sửa tên sách</button>
+  </MemoryRouter></QueryClientProvider>);
+  const search = screen.getByRole('combobox', { name: 'Tìm sách, tác giả và thể loại' });
+  fireEvent.focus(search);
+  fireEvent.change(search, { target: { value: 'Sách' } });
+  await screen.findByRole('option', { name: /Sách trước cập nhật/ });
+  fireEvent.click(screen.getByRole('button', { name: 'Hoàn tất sửa tên sách' }));
+  expect(await screen.findByRole('option', { name: /Sách sau cập nhật/ })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: /Sách trước cập nhật/ })).not.toBeInTheDocument();
+});
+
+it('danh sách chọn tác giả tải tên mới sau khi danh mục thay đổi', async () => {
+  let name = 'Tên trước cập nhật';
+  fetchMock.mockImplementation(async () => Response.json({ items: [{ id, name }],
+    page: { number: 0, size: 20, totalElements: 1, totalPages: 1 } }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  render(<QueryClientProvider client={client}><ReferencePicker label="Tác giả" resource="authors" value={[]} onChange={vi.fn()}/>
+    <button onClick={() => { name = 'Tên sau cập nhật'; void invalidateCatalogViews(client); }}>Hoàn tất cập nhật danh mục</button>
+  </QueryClientProvider>);
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn tác giả' }));
+  await screen.findByText('Tên trước cập nhật');
+  fireEvent.click(screen.getByRole('button', { name: 'Đóng lựa chọn' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Hoàn tất cập nhật danh mục' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn tác giả' }));
+  expect(await screen.findByText('Tên sau cập nhật')).toBeInTheDocument();
+  expect(screen.queryByText('Tên trước cập nhật')).not.toBeInTheDocument();
+});
+
+it('gỡ ảnh cập nhật cả bìa đang được hiển thị ở trang chủ', async () => {
+  let approved = true;
+  fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+    if (init.method === 'DELETE') { approved = false; return new Response(null, { status: 204 }); }
+    if (url.includes('/public/catalog/books')) return Response.json({ items: [{ id, title: 'Sách thử bìa', description: null,
+      authors: [], categories: [], cover: approved ? { ...media, editionId: id } : null }],
+      page: { number: 0, size: 8, totalElements: 1, totalPages: 1 } });
+    return Response.json({ media: approved ? media : null });
+  });
+  function RecentCover() {
+    const books = useQuery({ queryKey: ['landing', 'recent-books'], queryFn: () => getRecentBooks(), staleTime: Infinity });
+    return <p>{books.data?.items[0]?.cover ? 'Trang chủ đang dùng ảnh đã duyệt' : 'Trang chủ dùng bìa chữ'}</p>;
+  }
+  renderQuery(<><RecentCover/><MediaEditor kind="editions" id={id} title="Sách thử bìa" onClose={vi.fn()}/></>);
+  await screen.findByText('Trang chủ đang dùng ảnh đã duyệt');
+  fireEvent.click(await screen.findByRole('button', { name: 'Gỡ ảnh đã duyệt' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận gỡ ảnh' }));
+  await waitFor(() => expect(screen.queryByText('Trang chủ đang dùng ảnh đã duyệt')).not.toBeInTheDocument());
+  expect(await screen.findByText('Trang chủ dùng bìa chữ')).toBeInTheDocument();
+});
 
 it('chưa duyệt hoặc lỗi API thì dùng initials, không hiển thị ảnh ngẫu nhiên',async()=>{
   fetchMock.mockResolvedValue(Response.json({detail:'internal'},{status:500}));
@@ -45,6 +107,15 @@ it('desktop mở nguồn qua lệnh allowlist, không điều hướng WebView',
 });
 it('từ chối URL nguồn ngoài allowlist',()=>{
   render(<SourceLink href="https://evil.example/">Nguồn ảnh</SourceLink>);expect(screen.queryByRole('link')).not.toBeInTheDocument();
+});
+it('nguồn Gutenberg mở bằng native command nhưng không mở tên miền giả mạo', async () => {
+  const invoke = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('__TAURI__', { core: { invoke } });
+  render(<><SourceLink href="https://www.gutenberg.org/ebooks/1342">Gutenberg</SourceLink>
+    <SourceLink href="https://www.gutenberg.org.evil.test/ebooks/1342">Nguồn giả</SourceLink></>);
+  fireEvent.click(screen.getByRole('link', { name: 'Gutenberg' }));
+  await waitFor(() => expect(invoke).toHaveBeenCalledWith('open_catalog_source', { url: 'https://www.gutenberg.org/ebooks/1342' }));
+  expect(screen.queryByRole('link', { name: 'Nguồn giả' })).not.toBeInTheDocument();
 });
 it('metadata không có ảnh vẫn được trình bày để đối chiếu và không tự ghi Core',async()=>{
   fetchMock.mockImplementation(async(url:string)=>Response.json(url.includes('/metadata/books/')?{attempts:[{provider:'open-library',status:'ok'}],candidates:[{

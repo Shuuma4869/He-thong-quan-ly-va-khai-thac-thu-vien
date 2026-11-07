@@ -1,4 +1,7 @@
 import { useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
+import { ApiError } from '../../shared/api/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/auth-context';
 import { Pagination } from '../catalog/CatalogStates';
@@ -6,13 +9,22 @@ import { LibraryError } from '../my-library/LibraryError';
 import { createReview, deleteReview, listReviews, myReviews, ratingSummary, updateReview, type Review, type ReviewInput } from '../my-library/library-api';
 import { RatingInput } from './RatingInput';
 import { reportReview } from './moderation-api';
+import { invalidateCatalogViews } from '../catalog/catalog-cache';
 
 export function ReviewSection({ bookId }: { bookId: string }) {
   const { user } = useAuth();
   return user ? <Reviews key={`${user.id}:${bookId}`} book={bookId} owner={user.id}/> : null;
 }
 function Reviews({ book, owner }: { book: string; owner: string }) {
-  const [page, setPage] = useState(0);
+  const [params, setParams] = useSearchParams();
+  const requestedPage = Number(params.get('reviewPage') ?? 0);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
+  const setPage = (next: number) => {
+    const updated = new URLSearchParams(params);
+    if (next === 0) updated.delete('reviewPage');
+    else updated.set('reviewPage', String(next));
+    setParams(updated);
+  };
   const [notice, setNotice] = useState('');
   const client = useQueryClient();
   const list = useQuery({ queryKey: ['reviews', owner, book, 'list', page], queryFn: ({ signal }) => listReviews(book, page, signal), retry: false });
@@ -22,6 +34,7 @@ function Reviews({ book, owner }: { book: string; owner: string }) {
     // Hủy cả lượt đọc đầu tiên để phản hồi cũ không ghi lại cache sau khi sửa/xóa.
     await client.cancelQueries({ queryKey: ['reviews', owner] });
     await client.invalidateQueries({ queryKey: ['reviews', owner] });
+    await invalidateCatalogViews(client);
   };
   return <section className="my-8 border-t border-line pt-6" aria-labelledby="reviews-heading">
     <h2 id="reviews-heading" className="section-title">Đánh giá của bạn đọc</h2>
@@ -48,18 +61,29 @@ function Reviews({ book, owner }: { book: string; owner: string }) {
 function ReportReview({ book, reviewId }: { book: string; reviewId: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const sending = useRef(false);
   const send = useMutation({ mutationFn: () => reportReview(book, reviewId, reason.trim()) });
+  const leave = useUnsavedChanges({ dirty: open && !!reason && !send.isSuccess, busy: send.isPending,
+    uncertain: send.isError && (!(send.error instanceof ApiError) || send.error.status === 0 || send.error.status >= 500),
+    label: 'Lý do báo cáo đánh giá' });
   const valid = [...reason.trim()].length >= 10 && [...reason.trim()].length <= 500;
+  const submit = async () => {
+    if (!valid || sending.current || send.isSuccess) return;
+    sending.current = true;
+    try { await send.mutateAsync(); }
+    catch { /* Giữ nội dung và lỗi để người đọc kiểm tra trước khi gửi lại. */ }
+    finally { sending.current = false; }
+  };
   return <div className="mt-3">
     {!open && !send.isSuccess && <button type="button" className="text-link" onClick={() => setOpen(true)}>Báo cáo đánh giá</button>}
     {send.isSuccess && <p role="status">Đã gửi báo cáo. Quản trị viên sẽ xem xét.</p>}
-    {open && !send.isSuccess && <form onSubmit={event => { event.preventDefault(); if (valid) send.mutate(); }}>
+    {open && !send.isSuccess && <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="field">Lý do báo cáo<textarea rows={2} value={reason} maxLength={500}
         onChange={event => setReason(event.target.value)} disabled={send.isPending} required/></label>
       <p className="text-sm text-muted">Nêu lý do cụ thể, 10–500 ký tự.</p>
       <div className="mt-2 flex gap-2"><button type="submit" className="button-primary" disabled={!valid || send.isPending}>Gửi báo cáo</button>
-        <button type="button" className="button-secondary" disabled={send.isPending} onClick={() => { setOpen(false); send.reset(); }}>Hủy</button></div>
-      {send.isError && <LibraryError error={send.error} retry={() => send.reset()}/>}
+        <button type="button" className="button-secondary" disabled={send.isPending} onClick={() => leave(() => { setOpen(false); setReason(''); send.reset(); })}>Hủy</button></div>
+      {send.isError && <LibraryError error={send.error} context="report"/>}
     </form>}
   </div>;
 }
@@ -75,6 +99,10 @@ function ReviewEditor({ book, review, refresh, onNotice }: { book: string; revie
   const remove = useMutation({ mutationFn: () => deleteReview(book, review!.reviewId) });
   const busy = save.isPending || remove.isPending;
   const changed = !review || body.trim() !== review.body || rating !== review.rating;
+  const leave = useUnsavedChanges({ dirty: editing && (review ? changed : !!body || rating !== 0), busy,
+    uncertain: [save, remove].some(mutation => mutation.isError
+      && (!(mutation.error instanceof ApiError) || mutation.error.status === 0 || mutation.error.status >= 500)),
+    label: 'Nội dung và điểm đánh giá chưa lưu' });
   const valid = [...body.trim()].length >= 1 && [...body.trim()].length <= 5000 && rating >= 1 && rating <= 5;
   const submit = async () => {
     if (sending.current || !valid || !changed) return;
@@ -103,9 +131,9 @@ function ReviewEditor({ book, review, refresh, onNotice }: { book: string; revie
       <p id="review-body-help" className="text-sm my-2">1–5000 ký tự · {[...body.trim()].length}/5000</p>
       <RatingInput value={rating} onChange={setRating} disabled={busy}/>
       <div className="flex flex-wrap gap-3"><button className="button-primary" type="submit" disabled={busy || !valid || !changed}>Lưu đánh giá</button>
-        {review && <button className="button-secondary" type="button" disabled={busy} onClick={() => {
+        {review && <button className="button-secondary" type="button" disabled={busy} onClick={() => leave(() => {
           setBody(review.body); setRating(review.rating); setEditing(false); save.reset();
-        }}>Hủy chỉnh sửa</button>}</div>
+        })}>Hủy chỉnh sửa</button>}</div>
     </form> : <button className="button-secondary" type="button" disabled={busy} onClick={() => { setEditing(true); setConfirm(false); }}>Sửa đánh giá của tôi</button>}
     {review && <button ref={cancelRef} className="button-secondary my-3 ml-3" type="button" disabled={busy} onClick={() => setConfirm(true)}>Xóa đánh giá của tôi</button>}
     {confirm && <div role="group" aria-label="Xác nhận xóa đánh giá" className="my-3 border-t border-line pt-3">

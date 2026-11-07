@@ -185,6 +185,7 @@ try {
     $insight.Refresh()
     if ($insight.HasExited) { throw "Insight E2E đã thoát; xem $logs\insight.err.log. Cổng có thể đã bị tiến trình khác chiếm." }
     if ($Desktop) {
+        $desktopStarted = [Diagnostics.Stopwatch]::StartNew()
         $desktopProcess = Start-Process -FilePath $desktopExe -WorkingDirectory (Split-Path $desktopExe) -WindowStyle Normal -PassThru
         $launched += @{ pid = $desktopProcess.Id; ticks = $desktopProcess.StartTime.ToUniversalTime().Ticks }
         Wait-TestHttp "http://127.0.0.1:$DebugPort/json/version"
@@ -195,6 +196,12 @@ try {
             Start-Sleep -Seconds 1
         }
         if ($desktopProcess.MainWindowHandle -eq 0) { throw 'Không tìm thấy cửa sổ desktop LAMS.' }
+        $desktopStarted.Stop()
+        @{ executable = $desktopExe; sha256 = (Get-FileHash -LiteralPath $desktopExe -Algorithm SHA256).Hash;
+            processId = $desktopProcess.Id; nativeWindowAndCdpReadyMs = $desktopStarted.ElapsedMilliseconds;
+            measuredAt = [DateTime]::UtcNow.ToString('o');
+            method = 'Một lần mở process với profile test mới; chờ CDP và native window, polling 1 giây. Không phải thời gian UI sẵn sàng hay cold-start p95.' } |
+            ConvertTo-Json | Set-Content -LiteralPath (Join-Path $logs 'desktop-startup.json')
         Write-Output "LAMS native process: $($desktopProcess.Id); window handle: $($desktopProcess.MainWindowHandle)"
     } else {
     $launchFrontend = @{

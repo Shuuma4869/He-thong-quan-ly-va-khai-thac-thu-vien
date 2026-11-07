@@ -15,13 +15,14 @@ Không cần Maven hệ thống. `mvnw.cmd` lưu Maven 3.9.11 trong cache ngư�
 Từ `<thu-muc-du-an>`:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\setup-desktop.ps1
-pwsh -NoProfile -File .\scripts\bootstrap-local.ps1
+pwsh -NoProfile -File .\lams.ps1 Setup
 pwsh -NoProfile -File .\scripts\smoke-test.ps1
 pwsh -NoProfile -File .\scripts\check-quality.ps1
 ```
 
 Bootstrap không ghi đè `.env` đã tồn tại và không xóa volume. Với môi trường mới, script tạo ngẫu nhiên mật khẩu PostgreSQL và JWT secret; với môi trường cũ, script kiểm tra giá trị bắt buộc, mật khẩu giữa Core/Insight và lỗi xác thực volume. Flyway chạy khi Core khởi động; Prisma migration được bootstrap deploy.
+
+Nếu cổng hạ tầng đang được dự án khác dùng, chạy `.\lams.ps1 Setup -ConfigureOnly` để tạo `.env` trước, chưa cài dependency hoặc bật container. Chỉnh `COMPOSE_PROJECT_NAME`, các cổng PostgreSQL/Redis/Kafka và URL tương ứng trong `.env`, rồi chạy `Setup` bình thường. Dùng tên Compose riêng cho mỗi môi trường để không tái sử dụng container/volume của checkout khác. Core/Insight/Web của launcher local dùng cổng 8080/3000/5173; cần dừng dịch vụ đang chiếm các cổng này trước.
 Mặc định Compose chỉ khởi động PostgreSQL, Redis và Kafka. MinIO không phục vụ ảnh Catalog hiện tại nên nằm trong profile `media` và không tiêu thụ tài nguyên khi khởi động thông thường.
 
 Muốn thử đổi email trên máy phát triển, chạy `docker compose --profile email-dev up -d mailpit`, đặt `LAMS_EMAIL_ENABLED=true` trong `.env` rồi khởi động lại Core. Mailpit nhận SMTP ở `localhost:1025`; mở `http://localhost:8025` để lấy mã. Không bật cờ này khi chưa có SMTP phù hợp; mặc định API gửi mã trả 503 và không tạo yêu cầu mới. Mailpit chỉ bind vào `127.0.0.1`, không chuyển thư ra ngoài.
@@ -29,7 +30,13 @@ Muốn thử đổi email trên máy phát triển, chạy `docker compose --pro
 
 Trong Git Bash của VS Code có thể dùng `./scripts/lams.sh doctor|setup|bootstrap|smoke|seed-demo|core|insight|web|desktop|quality|e2e|desktop-e2e|build-desktop|stop`. Chạy `./scripts/lams.sh` không tham số để xem trợ giúp. `core`, `insight`, `web` và `desktop` dùng terminal riêng, kiểm cổng trước khi chạy để tránh mở trùng service. Đường dẫn có dấu tiếng Việt và khoảng trắng được wrapper chuyển sang đường dẫn Windows khi gọi PowerShell 7.
 
-## Chạy ứng dụng
+## Mở ứng dụng bằng launcher chung
+
+Sau Setup, chạy `.\lams.ps1 Web` hoặc `.\lams.ps1 Desktop` từ root. Web không cần toolchain Desktop. Launcher tự build JAR thiếu/cũ, chờ hạ tầng/API và kiểm tiến trình trước khi mở giao diện. Desktop yêu cầu build EXE/NSIS trước; xem [hướng dẫn](desktop-windows.md). `-NoOpen` kiểm startup mà không mở cửa sổ hoặc tab, dùng cho nghiệm thu. Không tự cài phần mềm hệ thống hoặc seed demo khi mở app.
+
+Đóng tab hoặc cửa sổ Desktop không dừng backend. Chạy `.\lams.ps1 Stop` để dừng Core/Insight/Web đã mở từ checkout này, sau đó `Web` hoặc `Desktop` để khởi động lại. Hãy lưu các thao tác trước khi dừng. Lệnh kiểm tra PID, thời điểm tạo và chuỗi tiến trình; không dựa vào tên `java`/`node` để dừng toàn bộ máy, không dừng Docker và không xóa dữ liệu. Khi tiến trình giữ cổng không thuộc launcher, xử lý tại cửa sổ đã mở tiến trình đó.
+
+## Chạy từng dịch vụ khi phát triển
 
 Mở ba terminal tại root project:
 
@@ -85,7 +92,7 @@ Insight từ Phase 2.5 yêu cầu PostgreSQL sẵn sàng khi khởi động. N�
 
 ## Dừng an toàn
 
-Đóng cửa sổ Desktop, dừng Core và Insight bằng `Ctrl+C` ở đúng hai terminal đã khởi chạy, chờ tiến trình thoát rồi mới dừng hạ tầng. Không đóng đột ngột PostgreSQL khi còn lệnh ghi đang chạy. Nếu cần giữ hạ tầng cho lần chạy sau, có thể để ba container tiếp tục chạy.
+Lưu thao tác, đóng cửa sổ Desktop rồi dùng `.\lams.ps1 Stop` nếu đã mở bằng launcher. Khi chạy từng service ở terminal riêng, dùng `Ctrl+C` tại các terminal đó. Chờ dịch vụ ứng dụng thoát rồi mới dừng hạ tầng. Không đóng đột ngột PostgreSQL khi còn lệnh ghi đang chạy. Nếu cần giữ hạ tầng cho lần chạy sau, có thể để ba container tiếp tục chạy.
 
 ```powershell
 .\scripts\stop-infra.ps1
@@ -97,4 +104,41 @@ Trước khi nâng phiên bản có migration, làm theo [runbook backup và res
 
 ## Desktop và web
 
-Mặc định dùng cửa sổ Tauri trên Windows. [Runbook desktop](desktop-windows.md) ghi prerequisite, lệnh build EXE/bộ cài, cookie/CORS và E2E WebView2. Vite chỉ chạy khi dev; release không cần cổng 5173. Muốn kiểm web riêng thì chạy npm run dev trong frontend, không chạy đồng thời desktop dev trên cùng cổng. Backend và database vẫn khởi động riêng.
+Quick Start dùng Web; chọn `.\lams.ps1 Desktop` khi đã build bản Windows. [Runbook desktop](desktop-windows.md) ghi prerequisite, lệnh build EXE/bộ cài, cookie/CORS và E2E WebView2. Desktop release không cần cổng 5173. Cả hai giao diện dùng Core/Insight và database; launcher chung quản lý thứ tự khởi động.
+
+## Quản trị viên đầu tiên và danh mục rỗng
+
+Đăng ký công khai chỉ tạo Reader. Môi trường học tập dùng cổng mặc định có thể tạo ba tài khoản thử bằng `scripts/provision-demo-users.ps1 -ConfirmDemoDatabase -GeneratePasswords`; đây là thao tác riêng có xác nhận, không thuộc Setup và không phù hợp production. Xem [dữ liệu demo](../09-demo/du-lieu-demo.md) về cách đọc thông tin đăng nhập được bảo vệ trên Windows.
+
+Với database mới cần tài khoản thật, người vận hành có quyền quản trị PostgreSQL phải xác minh danh tính người nhận trước khi cấp Admin đầu tiên. Người nhận đăng ký Reader, đăng xuất và cung cấp UUID tài khoản. Sau khi kiểm tra đúng database local và chưa có Admin, mở `psql`:
+
+```powershell
+. .\scripts\common.ps1
+Import-LamsEnv -OverrideExisting
+docker compose exec postgres psql -U $env:POSTGRES_USER -d lams_core
+```
+
+Trong `psql`, thay UUID mẫu bằng UUID đã đối chiếu. Câu lệnh chỉ thêm quyền khi chưa có bất kỳ tài khoản Admin nào, không sửa mật khẩu hoặc tạo người dùng:
+
+```sql
+\set ON_ERROR_STOP on
+\set target_id 'UUID-TAI-KHOAN-DA-XAC-MINH'
+BEGIN;
+LOCK TABLE user_roles IN SHARE ROW EXCLUSIVE MODE;
+SELECT id, member_code, email, full_name, status FROM users WHERE id = :'target_id'::uuid;
+INSERT INTO user_roles(user_id, role_code)
+SELECT id, 'ADMIN' FROM users
+WHERE id = :'target_id'::uuid AND status = 'ACTIVE'
+  AND NOT EXISTS (SELECT 1 FROM user_roles WHERE role_code = 'ADMIN');
+-- Phải có đúng INSERT 0 1 và đúng danh tính ở kết quả SELECT.
+-- Nếu không đúng, dùng ROLLBACK thay COMMIT.
+COMMIT;
+```
+
+Đây là bước bootstrap do quản trị database thực hiện; không có nhật ký quyết định trong giao diện như API quản trị. Ghi người thực hiện, thời điểm và UUID vào hồ sơ vận hành. Các lần cấp/thu hồi quyền tiếp theo phải dùng màn **Tài khoản và phân quyền**, có lý do và kiểm tra phiên bản. Không dùng SQL này để sửa quyền tùy tiện trên database đang vận hành.
+
+Đăng nhập lại bằng tài khoản Admin, cấp Librarian cho nhân viên đã đăng ký. Tại **Danh mục**, tạo tác giả/thể loại và tác phẩm, sau đó ấn bản. Tạo chi nhánh và kệ trước khi thêm bản sách có barcode. Khi chưa có bản sách vật lý, không coi tác phẩm tham khảo là sách có thể mượn; Reader chỉ giữ chỗ theo điều kiện khả dụng do API trả về.
+
+### Đường dẫn Java và cache Maven trên Windows
+
+Launcher chạy JAR bằng đường dẫn tương đối trong thư mục Core để tránh Java làm mất dấu ở đối số đường dẫn tuyệt đối. Nếu tự đặt `MAVEN_USER_HOME`, chọn thư mục cache không dấu (ví dụ `D:\maven-cache`); bản Maven Windows hiện dùng có thể báo `ClassNotFoundException: org.codehaus.plexus.classworlds.launcher.Launcher` khi chính đường dẫn cài Maven chứa ký tự tiếng Việt. Không sao chép JAR cũ hoặc tắt kiểm manifest để xử lý lỗi này.

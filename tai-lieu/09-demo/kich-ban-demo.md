@@ -16,6 +16,14 @@ Bộ demo có 10.013 Book nhưng chỉ 64 Copy vật lý. Các bản Gutenberg t
 
 Không trình diễn bằng cách gọi API tạo Loan trực tiếp hoặc đánh dấu Copy AVAILABLE để bỏ qua bàn giao. Nếu không có Kafka, vẫn có thể xác minh phân bổ trong Core nhưng Work Inbox/Thông báo Insight chưa thể được xác nhận đã nhận event. Bộ E2E bật Kafka cô lập kiểm thêm tạo Hold/Loan, bàn giao, trả, phân bổ kế tiếp, Work Inbox, deep link và notification delivery.
 
+## Luồng quản trị Admin
+
+1. Mở `/nhan-vien/bang-dieu-khien`: tài khoản bị khóa, báo cáo moderation và giữ chỗ cần xử lý đứng trước các KPI vận hành; mọi số liệu lấy từ API và có trạng thái lỗi/tải riêng.
+2. Mở **Tài khoản và phân quyền**, xem audit timeline trong drawer; đổi trạng thái/vai trò cần lý do, version và xác nhận. Mở **Báo cáo đánh giá**, đối chiếu nhan đề, nội dung snapshot và lý do rồi quyết định ẩn hoặc bỏ qua báo cáo.
+3. Với moderation, nhan đề lấy từ Catalog theo batch; nếu nguồn không tải được, giao diện hiện lỗi và cho thử lại, không giả lập tên sách. Không dùng tài khoản Librarian để thay thế xác minh quyền Admin.
+
+Work Inbox hiện cho Librarian/Admin xem dữ liệu toàn hệ thống; bộ lọc chi nhánh chỉ lọc kết quả, không phải ranh giới ủy quyền. Chưa có quan hệ phân công nhân viên–chi nhánh để giới hạn thêm. Không trình diễn hoặc mô tả bộ lọc này như kiểm soát truy cập.
+
 ## Luồng trình diễn Phase 5–7
 
 1. Kiểm kê: Nhân viên mở phiên theo chi nhánh/kệ, quét barcode bằng bàn phím hoặc máy quét kiểu bàn phím, rồi chốt. Có thể quét ở kệ khác trên database demo để tạo bằng chứng sai kệ; xem snapshot, scan và anomaly trước khi xác nhận chuyển kệ. Việc xác nhận thay đổi vị trí Copy demo, nên ghi lại vị trí ban đầu nếu cần trình diễn lại. Không có camera/offline; chưa kiểm máy quét vật lý trên máy thứ hai.

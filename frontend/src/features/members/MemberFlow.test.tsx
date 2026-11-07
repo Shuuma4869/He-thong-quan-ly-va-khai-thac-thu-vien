@@ -32,6 +32,17 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
+it('hủy đổi email thất bại hiện lỗi và giữ yêu cầu đang chờ', async () => {
+  fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(
+    init.method === 'DELETE' ? Response.json({ detail: 'Tạm thời gián đoạn.' }, { status: 503 })
+      : Response.json(url.endsWith('/auth/refresh') ? session : { ...account, pendingEmail: 'new@example.test' })));
+  app();
+  fireEvent.click(await screen.findByRole('button', { name: 'Hủy yêu cầu' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Không tải được dữ liệu');
+  expect(screen.getByText('new@example.test')).toBeInTheDocument();
+  expect(screen.queryByText('Đã hủy yêu cầu đổi email.')).not.toBeInTheDocument();
+});
+
 it('thủ thư xem căn cứ no-show nhưng không có quyền xác nhận', async () => {
   const holdId = 'a4b701a8-7d74-45b8-b346-1800770d6b34';
   fetchMock.mockImplementation((url: string) => Promise.resolve(Response.json(

@@ -41,6 +41,8 @@ export function DirectoryPage({ kind }: { kind: 'authors' | 'categories' }) {
         onChange={event => setInput(event.target.value)} placeholder={author ? 'Tên tác giả' : 'Tên thể loại'} /></label>
       <button className="button-primary" type="submit">Tìm kiếm</button>
     </form>
+    {images.isError && <div className="editorial-card mt-4" role="alert"><p>Chưa tải được thông tin ảnh đã duyệt. Danh mục vẫn dùng hình thay thế.</p>
+      <button type="button" className="button-secondary mt-2" onClick={() => void images.refetch()}>Tải lại ảnh danh mục</button></div>}
     {!valid ? <div role="alert" className="editorial-card mt-5">Đường dẫn tìm kiếm không hợp lệ. <button type="button" className="text-link" onClick={() => change('', 0)}>Đặt lại</button></div>
       : results.isPending ? <p role="status" className="mt-6">Đang tải {title.toLowerCase()}…</p>
         : results.isError ? <CatalogError error={results.error} retry={() => void results.refetch()} />

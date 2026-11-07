@@ -6,6 +6,7 @@ import { useAuth } from '../../features/auth/auth-context';
 import { useAppearance } from '../../features/appearance/appearance-context';
 import { BrandLogo } from '../../shared/branding/BrandLogo';
 import { sidebarItemActive } from './sidebarItemActive';
+import { lockBodyScroll } from '../../shared/components/scroll-lock';
 
 type Item = { label: string; to: string; icon: LucideIcon };
 type Group = { title: string; items: Item[] };
@@ -70,8 +71,7 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
   }, [location.pathname, location.hash, onClose]);
   useEffect(() => {
     if (!open) return;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = lockBodyScroll();
     const prior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.current?.querySelector<HTMLElement>('button, a')?.focus();
     const onKey = (event: KeyboardEvent) => {
@@ -84,7 +84,7 @@ export function LibrarySidebar({ mode, open, onClose, trigger }: {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); prior?.focus(); };
+    return () => { releaseScroll(); document.removeEventListener('keydown', onKey); prior?.focus(); };
   }, [open, onClose, trigger]);
   const groups = [...baseGroups, { title: 'Tùy chỉnh', items: [{ label: 'Giao diện', to: '/cai-dat/giao-dien', icon: SlidersHorizontal }] }];
   const contents = (compact: boolean) => <>

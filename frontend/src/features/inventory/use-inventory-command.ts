@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/client';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 
 export function useInventoryCommand<T>(owner: string, signature: string, send: (requestId: string) => Promise<T>, onSuccess?: (value: T) => void) {
   const client = useQueryClient();
@@ -10,6 +11,7 @@ export function useInventoryCommand<T>(owner: string, signature: string, send: (
   const [error, setError] = useState<Error | null>(null);
   const [result, setResult] = useState<T | null>(null);
   const uncertain = !!error && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500);
+  useUnsavedChanges({ dirty: false, busy, uncertain: uncertain && !result, label: 'Yêu cầu kiểm kê đang chờ kết quả' });
   const run = async () => {
     if (sending.current || result) return;
     sending.current = true; setBusy(true); setError(null);
@@ -23,6 +25,9 @@ export function useInventoryCommand<T>(owner: string, signature: string, send: (
       // The command receipt is final; background reads must not keep its button spinning.
       void client.invalidateQueries({ queryKey: ['inventory', owner] });
       void client.invalidateQueries({ queryKey: ['catalog', owner] });
+      void client.invalidateQueries({ queryKey: ['catalog', 'availability'] });
+      void client.invalidateQueries({ queryKey: ['staff-dashboard', owner] });
+      void client.invalidateQueries({ queryKey: ['admin-dashboard', owner] });
     } catch (failure) { setError(failure instanceof Error ? failure : new Error('Không hoàn tất yêu cầu kiểm kê.')); }
     finally { sending.current = false; setBusy(false); }
   };

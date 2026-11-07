@@ -26,6 +26,7 @@ function MemberResults({ value, onNavigate }: {
 }) {
   const { user } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
+  const [reviewActive, setReviewActive] = useState(false);
   const { query, status, page, size, sort } = value;
   const update = useCallback((patch: Partial<MemberQuery>) => {
     onNavigate(memberQueryParams({ query, status, page, size, sort, ...patch }));
@@ -52,11 +53,12 @@ function MemberResults({ value, onNavigate }: {
             <thead><tr><th scope="col">Mã thành viên</th><th scope="col">Họ và tên</th><th scope="col">Trạng thái</th><th scope="col">Giữ chỗ</th></tr></thead>
             <tbody>{result.data.items.map(member => <tr key={member.userId}>
               <td>{member.memberCode}</td><td>{member.fullName}</td><td>{statusLabels[member.status]}</td>
-              <td><button type="button" className="text-link" onClick={() => setSelected(member.userId)}>Xem hết hạn</button></td>
+              <td><button type="button" className="text-link" disabled={reviewActive} onClick={() => setSelected(member.userId)}>Xem hết hạn</button></td>
             </tr>)}</tbody>
           </table>
         </div>}
-        {selected && <HoldReliabilityPanel key={selected} readerId={selected}/>}
+        {reviewActive && <p className="text-sm my-3">Hoàn tất hoặc bỏ lý do đang nhập trước khi xem thành viên khác.</p>}
+        {selected && <HoldReliabilityPanel key={selected} readerId={selected} onActiveChange={setReviewActive}/>}
         <nav className="mt-5 flex flex-wrap items-center gap-3" aria-label="Phân trang thành viên">
           <button type="button" className="button-secondary" disabled={page === 0}
             onClick={() => update({ page: page - 1 })}>Trang trước</button>

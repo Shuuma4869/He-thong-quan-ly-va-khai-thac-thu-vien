@@ -21,6 +21,7 @@ function AuthorDetail({ id }: { id: string }) {
     {author.isPending ? <p role="status" className="py-8">Đang tải tác giả…</p> : author.isError ? <CatalogError error={author.error} retry={() => void author.refetch()} /> : <>
       <div className="author-heading my-6"><DirectoryVisual kind="authors" title={author.data.name} image={media.data?.[0]}/>
         <div><p className="eyebrow">Gặp gỡ tác giả</p><h1 className="page-title">{author.data.name}</h1><p className="text-muted mt-2">Khám phá những tác phẩm được biên mục dưới tên tác giả này.</p></div></div>
+      {media.isError && <CatalogError error={media.error} retry={() => void media.refetch()}/>}
       <div className="detail-section-heading"><div><p className="eyebrow">Danh mục tác phẩm</p><h2>Tác phẩm trong thư viện</h2></div>
         {books.isSuccess && <p>{books.data.page.totalElements.toLocaleString('vi-VN')} tác phẩm</p>}</div>
       {books.isPending ? <p role="status">Đang tải tác phẩm…</p> : books.isError ? <CatalogError error={books.error} retry={() => void books.refetch()} />

@@ -29,7 +29,7 @@ it('hiển thị work item từ Insight và mở trực tiếp yêu cầu WAITIN
   vi.stubGlobal('fetch', fetchMock);
   render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/hop-thu']}><AppRouter/></MemoryRouter></AppProviders>);
   expect(await screen.findByRole('heading', { name: 'Hộp thư công việc' })).toBeInTheDocument();
-  expect(await screen.findByRole('heading', { name: 'Hold sẵn sàng nhận sách' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Sách đã sẵn sàng bàn giao' })).toBeInTheDocument();
   expect(await screen.findByText('Chi nhánh A')).toBeInTheDocument();
   const link = screen.getByRole('link', { name: 'Mở nghiệp vụ' });
   expect(link).toHaveAttribute('href', `/nhan-vien/giu-cho?status=READY&branchId=${branchId}&holdId=${holdId}`);

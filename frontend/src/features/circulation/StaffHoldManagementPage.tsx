@@ -17,6 +17,10 @@ const expiryHours: Record<string, number> = { '24h': 24, '72h': 72, '7d': 168 };
 const holdStatusLabels: Record<string, string> = {
   WAITING: 'Đang chờ', READY: 'Sẵn sàng nhận', FULFILLED: 'Đã bàn giao', CANCELLED: 'Đã hủy', EXPIRED: 'Đã hết hạn',
 };
+const holdEventLabels: Record<string, string> = {
+  HOLD_CREATED: 'Đã tạo yêu cầu', HOLD_READY: 'Sách sẵn sàng nhận', HOLD_FULFILLED: 'Đã bàn giao sách',
+  HOLD_CANCELLED: 'Đã hủy yêu cầu', HOLD_EXPIRED: 'Đã hết hạn nhận',
+};
 const vietnamBusinessDayStart = (date: string, offsetDays = 0) => {
   const [year, month, day] = date.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day + offsetDays, -7)).toISOString();
@@ -75,7 +79,7 @@ function HoldWorkspace({ owner }: { owner: string }) {
   return <section className="hold-operations">
     <header className="hold-operations-hero">
       <div><p className="eyebrow">Không gian tác nghiệp · Lưu thông</p><h1 className="page-title">Quản lý giữ chỗ</h1>
-        <p>Theo dõi hàng chờ, chuẩn bị bản sách và xác nhận bàn giao tại quầy. Mọi trạng thái được đọc trực tiếp từ Core.</p></div>
+        <p>Theo dõi hàng chờ, chuẩn bị bản sách và xác nhận bàn giao tại quầy. Tải lại trước khi bàn giao nếu dữ liệu đã thay đổi.</p></div>
       <Link className="button-secondary" to="/nhan-vien/luu-thong">Mở quầy lưu thông <ArrowUpRight size={16}/></Link>
     </header>
 
@@ -149,7 +153,7 @@ function HoldWorkspace({ owner }: { owner: string }) {
 }
 
 function Metric({ label, value, detail }: { label: string; value: number; detail: string }) {
-  return <div><dt>{label}</dt><dd>{value}</dd><span>{detail}</span></div>;
+  return <div><dt>{label}</dt><dd>{value}<span>{detail}</span></dd></div>;
 }
 
 function HoldListCard({ item, selected, onSelect }: { item: StaffHoldItem; selected: boolean; onSelect: () => void }) {
@@ -189,11 +193,12 @@ function HoldDetailPane({ owner, item, history, reload, onPickupSuccess }: {
     <section className="hold-history" aria-labelledby="hold-history-title"><h3 id="hold-history-title">Lịch sử trạng thái</h3>
       {!history.length ? <p>Chưa có sự kiện lịch sử.</p>
         : <ol>{history.map(change => <li key={`${change.version}:${change.eventType}`}>
-          <strong>{change.eventType}</strong><span>Version {change.version} · {formatTime(change.occurredAt)}</span>
-          <small>{change.actorId ? `Actor ${change.actorId}` : 'Tác vụ hệ thống'}</small>
+          <strong>{holdEventLabels[change.eventType] ?? 'Cập nhật yêu cầu'}</strong><span>{formatTime(change.occurredAt)}</span>
+          <details><summary>Thông tin truy vết</summary><small>Mã sự kiện: {change.eventType} · Phiên bản {change.version}</small>
+            <small>{change.actorId ? `Mã người thực hiện: ${change.actorId}` : 'Tác vụ hệ thống'}</small></details>
         </li>)}</ol>}
     </section>
-    <p className="hold-version">Version hiện tại: {item.hold.version}</p>
+    <p className="hold-version">Phiên bản dữ liệu: {item.hold.version}</p>
   </article>;
 }
 
@@ -208,7 +213,7 @@ function PickupConfirmation({ owner, item, onComplete, onPickupSuccess }: {
     }, enabled: !!copyId, retry: false });
   const command = useCirculationCommand(owner, JSON.stringify([item.hold.id,item.hold.version,item.hold.readerId,copy.data?.id,copy.data?.version]),
     requestId => {
-      if (!copy.data) throw new Error('Chưa tải được Copy được phân bổ.');
+      if (!copy.data) throw new Error('Chưa tải được bản sách được phân bổ.');
       return borrowCopy(copy.data,item.hold.readerId,requestId);
     }, result => onPickupSuccess(result.dueAt));
   const expired = !!item.hold.expiresAt && Date.parse(item.hold.expiresAt) <= Date.now();
@@ -221,10 +226,10 @@ function PickupConfirmation({ owner, item, onComplete, onPickupSuccess }: {
     {expired ? <p role="alert">Yêu cầu đã quá hạn nhận. Tải lại trạng thái trước khi thao tác.</p>
       : copy.isPending ? <p role="status">Đang xác minh bản được phân bổ…</p>
         : copy.isError ? <CirculationError error={copy.error} reload={() => void copy.refetch()}/>
-          : !copyMatches ? <div role="alert"><p>Trạng thái hoặc phiên bản Copy đã thay đổi. Không thể bàn giao từ dữ liệu cũ.</p>
+          : !copyMatches ? <div role="alert"><p>Trạng thái hoặc phiên bản bản sách đã thay đổi. Không thể bàn giao từ dữ liệu cũ.</p>
             <button type="button" className="button-secondary" onClick={() => { void copy.refetch(); onComplete(); }}>Tải lại</button></div>
             : <><p>Đối chiếu thành viên <strong>{item.readerMemberCode}</strong> và mã vạch <strong>{copy.data.barcode}</strong>.
-              Loan sẽ chỉ được tạo khi Core xác nhận đúng Copy ON_HOLD và đúng người nhận.</p>
+              Chỉ ghi nhận lượt mượn khi bản sách vẫn được giữ cho đúng người nhận.</p>
               <button type="button" className="button-primary" disabled={!canConfirm}
                 onClick={() => void command.run()}>{command.busy ? 'Đang ghi nhận bàn giao…' : command.uncertain ? 'Thử lại cùng yêu cầu' : 'Xác nhận đã giao sách'}</button>
               {command.error && <CirculationError error={command.error}/>}
