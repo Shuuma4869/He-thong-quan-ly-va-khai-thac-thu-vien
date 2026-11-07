@@ -11,9 +11,15 @@ function Get-CimInstance {
     if ($Filter) { return $global:StopFixtureProcesses | Where-Object { "ProcessId = $($_.ProcessId)" -eq $Filter } }
     return $global:StopFixtureProcesses
 }
-function Stop-Process { param($Id,$ErrorAction); $global:StoppedFixturePids.Add([int]$Id) }
+function Stop-Process { param($Id,$ErrorAction); $global:StoppedFixturePids.Add([int]$Id)
+    if ($global:StopFixtureExitRace) {
+        $global:StopFixtureProcesses = @($global:StopFixtureProcesses | Where-Object ProcessId -ne $Id)
+        throw 'Process already exited'
+    }
+}
 '@
 try {
+    $global:StopFixtureExitRace = $false
     $created = [datetime]'2026-11-07T00:00:00Z'
     $global:StopFixtureProcesses = @(
         @{ProcessId=100;ParentProcessId=1;CreationDate=$created},
@@ -26,6 +32,12 @@ try {
     $record | ConvertTo-Json | Set-Content -LiteralPath $path
     & (Join-Path $scripts 'stop-local-services.ps1')
     if (($global:StoppedFixturePids -join ',') -ne '101,100') { throw 'Must stop owned child before owner and leave foreign PID alone' }
+    $savedProcesses = $global:StopFixtureProcesses
+    $global:StopFixtureExitRace = $true
+    & (Join-Path $scripts 'stop-local-services.ps1')
+    if ($global:StopFixtureProcesses.Count -ne 1 -or $global:StopFixtureProcesses[0].ProcessId -ne 900) { throw 'Exit race must leave foreign process intact' }
+    $global:StopFixtureProcesses = $savedProcesses
+    $global:StopFixtureExitRace = $false
     $global:StoppedFixturePids.Clear()
     $global:StopFixtureProcesses[0].CreationDate = $created.AddMinutes(1)
     & (Join-Path $scripts 'stop-local-services.ps1')
@@ -41,5 +53,5 @@ try {
     if (-not $resolved.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase) -or
         (Split-Path $resolved -Leaf) -notlike 'lams-stop-*') { throw 'Unsafe fixture cleanup path' }
     Remove-Item -LiteralPath $resolved -Recurse -Force
-    Remove-Variable -Name StopFixtureProcesses,StoppedFixturePids -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable -Name StopFixtureProcesses,StoppedFixturePids,StopFixtureExitRace -Scope Global -ErrorAction SilentlyContinue
 }

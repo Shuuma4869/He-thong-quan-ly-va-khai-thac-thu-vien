@@ -23,7 +23,14 @@ try {
         foreach ($process in $owned) {
             if ($process.ProcessId -eq $PID) { throw 'Từ chối dừng chính launcher.' }
             $current = Get-CimInstance Win32_Process -Filter "ProcessId = $($process.ProcessId)" -Property ProcessId,CreationDate
-            if ($current -and $current.CreationDate -eq $process.CreationDate) { Stop-Process -Id $process.ProcessId -ErrorAction Stop }
+            if ($current -and $current.CreationDate -eq $process.CreationDate) {
+                try { Stop-Process -Id $process.ProcessId -ErrorAction Stop }
+                catch {
+                    # Tiến trình cha có thể tự thoát sau khi tiến trình con dừng.
+                    $remaining = Get-CimInstance Win32_Process -Filter "ProcessId = $($process.ProcessId)" -Property ProcessId,CreationDate
+                    if ($remaining -and $remaining.CreationDate -eq $process.CreationDate) { throw }
+                }
+            }
         }
         Write-Host "[OK] $service đã dừng hoặc không còn tiến trình thuộc lượt khởi động đã ghi nhận."
     }
