@@ -1475,9 +1475,9 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
   let releaseAnalysis!: () => void;
   const analysisGate = new Promise<void>(resolve => { releaseAnalysis = resolve; });
   await page.route('**/acquisition/analysis?*', async route => {
-    const response = await route.fetch();
+    // WebView2 resolves *.tauri.localhost itself; keep transport in the browser.
     await analysisGate;
-    await route.fulfill({ response });
+    await route.continue();
   });
   const expectScopeLocked = async () => {
     await expect(page.getByLabel('Từ thời điểm')).toBeDisabled();
@@ -1505,9 +1505,8 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
   const createGate = new Promise<void>(resolve => { releaseCreate = resolve; });
   await page.route('**/acquisition/recommendations', async route => {
     if (route.request().method() !== 'POST') return route.continue();
-    const response = await route.fetch();
     await createGate;
-    await route.fulfill({ response });
+    await route.continue();
   });
   try {
     await page.getByRole('button', { name: 'Lưu đề xuất chờ duyệt' }).click();
