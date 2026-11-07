@@ -35,5 +35,7 @@ try {
     }
     if ($BuildOnly) { Write-Host '[OK] Core JAR và manifest khớp source.'; return }
     New-LamsServiceRuntime $projectRoot 'core'
-    Invoke-LamsNative 'java' @('-jar', $jar.FullName) 'Core Service dừng với lỗi'
+    # Java trên Windows có thể làm mất dấu trong đối số đường dẫn tuyệt đối.
+    # Thư mục làm việc đã là coreRoot; tên JAR do Maven tạo chỉ dùng ASCII.
+    Invoke-LamsNative 'java' @('-jar', (Join-Path 'target' $jar.Name)) 'Core Service dừng với lỗi'
 } finally { Pop-Location }

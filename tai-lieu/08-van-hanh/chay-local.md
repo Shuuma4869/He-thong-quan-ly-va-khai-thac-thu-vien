@@ -138,3 +138,7 @@ COMMIT;
 Đây là bước bootstrap do quản trị database thực hiện; không có nhật ký quyết định trong giao diện như API quản trị. Ghi người thực hiện, thời điểm và UUID vào hồ sơ vận hành. Các lần cấp/thu hồi quyền tiếp theo phải dùng màn **Tài khoản và phân quyền**, có lý do và kiểm tra phiên bản. Không dùng SQL này để sửa quyền tùy tiện trên database đang vận hành.
 
 Đăng nhập lại bằng tài khoản Admin, cấp Librarian cho nhân viên đã đăng ký. Tại **Danh mục**, tạo tác giả/thể loại và tác phẩm, sau đó ấn bản. Tạo chi nhánh và kệ trước khi thêm bản sách có barcode. Khi chưa có bản sách vật lý, không coi tác phẩm tham khảo là sách có thể mượn; Reader chỉ giữ chỗ theo điều kiện khả dụng do API trả về.
+
+### Đường dẫn Java và cache Maven trên Windows
+
+Launcher chạy JAR bằng đường dẫn tương đối trong thư mục Core để tránh Java làm mất dấu ở đối số đường dẫn tuyệt đối. Nếu tự đặt `MAVEN_USER_HOME`, chọn thư mục cache không dấu (ví dụ `D:\maven-cache`); bản Maven Windows hiện dùng có thể báo `ClassNotFoundException: org.codehaus.plexus.classworlds.launcher.Launcher` khi chính đường dẫn cài Maven chứa ký tự tiếng Việt. Không sao chép JAR cũ hoặc tắt kiểm manifest để xử lý lỗi này.
