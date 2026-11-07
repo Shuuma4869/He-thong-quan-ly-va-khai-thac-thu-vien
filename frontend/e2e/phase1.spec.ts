@@ -1472,7 +1472,23 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
   };
   await page.getByLabel('Từ thời điểm').fill(local(from));
   await page.getByLabel('Đến trước thời điểm').fill(local(to));
-  await page.getByRole('button', { name: 'Xem số liệu và điểm nhu cầu' }).click();
+  let releaseAnalysis!: () => void;
+  const analysisGate = new Promise<void>(resolve => { releaseAnalysis = resolve; });
+  await page.route('**/acquisition/analysis?*', async route => {
+    const response = await route.fetch();
+    await analysisGate;
+    await route.fulfill({ response });
+  });
+  const expectScopeLocked = async () => {
+    await expect(page.getByLabel('Từ thời điểm')).toBeDisabled();
+    await expect(page.getByLabel('Đến trước thời điểm')).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Chọn sách cần phân tích', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Chọn chi nhánh phân tích', exact: true })).toBeDisabled();
+  };
+  try {
+    await page.getByRole('button', { name: 'Xem số liệu và điểm nhu cầu' }).click();
+    await expectScopeLocked();
+  } finally { releaseAnalysis(); }
   await expect(page.getByLabel('Kết quả phân tích')).toContainText('Điểm 58.8/100');
   await expect(page.getByLabel('Kết quả phân tích')).toContainText('1 lượt mượn trong kỳ');
   for (const viewport of evidenceViewports) {
@@ -1485,7 +1501,18 @@ test('Phase 7: Core facts, Insight và giao diện lưu quyết định trên Po
     }
     await captureFullPage(page, { path: `test-results/acquisition-analysis-${viewport.width}.png`, fullPage: true });
   }
-  await page.getByRole('button', { name: 'Lưu đề xuất chờ duyệt' }).click();
+  let releaseCreate!: () => void;
+  const createGate = new Promise<void>(resolve => { releaseCreate = resolve; });
+  await page.route('**/acquisition/recommendations', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const response = await route.fetch();
+    await createGate;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole('button', { name: 'Lưu đề xuất chờ duyệt' }).click();
+    await expectScopeLocked();
+  } finally { releaseCreate(); }
   await expect(page.getByLabel('Chi tiết đề xuất')).toContainText('Chờ duyệt');
 
   const list = await request.get(`${insight}/acquisition/recommendations?state=DRAFT`, { headers: staffHeaders });

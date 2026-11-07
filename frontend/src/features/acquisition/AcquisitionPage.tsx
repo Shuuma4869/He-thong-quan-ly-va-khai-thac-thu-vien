@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -97,7 +97,8 @@ function AcquisitionAnalysis({ onCreated }: { onCreated: (id: string) => Promise
   const [branchId, setBranchId] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [preview, setPreview] = useState<Awaited<ReturnType<typeof analyzeAcquisition>> | null>(null);
+  const [preview, setPreview] = useState<(Awaited<ReturnType<typeof analyzeAcquisition>> & { scope: AcquisitionScope }) | null>(null);
+  const pending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [uncertain, setUncertain] = useState(false);
@@ -105,16 +106,23 @@ function AcquisitionAnalysis({ onCreated }: { onCreated: (id: string) => Promise
     from: new Date(from).toISOString(), to: new Date(to).toISOString() });
   useUnsavedChanges({ dirty: !!preview, busy, uncertain, label: 'Phân tích nhu cầu chưa lưu thành đề xuất' });
   const analyze = async () => {
+    if (pending.current) return;
+    pending.current = true;
     setBusy(true); setError(''); setPreview(null);
-    try { setPreview(await analyzeAcquisition(scope())); }
+    try {
+      const requestedScope = scope();
+      const result = await analyzeAcquisition(requestedScope);
+      setPreview({ ...result, scope: requestedScope });
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Không tải được số liệu thư viện.'); }
-    finally { setBusy(false); }
+    finally { pending.current = false; setBusy(false); }
   };
   const create = async () => {
-    if (!preview || busy) return;
+    if (!preview || pending.current) return;
+    pending.current = true;
     setBusy(true); setError(''); setUncertain(false);
     try {
-      const record = await createRecommendation(scope());
+      const record = await createRecommendation(preview.scope);
       await onCreated(record.id);
       setPreview(null);
     } catch (cause) {
@@ -122,19 +130,19 @@ function AcquisitionAnalysis({ onCreated }: { onCreated: (id: string) => Promise
       setError(cause instanceof ApiError && cause.status === 409
         ? 'Đã có đề xuất đang chờ duyệt cho sách, chi nhánh và khoảng thời gian này.'
         : cause instanceof Error ? cause.message : 'Không lưu được đề xuất.');
-    } finally { setBusy(false); }
+    } finally { pending.current = false; setBusy(false); }
   };
   const reset = () => { setPreview(null); setError(''); };
   return <section aria-label="Phân tích nhu cầu sách" className="editorial-card my-6">
     <h2 className="section-title">Phân tích nhu cầu</h2>
     <div className="grid gap-4 md:grid-cols-2 my-4">
-      <ReferencePicker label="Sách cần phân tích" resource="books" value={bookId ? [bookId] : []}
+      <ReferencePicker label="Sách cần phân tích" resource="books" value={bookId ? [bookId] : []} disabled={busy}
         onChange={ids => { setBookId(ids[0] ?? ''); reset(); }}/>
-      <ReferencePicker label="Chi nhánh phân tích" resource="branches" value={branchId ? [branchId] : []}
+      <ReferencePicker label="Chi nhánh phân tích" resource="branches" value={branchId ? [branchId] : []} disabled={busy}
         onChange={ids => { setBranchId(ids[0] ?? ''); reset(); }}/>
-      <label className="field">Từ thời điểm<input type="datetime-local" value={from}
+      <label className="field">Từ thời điểm<input type="datetime-local" value={from} disabled={busy}
         onChange={event => { setFrom(event.target.value); reset(); }}/></label>
-      <label className="field">Đến trước thời điểm<input type="datetime-local" value={to}
+      <label className="field">Đến trước thời điểm<input type="datetime-local" value={to} disabled={busy}
         onChange={event => { setTo(event.target.value); reset(); }}/></label>
     </div>
     <p className="text-sm text-muted">Khoảng thời gian tối đa 366 ngày, kết thúc không sau hiện tại. Số bản sách và giữ chỗ là trạng thái lúc đọc; lượt mượn tính trong khoảng thời gian đã chọn.</p>

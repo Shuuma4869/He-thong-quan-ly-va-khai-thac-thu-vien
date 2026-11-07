@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../app/providers/AppProviders';
@@ -26,7 +26,7 @@ const page = (items: unknown[]) => ({ items, page: { number: 0, size: 20,
   totalElements: items.length, totalPages: items.length ? 1 : 0 } });
 let role = 'LIBRARIAN';
 let records: Array<Record<string, unknown>> = [];
-let fetchMock: ReturnType<typeof vi.fn>;
+let fetchMock: ReturnType<typeof vi.fn<(url: string, init: RequestInit) => Promise<Response>>>;
 
 function app() {
   return render(<AppProviders><MemoryRouter initialEntries={['/nhan-vien/de-xuat-bo-sung']}>
@@ -116,6 +116,45 @@ it('nhân viên xem bằng chứng và duyệt với lý do, version hiện tạ
       && JSON.parse((init as RequestInit).body as string).expectedVersion === 0)).toBe(true));
   expect(await screen.findByRole('heading', { name: 'Lịch sử quyết định' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Duyệt nội bộ' })).not.toBeInTheDocument();
+});
+
+it('giữ nguyên phạm vi khi đang phân tích hoặc lưu và chỉ lưu phạm vi đã xem', async () => {
+  const original = fetchMock.getMockImplementation()!;
+  let releaseAnalysis!: () => void;
+  let releaseCreate!: () => void;
+  const analysisPending = new Promise<void>(resolve => { releaseAnalysis = resolve; });
+  const createPending = new Promise<void>(resolve => { releaseCreate = resolve; });
+  fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+    if (new URL(url).pathname.endsWith('/acquisition/analysis')) await analysisPending;
+    if (new URL(url).pathname.endsWith('/acquisition/recommendations') && init.method === 'POST') await createPending;
+    return original(url, init);
+  });
+  app(); await screen.findByText(/Chưa có đề xuất phù hợp/);
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn sách cần phân tích' }));
+  fireEvent.click(await screen.findByRole('radio', { name: 'Sách A' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Chọn chi nhánh phân tích' }));
+  fireEvent.click(await screen.findByRole('radio', { name: 'A · Chi nhánh A' }));
+  fireEvent.change(screen.getByLabelText('Từ thời điểm'), { target: { value: '2026-10-24T00:00' } });
+  fireEvent.change(screen.getByLabelText('Đến trước thời điểm'), { target: { value: '2026-10-25T00:00' } });
+  const assertScopeLocked = () => {
+    expect(screen.getByLabelText('Từ thời điểm')).toBeDisabled();
+    expect(screen.getByLabelText('Đến trước thời điểm')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Chọn sách cần phân tích' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Chọn chi nhánh phân tích' })).toBeDisabled();
+  };
+  fireEvent.click(screen.getByRole('button', { name: 'Xem số liệu và điểm nhu cầu' }));
+  assertScopeLocked();
+  await act(async () => { releaseAnalysis(); });
+  fireEvent.click(await screen.findByRole('button', { name: 'Lưu đề xuất chờ duyệt' }));
+  assertScopeLocked();
+  const calls = fetchMock.mock.calls.filter(([url, init]) => String(url).endsWith('/acquisition/recommendations') && init.method === 'POST');
+  expect(calls).toHaveLength(1);
+  expect(JSON.parse(calls[0][1].body as string)).toEqual({ bookId, branchId,
+    from: new Date('2026-10-24T00:00').toISOString(), to: new Date('2026-10-25T00:00').toISOString() });
+  await act(async () => { releaseCreate(); });
+  await screen.findByRole('heading', { name: 'Bằng chứng và quyết định' });
+  expect(screen.getByLabelText('Từ thời điểm')).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'Lưu đề xuất chờ duyệt' })).not.toBeInTheDocument();
 });
 
 it('reader không được tải trang đề xuất nhân viên', async () => {
