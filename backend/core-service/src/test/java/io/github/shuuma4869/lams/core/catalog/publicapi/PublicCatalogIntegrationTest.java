@@ -35,6 +35,35 @@ class PublicCatalogIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
 
+    @Test @org.springframework.transaction.annotation.Transactional
+    void authorMatchesDoNotDuplicateBooksAndKeepFiltersAndTiedPagesStable() throws Exception {
+        UUID first = UUID.fromString("00000000-0000-0000-0000-000000001001");
+        UUID second = UUID.fromString("00000000-0000-0000-0000-000000001002");
+        UUID authorA = UUID.randomUUID(), authorB = UUID.randomUUID(), category = UUID.randomUUID();
+        jdbc.update("INSERT INTO authors(id,name) VALUES (?,'Tácgiaquanhesố Một'),(?,'Tácgiaquanhesố Hai')",
+                authorA, authorB);
+        jdbc.update("INSERT INTO categories(id,name,normalized_name) VALUES (?,'Bộ lọc quan hệ','bộ lọc quan hệ')", category);
+        jdbc.update("INSERT INTO books(id,title,normalized_title) VALUES (?,'Bến sông','bến sông'),(?,'Lối nhỏ','lối nhỏ')",
+                first, second);
+        jdbc.update("INSERT INTO book_authors(book_id,author_id) VALUES (?,?),(?,?),(?,?)",
+                first, authorA, first, authorB, second, authorB);
+        jdbc.update("INSERT INTO book_categories(book_id,category_id) VALUES (?,?)", second, category);
+        String path = "/api/v1/public/catalog/books";
+        mvc.perform(get(path).param("query", "tacgiaquanheso").param("sort", "relevance").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(first.toString()));
+        mvc.perform(get(path).param("query", "tacgiaquanheso").param("sort", "relevance")
+                        .param("size", "1").param("page", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(second.toString()));
+        mvc.perform(get(path).param("query", "tacgiaquanheso").param("authorId", authorA.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(first.toString()));
+        mvc.perform(get(path).param("query", "tacgiaquanheso").param("categoryId", category.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(second.toString()));
+    }
+
     @Test void availabilityUsesLiveCopyLoanAndHoldFactsWithoutExposingCopyDetails() throws Exception {
         UUID book = UUID.randomUUID(), edition = UUID.randomUUID(), active = UUID.randomUUID();
         UUID disabled = UUID.randomUUID(), activeShelf = UUID.randomUUID(), disabledShelf = UUID.randomUUID();

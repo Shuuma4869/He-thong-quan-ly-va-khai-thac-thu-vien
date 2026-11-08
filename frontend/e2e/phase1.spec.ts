@@ -1810,10 +1810,17 @@ function startReadinessMeasurements() {
 }
 // Opt-in only: run alone on the installed EXE, without concurrent builds or the screenshot suite.
 if (process.env.LAMS_E2E_BENCHMARK === '1') {
-  test('Benchmark EXE: đăng nhập và mở trang, 10 mẫu mỗi hành trình', async ({ page, request }, testInfo) => {
-    test.setTimeout(240_000);
+  test('Benchmark EXE: đăng nhập và mở trang, 30 mẫu mỗi hành trình', async ({ page, request }, testInfo) => {
+    test.setTimeout(360_000);
     expect(!!desktopEndpoint, 'Phép đo này chỉ dành cho EXE').toBe(true);
     const budget = { loginMs: 3000, routeMs: 2000, apiMs: 1000, longTaskMs: 200 };
+    const sampleCount = 30;
+    const readerCycleMs = 6000;
+    const publicResponses: { path: string; status: number }[] = [];
+    page.on('response', response => {
+      const path = new URL(response.url()).pathname;
+      if (path.startsWith('/api/v1/public/catalog/')) publicResponses.push({ path, status: response.status() });
+    });
     const pendingApi = new Set<import('@playwright/test').Request>();
     page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) pendingApi.add(request); });
     page.on('requestfinished', request => pendingApi.delete(request));
@@ -1843,8 +1850,11 @@ if (process.env.LAMS_E2E_BENCHMARK === '1') {
           .map(entry => entry.duration),
       }));
       samples.push({ scenario, elapsedMs, ...details });
+      // Keep completed samples even if a later journey fails. File IO is outside the measurement.
+      await writeFile(testInfo.outputPath('benchmark-progress.json'), JSON.stringify({ samples, publicResponses }, null, 2));
     };
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < sampleCount; i++) {
+      const cycleStarted = performance.now();
       await navigate(page, '/dang-nhap');
       await page.getByLabel('Email hoặc mã thành viên').fill(accounts.READER.email);
       await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
@@ -1868,10 +1878,12 @@ if (process.env.LAMS_E2E_BENCHMARK === '1') {
       await measure('book-detail', () => page.locator(`a[href="${detailPath}"]`).first().click(), /^Benchmark \d+$/);
       await page.getByRole('button', { name: 'Đăng xuất' }).click();
       await expect(page.getByRole('button', { name: 'Đăng xuất' })).toHaveCount(0);
+      // Fixed think time keeps the benchmark below the unchanged public API limit.
+      await new Promise(resolve => setTimeout(resolve, Math.max(0, readerCycleMs - (performance.now() - cycleStarted))));
     }
     for (const role of ['LIBRARIAN', 'ADMIN']) {
       await loginCatalog(page, role);
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < sampleCount; i++) {
         await navigate(page, '/ho-so'); await settled();
         await measure(`${role.toLowerCase()}-dashboard`, () => navigate(page, '/nhan-vien/bang-dieu-khien'), role === 'ADMIN' ? 'Quản trị hệ thống' : 'Bảng điều khiển');
       }
@@ -1884,15 +1896,18 @@ if (process.env.LAMS_E2E_BENCHMARK === '1') {
     const summaries = Array.from(new Set(samples.map(sample => sample.scenario))).map(scenario => {
       const values = samples.filter(sample => sample.scenario === scenario).map(sample => sample.elapsedMs).sort((a, b) => a - b);
       const p95 = values[Math.ceil(0.95 * values.length) - 1];
-      return { scenario, n: values.length, medianMs: (values[4] + values[5]) / 2, p95Ms: p95,
+      const middle = Math.floor(values.length / 2);
+      const medianMs = values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+      return { scenario, n: values.length, medianMs, p95Ms: p95, maxMs: values[values.length - 1],
         budgetMs: scenario.endsWith('login') ? budget.loginMs : budget.routeMs };
     });
     const output = testInfo.outputPath('installed-benchmark.json');
     await writeFile(output, JSON.stringify({ recordedAt: new Date().toISOString(), budget, catalogCount,
-      method: 'Warm backend and running EXE; 10000 synthetic Book rows in disposable database, no copies or reader history; hash-route navigation; login measured from submit through useful content and query settlement. Ten sequential samples, nearest-rank p95 equals max for n=10. No cold-process or production-workload claim.',
+      method: 'Warm backend and running EXE; 10000 synthetic Book rows in disposable database, no copies or reader history; only books statistics refreshed, preserving the fresh related-table case. Hash-route navigation; login measured from submit through useful content and query settlement. Thirty samples per scenario, no excluded warm-up; reader cycles start at least six seconds apart, with think time outside measurements and production rate limits unchanged. Nearest-rank p95, median and max reported. No cold-process or production-workload claim.',
       browser: await page.evaluate(() => ({ userAgent: navigator.userAgent, hardwareConcurrency: navigator.hardwareConcurrency })),
-      summaries, samples }, null, 2));
+      summaries, samples, publicResponses }, null, 2));
     await testInfo.attach('installed-benchmark', { path: output, contentType: 'application/json' });
+    expect(publicResponses.filter(response => response.status >= 400), 'Không có lỗi API Catalog trong lượt đo').toEqual([]);
     for (const summary of summaries) expect.soft(summary.p95Ms, summary.scenario).toBeLessThanOrEqual(summary.budgetMs);
   });
 }
