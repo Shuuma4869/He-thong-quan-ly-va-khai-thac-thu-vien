@@ -4,6 +4,7 @@ $scripts = Join-Path $fixture 'scripts'
 New-Item -ItemType Directory -Path $scripts,(Join-Path $fixture 'frontend/node_modules'),
     (Join-Path $fixture 'backend/insight-service/node_modules/.prisma/client') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'start-local-desktop.ps1') -Destination $scripts
+Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'lams.ps1') -Destination $fixture
 Set-Content -LiteralPath (Join-Path $fixture '.env') 'TEST_FIXTURE=true'
 $common = @'
 function Get-LamsRoot { Split-Path $PSScriptRoot -Parent }
@@ -30,6 +31,28 @@ function Assert-LamsServiceRuntime { param($Root,$Service,$Port); if ($global:Fo
 '@
 Set-Content -LiteralPath (Join-Path $scripts 'start-core.ps1') 'param([switch]$BuildOnly); if (-not $BuildOnly) { throw "Expected BuildOnly" }; $global:BuildCount++'
 try {
+    foreach ($doctorExit in @(0, 1)) {
+        Set-Content -LiteralPath (Join-Path $scripts 'doctor.ps1') "exit $doctorExit"
+        $start = [Diagnostics.ProcessStartInfo]::new((Get-Command pwsh).Source)
+        $start.UseShellExecute = $false
+        $start.CreateNoWindow = $true
+        $start.RedirectStandardOutput = $true
+        $start.RedirectStandardError = $true
+        foreach ($argument in @('-NoProfile', '-File', (Join-Path $fixture 'lams.ps1'), 'Doctor')) {
+            $start.ArgumentList.Add($argument)
+        }
+        $process = [Diagnostics.Process]::Start($start)
+        try {
+            if (-not $process.WaitForExit(15000)) {
+                $process.Kill($true)
+                throw 'Doctor fixture did not terminate'
+            }
+            if ($process.ExitCode -ne $doctorExit) {
+                throw "Doctor exit code was lost by the root launcher: expected $doctorExit, got $($process.ExitCode)"
+            }
+        } finally { $process.Dispose() }
+    }
+    Set-Content -LiteralPath (Join-Path $scripts 'doctor.ps1') '# Prerequisite fixture'
     $global:Occupied = $false; $global:Foreign = $false; $global:BadManifest = $false; $global:BuildCount = 0
     $global:Starts = [Collections.Generic.List[object]]::new()
     $global:NativeCalls = [Collections.Generic.List[string]]::new()
@@ -51,7 +74,7 @@ try {
     $rejected = $false
     try { & (Join-Path $scripts 'start-local-desktop.ps1') -Mode Desktop -NoOpen } catch { $rejected = $_.Exception.Message -eq 'stale manifest' }
     if (-not $rejected -or $global:NativeCalls.Count) { throw 'Stale desktop should fail before starting infrastructure' }
-    Write-Output 'PASS: fresh Web builds JAR, three hidden services, quoted Unicode paths, Prisma gate, repeat launch, foreign port, stale desktop'
+    Write-Output 'PASS: Doctor process exit code, fresh Web builds JAR, three hidden services, quoted Unicode paths, Prisma gate, repeat launch, foreign port, stale desktop'
 } finally {
     $resolved = (Resolve-Path -LiteralPath $fixture).Path
     if (-not $resolved.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase) -or
