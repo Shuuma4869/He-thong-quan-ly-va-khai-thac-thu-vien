@@ -97,4 +97,4 @@ SMTP mặc định tắt. Muốn đổi email bằng mã xác minh, cấu hình 
 | Nguyễn Trọng Tuấn | 23010690 |
 | Vũ Đức Toàn | 23010062 |
 
-Học phần: Thiết kế Web nâng cao-1-1-26(N01). Phân công nằm trong hướng dẫn thành viên; lịch sử commit/PR ghi nhận đóng góp thực tế.
+Học phần: Thiết kế Web nâng cao-1-1-26(N01). Giảng viên hướng dẫn: TS. Nguyễn Lệ Thu
