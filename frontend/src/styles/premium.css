@@ -195,6 +195,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .staff-quick-links a { display: flex; align-items: center; gap: .5rem; min-height: 57px; border: 1px solid #dfeef3; border-radius: .7rem; padding: .7rem; color: #145e7d; font-size: .77rem; font-weight: 650; }
 .staff-quick-links a:hover { background: #eaf8fc; }
 .staff-quick-links a > svg:last-child { margin-left: auto; }
+.staff-dashboard-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; margin-top: 2rem; }
 .admin-dashboard-hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2rem; overflow: hidden; border: 1px solid #d9d4f1; border-radius: 1.2rem; padding: clamp(1.6rem,2.8vw,2.6rem); background: radial-gradient(circle at 84% 8%,#d9d1f6 0,transparent 34%),linear-gradient(110deg,#f1effb,#fff); }
 .admin-dashboard-hero h1 { margin-top: .25rem; }
 .admin-dashboard-hero p:last-of-type { max-width: 68ch; margin-top: .6rem; color: #5b5872; font-size: .88rem; }
@@ -242,6 +243,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .category-heading-media { flex-direction: column; align-items: start; }
   .category-heading-media > .directory-visual, .category-heading-media > .directory-visual-fallback { width: 100%; height: 190px; }
   .staff-dashboard-panels { grid-template-columns: 1fr; }
+  .staff-dashboard-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .staff-dashboard-hero > svg { display: none; }
   .admin-dashboard-panels { grid-template-columns: 1fr; }
   .admin-report-list { grid-template-columns: 1fr; }
@@ -264,7 +266,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .search-command-popover { left: auto; right: -4rem; width: min(350px, calc(100vw - 1rem)); }
   .my-review-card { grid-template-columns: 64px minmax(0,1fr); gap: .7rem; padding: .75rem; }
   .my-review-cover { min-height: 86px; }
-  .admin-dashboard-metrics { grid-template-columns: 1fr; }
+  .admin-dashboard-metrics, .staff-dashboard-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .staff-dashboard-metrics { gap: .65rem; margin-top: 1rem; }
+  .staff-dashboard .staff-dashboard-metrics .metric-card { min-height: 160px; padding: .9rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .library-sidebar-desktop, .library-back-top, .search-command-popover, .admin-detail-drawer { animation: none; transition-duration: .01ms; }

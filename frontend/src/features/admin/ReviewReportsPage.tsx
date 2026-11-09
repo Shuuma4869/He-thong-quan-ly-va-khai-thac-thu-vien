@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
+import { ApiError } from '../../shared/api/client';
 import { LibraryError } from '../my-library/LibraryError';
 import { decideReviewReport, listReviewReports, type ReviewReport } from '../reviews/moderation-api';
+import { getBookCards } from '../catalog/catalog-api';
+import { invalidateCatalogViews } from '../catalog/catalog-cache';
 import { AdminConfirmationDialog } from './AdminConfirmationDialog';
 import { AdminDetailDrawer } from './AdminDetailDrawer';
 
@@ -13,6 +17,13 @@ export function ReviewReportsPage() {
   const client = useQueryClient();
   const queue = useQuery({ queryKey: ['review-reports', status, page],
     queryFn: ({ signal }) => listReviewReports(status, page, signal), retry: false });
+  const reportBookIds = [...new Set(queue.data?.items.map(item => item.bookId) ?? [])];
+  const reportBooks = useQuery({ queryKey: ['admin-review-books', reportBookIds],
+    queryFn: ({ signal }) => getBookCards(reportBookIds, signal),
+    enabled: queue.isSuccess && reportBookIds.length > 0, retry: false, staleTime: 5 * 60_000 });
+  const bookTitles = new Map(reportBooks.data?.map(book => [book.id, book.title] as const) ?? []);
+  const bookTitle = (bookId: string) => reportBooks.isLoading ? 'Đang tải nhan đề…'
+    : reportBooks.isError ? 'Không tải được nhan đề' : bookTitles.get(bookId) ?? 'Không tìm thấy tác phẩm';
   const selectedReport = queue.data?.items.find(item => item.id === selectedReportId);
   return <section aria-labelledby="review-reports-heading">
     <p className="eyebrow">Quản trị</p>
@@ -25,9 +36,10 @@ export function ReviewReportsPage() {
     {queue.isPending ? <p role="status">Đang tải báo cáo…</p> : queue.isError
       ? <LibraryError error={queue.error} retry={() => void queue.refetch()}/>
       : <><p className="my-4 text-sm text-muted">{queue.data.totalElements} báo cáo</p>
+        {reportBooks.isError && <LibraryError error={reportBooks.error} retry={() => void reportBooks.refetch()}/>}
         {!queue.data.items.length && <p>Không có báo cáo ở trang này.</p>}
         <ul className="admin-report-list">{queue.data.items.map(item => <li key={item.id} className="editorial-card">
-          <ReportCard report={item} onOpen={() => setSelectedReportId(item.id)}/>
+          <ReportCard report={item} bookTitle={bookTitle(item.bookId)} onOpen={() => setSelectedReportId(item.id)}/>
         </li>)}</ul>
         <nav className="my-5 flex items-center gap-3" aria-label="Phân trang báo cáo">
           <button type="button" className="button-secondary" disabled={page === 0}
@@ -36,34 +48,38 @@ export function ReviewReportsPage() {
           <button type="button" className="button-secondary" disabled={(page + 1) * 20 >= queue.data.totalElements}
             onClick={() => { setSelectedReportId(null); setPage(page + 1); }}>Sau</button>
         </nav></>}
-    {selectedReport && <AdminDetailDrawer title="Chi tiết báo cáo" onClose={() => setSelectedReportId(null)}>
-      <ReportDetails report={selectedReport} onDone={() => {
+    {selectedReport && <ReportDetails report={selectedReport} bookTitle={bookTitle(selectedReport.bookId)} onClose={() => setSelectedReportId(null)} onDone={() => {
         setSelectedReportId(null);
         setNotice('Đã lưu quyết định.');
         void client.invalidateQueries({ queryKey: ['review-reports'] });
-      }}/>
-    </AdminDetailDrawer>}
+        void client.invalidateQueries({ queryKey: ['reviews'] });
+        void invalidateCatalogViews(client);
+      }}/>}
   </section>;
 }
 
-function ReportCard({ report, onOpen }: { report: ReviewReport; onOpen: () => void }) {
+function ReportCard({ report, bookTitle, onOpen }: { report: ReviewReport; bookTitle: string; onOpen: () => void }) {
   return <>
     <p className="eyebrow">{report.status === 'OPEN' ? 'Chờ xử lý' : 'Đã xử lý'}</p>
-    <h2 className="mt-2 font-semibold">Sách {report.bookId} · {report.ratingSnapshot}/5</h2>
+    <h2 className="mt-2 font-semibold">{bookTitle} · {report.ratingSnapshot}/5</h2>
     <p className="mt-2">Lý do báo cáo: {report.reason}</p>
     <p className="text-sm text-muted">Gửi lúc {new Date(report.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
     <button type="button" className="button-secondary mt-4" onClick={onOpen}>Xem chi tiết</button>
   </>;
 }
 
-function ReportDetails({ report, onDone }: { report: ReviewReport; onDone: () => void }) {
+function ReportDetails({ report, bookTitle, onDone, onClose }: { report: ReviewReport; bookTitle: string; onDone: () => void; onClose: () => void }) {
+  const client = useQueryClient();
   const [reason, setReason] = useState('');
   const [confirmation, setConfirmation] = useState<'HIDE' | 'DISMISS' | null>(null);
   const decision = useMutation({ mutationFn: (action: 'HIDE' | 'DISMISS') => decideReviewReport(report.id, action, reason.trim()),
     onSuccess: () => { setConfirmation(null); onDone(); } });
   const valid = [...reason.trim()].length >= 10 && [...reason.trim()].length <= 500;
-  return <>
-    <h2 className="mt-4 text-xl font-semibold">Sách {report.bookId} · {report.ratingSnapshot}/5</h2>
+  const leave = useUnsavedChanges({ dirty: !!reason && !decision.isSuccess, busy: decision.isPending,
+    uncertain: decision.isError && (!(decision.error instanceof ApiError) || decision.error.status === 0 || decision.error.status >= 500),
+    label: 'Lý do kiểm duyệt đánh giá' });
+  return <AdminDetailDrawer title="Chi tiết báo cáo" onClose={() => leave(onClose)}>
+    <h2 className="mt-4 text-xl font-semibold">{bookTitle} · {report.ratingSnapshot}/5</h2>
     <section className="admin-report-snapshot mt-5" aria-labelledby="admin-review-snapshot">
       <h3 id="admin-review-snapshot" className="font-semibold">Nội dung tại thời điểm báo cáo</h3>
       <p className="mt-2 whitespace-pre-wrap break-words">{report.bodySnapshot}</p>
@@ -89,8 +105,11 @@ function ReportDetails({ report, onDone }: { report: ReviewReport; onDone: () =>
       description="Quyết định cùng lý do sẽ được ghi lại và không thể thay đổi từ màn hình này."
       confirmLabel={confirmation === 'HIDE' ? 'Xác nhận ẩn đánh giá' : 'Xác nhận bỏ qua'}
       busy={decision.isPending}
-      error={decision.isError ? <LibraryError error={decision.error} retry={() => decision.reset()}/> : null}
+      error={decision.isError ? <LibraryError error={decision.error} retry={() => {
+        setConfirmation(null); decision.reset();
+        void client.invalidateQueries({ queryKey: ['review-reports'] });
+      }}/> : null}
       onCancel={() => { setConfirmation(null); decision.reset(); }}
       onConfirm={() => decision.mutate(confirmation)}/>}
-  </>;
+  </AdminDetailDrawer>;
 }

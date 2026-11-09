@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
+import { ApiError } from '../../shared/api/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Heart, KeyRound, Mail, ShieldCheck, SlidersHorizontal, Star, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/auth-context';
@@ -15,30 +17,39 @@ export function ProfilePage() {
   const account = useQuery({ queryKey: ['account', user?.id], queryFn: ({ signal }) => getAccount(signal), enabled: !!user, retry: false });
   const reliability = useQuery({ queryKey: ['hold-reliability-self', user?.id],
     queryFn: ({ signal }) => getMyHoldReliability(signal), enabled: !!user && account.isSuccess, retry: false });
-  const [name, setName] = useState(''); const [phone, setPhone] = useState('');
+  const [nameDraft, setName] = useState<string | null>(null); const [phoneDraft, setPhone] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState(''); const [nextPassword, setNextPassword] = useState('');
   const [emailPassword, setEmailPassword] = useState(''); const [nextEmail, setNextEmail] = useState('');
   const [emailCode, setEmailCode] = useState('');
   const [notice, setNotice] = useState('');
-  useEffect(() => { if (account.data) { setName(account.data.fullName); setPhone(account.data.phone ?? ''); } }, [account.data]);
+  const savedName = account.data?.fullName ?? '';
+  const savedPhone = account.data?.phone ?? '';
+  const name = nameDraft ?? savedName;
+  const phone = phoneDraft ?? savedPhone;
   const profileChange = useMutation({ mutationFn: () => updateAccount(name, phone), onSuccess: async data => {
-    client.setQueryData(['account', user?.id], data); await refreshSession();
+    client.setQueryData(['account', user?.id], data); setName(null); setPhone(null); await refreshSession();
     setNotice('Đã cập nhật thông tin cá nhân.');
   } });
   const passwordChange = useMutation({ mutationFn: () => changePassword(currentPassword, nextPassword), onSuccess: async () => {
-    setCurrentPassword(''); setNextPassword(''); await logout(); navigate('/dang-nhap', { replace: true });
+    setCurrentPassword(''); setNextPassword(''); await logout().catch(() => {}); navigate('/dang-nhap', { replace: true });
   } });
   const emailChange = useMutation({ mutationFn: () => requestEmail(emailPassword, nextEmail), onSuccess: data => {
     client.setQueryData(['account', user?.id], data); setEmailPassword(''); setNextEmail('');
     setNotice('Mã xác minh đã được gửi tới email mới. Mã có hiệu lực 15 phút.');
   } });
   const emailConfirmation = useMutation({ mutationFn: () => confirmEmail(emailCode), onSuccess: async () => {
-    setEmailCode(''); await logout(); navigate('/dang-nhap', { replace: true });
+    setEmailCode(''); await logout().catch(() => {}); navigate('/dang-nhap', { replace: true });
   } });
   const cancelEmail = useMutation({ mutationFn: cancelEmailRequest, onSuccess: async () => {
-    await account.refetch(); setNotice('Đã hủy yêu cầu đổi email.');
+    await account.refetch(); setEmailCode(''); setNotice('Đã hủy yêu cầu đổi email.');
   } });
   const submit = (event: FormEvent, action: () => void) => { event.preventDefault(); setNotice(''); action(); };
+  useUnsavedChanges({ dirty: !!account.data && (name !== savedName || phone !== savedPhone
+    || !!currentPassword || !!nextPassword || !!emailPassword || !!nextEmail || !!emailCode),
+    busy: profileChange.isPending || passwordChange.isPending || emailChange.isPending || emailConfirmation.isPending || cancelEmail.isPending,
+    uncertain: [profileChange, passwordChange, emailChange, emailConfirmation, cancelEmail].some(change =>
+      change.isError && (!(change.error instanceof ApiError) || change.error.status === 0 || change.error.status >= 500)),
+    label: 'Hồ sơ và thông tin bảo mật chưa gửi' });
   return <section className="shell library-page account-page py-8" aria-labelledby="profile-heading">
     <nav className="catalog-breadcrumb" aria-label="Đường dẫn"><Link to="/">Trang chủ</Link><span aria-hidden="true">/</span><span>Hồ sơ</span></nav>
     <header className="account-hero"><div className="account-avatar"><UserRound size={33} aria-hidden="true"/></div><div>
@@ -50,8 +61,8 @@ export function ProfilePage() {
         : <div className="account-grid">
           <section className="account-panel" aria-label="Thông tin cá nhân"><div className="account-panel-heading"><UserRound size={20}/><h2>Thông tin cá nhân</h2></div>
             <form onSubmit={event => submit(event, () => profileChange.mutate())}>
-              <label className="field">Họ và tên<input value={name} maxLength={150} required onChange={event => setName(event.target.value)}/></label>
-              <label className="field">Số điện thoại<input type="tel" value={phone} maxLength={16} autoComplete="tel"
+              <label className="field">Họ và tên<input value={name} disabled={profileChange.isPending} maxLength={150} required onChange={event => setName(event.target.value)}/></label>
+              <label className="field">Số điện thoại<input type="tel" value={phone} disabled={profileChange.isPending} maxLength={16} autoComplete="tel"
                 placeholder="+84901234567" onChange={event => setPhone(event.target.value)}/></label>
               <p className="account-help">Dùng mã quốc gia và chỉ nhập số. Để trống nếu bạn không muốn cung cấp.</p>
               <dl className="account-readonly"><div><dt>Mã thành viên</dt><dd>{account.data.memberCode}</dd></div>
@@ -74,6 +85,7 @@ export function ProfilePage() {
             <p className="account-current-email">Email đang dùng: <strong>{account.data.email}</strong></p>
             {account.data.pendingEmail && <div className="account-pending"><p>Đang chờ xác minh: <strong>{account.data.pendingEmail}</strong></p>
               <button type="button" className="text-link" disabled={cancelEmail.isPending} onClick={() => cancelEmail.mutate()}>Hủy yêu cầu</button></div>}
+            {cancelEmail.isError && <MemberRequestError error={cancelEmail.error} retry={() => void account.refetch()}/>}
             {account.data.pendingEmail && account.data.emailVerificationEnabled && <form onSubmit={event => submit(event, () => emailConfirmation.mutate())}>
               <label className="field">Mã xác minh<input value={emailCode} required minLength={12} maxLength={12} autoComplete="one-time-code"
                 onChange={event => setEmailCode(event.target.value.toUpperCase())}/></label>

@@ -221,7 +221,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .hold-detail-card > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
 .hold-detail-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin: 1rem 0; }
 .hold-detail-facts > div { min-width: 0; border-radius: .65rem; padding: .7rem; background: #f4f7f2; }
-.hold-detail-facts dt { color: #728174; font-size: .63rem; }
+.hold-detail-facts dt { color: #5b6b5d; font-size: .63rem; }
 .hold-detail-facts dd { margin-top: .2rem; overflow-wrap: anywhere; color: #314b38; font-size: .73rem; font-weight: 620; }
 .hold-guidance { border-left: 3px solid #93a977; padding: .55rem .7rem; color: #586d52; font-size: .75rem; line-height: 1.6; }
 .hold-pickup-panel { margin: 1rem 0; border: 1px solid #cbdcc8; border-radius: .85rem; padding: 1rem; background: linear-gradient(135deg, #f5f8f1, #fff); }

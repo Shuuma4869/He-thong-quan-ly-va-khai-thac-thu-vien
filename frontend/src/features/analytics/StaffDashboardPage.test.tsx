@@ -75,6 +75,9 @@ it('quản trị viên nhận dashboard riêng với chỉ số quản trị và
   });
   expect(screen.getByRole('link', { name: 'Tài khoản, vai trò & nhật ký' })).toHaveAttribute('href', '/nhan-vien/tai-khoan');
   expect(screen.queryByRole('heading', { name: 'Bảng điều khiển' })).not.toBeInTheDocument();
+  expect(Array.from(document.querySelectorAll('.admin-dashboard-metrics .admin-metric-card > span'), node => node.textContent))
+    .toEqual(['Tài khoản đang khóa', 'Báo cáo đánh giá chờ xử lý', 'Tác phẩm trong danh mục',
+      'Giữ chỗ cần xử lý', 'Phiên kiểm kê đang mở', 'Lượt mượn đang mở']);
   expect(fetchMock.mock.calls.some(([url]) => {
     const request = new URL(String(url), 'http://localhost');
     return request.pathname.endsWith('/admin/accounts') && request.searchParams.get('status') === 'LOCKED';

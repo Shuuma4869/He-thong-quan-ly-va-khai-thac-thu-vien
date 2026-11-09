@@ -73,12 +73,12 @@ public class BookRepository {
                 ), matches AS (
                     SELECT b.id,b.normalized_title,b.updated_at,
                         CASE
-                            WHEN EXISTS (SELECT 1 FROM editions e WHERE e.book_id=b.id AND e.isbn13=q.term) THEN 150.0
+                            WHEN b.id IN (SELECT e.book_id FROM editions e WHERE e.isbn13=q.term) THEN 150.0
                             WHEN b.search_title=q.term THEN 120.0
                             WHEN starts_with(b.search_title,q.term) THEN 80.0
                             WHEN b.search_vector @@ q.tsq THEN 50.0 + LEAST(ts_rank_cd(b.search_vector,q.tsq),1.0)*10.0
-                            WHEN EXISTS (SELECT 1 FROM book_authors ba JOIN authors a ON a.id=ba.author_id
-                                         WHERE ba.book_id=b.id AND strpos(lower(unaccent(a.name)),q.term)>0) THEN 45.0
+                            WHEN b.id IN (SELECT ba.book_id FROM book_authors ba JOIN authors a ON a.id=ba.author_id
+                                         WHERE strpos(lower(unaccent(a.name)),q.term)>0) THEN 45.0
                             WHEN strpos(b.search_title,q.term)>0 THEN 35.0
                             ELSE similarity(b.search_title,q.term)*20.0
                         END AS score
@@ -86,9 +86,9 @@ public class BookRepository {
                     WHERE (strpos(b.search_title,q.term)>0
                         OR b.search_vector @@ q.tsq
                         OR (length(q.term) >= 3 AND b.search_title % q.term)
-                        OR EXISTS (SELECT 1 FROM editions e WHERE e.book_id=b.id AND e.isbn13=q.term)
-                        OR EXISTS (SELECT 1 FROM book_authors ba JOIN authors a ON a.id=ba.author_id
-                                   WHERE ba.book_id=b.id AND strpos(lower(unaccent(a.name)),q.term)>0))
+                        OR b.id IN (SELECT e.book_id FROM editions e WHERE e.isbn13=q.term)
+                        OR b.id IN (SELECT ba.book_id FROM book_authors ba JOIN authors a ON a.id=ba.author_id
+                                   WHERE strpos(lower(unaccent(a.name)),q.term)>0))
                 """;
         var args = new ArrayList<Object>();
         args.add(query);

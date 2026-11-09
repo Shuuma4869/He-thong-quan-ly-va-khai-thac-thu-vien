@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useUnsavedChanges } from '../../shared/navigation/unsaved-changes';
+import { ApiError } from '../../shared/api/client';
 import { useAuth } from '../auth/auth-context';
 import { MemberRequestError } from './MemberRequestError';
 import { decideHoldNoShow, getHoldReliability } from './hold-reliability-api';
 
 const labels = { UNREVIEWED: 'Chưa rà soát', CONFIRMED: 'Đã xác nhận', EXCUSED: 'Đã miễn trừ' };
-export function HoldReliabilityPanel({ readerId }: { readerId: string }) {
+export function HoldReliabilityPanel({ readerId, onActiveChange }: { readerId: string; onActiveChange?: (active: boolean) => void }) {
   const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState('');
@@ -17,6 +19,10 @@ export function HoldReliabilityPanel({ readerId }: { readerId: string }) {
   onSuccess: data => { client.setQueryData(['hold-reliability', readerId], data); setReason('');
     setNotice('Đã lưu quyết định và lý do.'); },
   onError: () => { setNotice('Chưa lưu được quyết định. Tải lại để kiểm tra phiên bản trước khi thử tiếp.'); void query.refetch(); } });
+  const uncertain = decision.isError && (!(decision.error instanceof ApiError) || decision.error.status === 0 || decision.error.status >= 500);
+  const active = !!reason || decision.isPending || uncertain;
+  useEffect(() => { onActiveChange?.(active); return () => onActiveChange?.(false); }, [active, onActiveChange]);
+  const leave = useUnsavedChanges({ dirty: !!reason, busy: decision.isPending, uncertain, label: 'Lý do rà soát giữ chỗ hết hạn' });
   return <section className="account-panel mt-5" aria-label="Rà soát giữ chỗ hết hạn">
     <h2>Giữ chỗ hết hạn</h2>
     <p className="mt-2 text-muted">Chỉ lần hết hạn có sự kiện nghiệp vụ được liệt kê. Chưa rà soát không bị tính là vi phạm; hệ thống không tự hạn chế tài khoản.</p>
@@ -27,9 +33,11 @@ export function HoldReliabilityPanel({ readerId }: { readerId: string }) {
         <p className="text-sm text-muted">Chính sách {query.data.policyVersion} · Mức tham khảo {query.data.advisoryLevel}. Không áp dụng giảm ưu tiên hoặc chặn giữ chỗ.</p>
         {!query.data.recentIncidents.length ? <p className="mt-3">Không có lần hết hạn trong khoảng này.</p>
           : <><label className="field mt-4">Lý do quyết định
-            <input value={reason} minLength={10} maxLength={1000} onChange={event => setReason(event.target.value)}
+            <input value={reason} disabled={decision.isPending} minLength={10} maxLength={1000} onChange={event => setReason(event.target.value)}
               placeholder="Ghi căn cứ đã kiểm tra tại quầy"/>
-          </label><ul className="mt-4 grid gap-3">{query.data.recentIncidents.map(item => <li key={item.holdId} className="editorial-card">
+          </label>{active && <button type="button" className="text-link mt-2" disabled={decision.isPending}
+            onClick={() => leave(() => { setReason(''); decision.reset(); })}>Bỏ lý do đang nhập</button>}
+          <ul className="mt-4 grid gap-3">{query.data.recentIncidents.map(item => <li key={item.holdId} className="editorial-card">
             <p>Yêu cầu {item.holdId} · Hết hạn {new Date(item.expiresAt).toLocaleString('vi-VN')}</p>
             <p>{labels[item.decision]}{item.reason ? ` · ${item.reason}` : ''}
               {item.decisionPolicyVersion ? ` · ${item.decisionPolicyVersion}` : ''}</p>

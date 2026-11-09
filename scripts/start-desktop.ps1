@@ -6,9 +6,10 @@ $root = Get-LamsRoot
 if ($Release) {
     $app = Join-Path $root 'frontend\src-tauri\target\release\lams-desktop.exe'
     if (-not (Test-Path -LiteralPath $app)) { throw 'Chưa có bản release. Chạy scripts/build-desktop.ps1 trước.' }
+    Invoke-LamsNative 'node' @((Join-Path $root 'frontend\scripts\release-manifest.mjs')) 'Bản desktop chưa khớp source hiện tại'
     # This is the user-requested application window, not a background helper.
     Start-Process -FilePath $app -WorkingDirectory (Split-Path $app) -WindowStyle Normal
-    exit 0
+    return
 }
 if ((& node --version) -notmatch '^v22\.') { throw 'Cần Node 22. Chạy scripts/setup-desktop.ps1.' }
 if (Test-LamsTcpPort -Port 5173) { throw 'Cổng 5173 đang được dùng. Dừng Vite cũ trước khi chạy desktop dev.' }

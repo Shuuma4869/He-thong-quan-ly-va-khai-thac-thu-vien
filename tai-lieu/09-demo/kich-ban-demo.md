@@ -16,9 +16,17 @@ Bộ demo có 10.013 Book nhưng chỉ 64 Copy vật lý. Các bản Gutenberg t
 
 Không trình diễn bằng cách gọi API tạo Loan trực tiếp hoặc đánh dấu Copy AVAILABLE để bỏ qua bàn giao. Nếu không có Kafka, vẫn có thể xác minh phân bổ trong Core nhưng Work Inbox/Thông báo Insight chưa thể được xác nhận đã nhận event. Bộ E2E bật Kafka cô lập kiểm thêm tạo Hold/Loan, bàn giao, trả, phân bổ kế tiếp, Work Inbox, deep link và notification delivery.
 
+## Luồng quản trị Admin
+
+1. Mở `/nhan-vien/bang-dieu-khien`: tài khoản bị khóa, báo cáo moderation và giữ chỗ cần xử lý đứng trước các KPI vận hành; mọi số liệu lấy từ API và có trạng thái lỗi/tải riêng.
+2. Mở **Tài khoản và phân quyền**, xem audit timeline trong drawer; đổi trạng thái/vai trò cần lý do, version và xác nhận. Mở **Báo cáo đánh giá**, đối chiếu nhan đề, nội dung snapshot và lý do rồi quyết định ẩn hoặc bỏ qua báo cáo.
+3. Với moderation, nhan đề lấy từ Catalog theo batch; nếu nguồn không tải được, giao diện hiện lỗi và cho thử lại, không giả lập tên sách. Không dùng tài khoản Librarian để thay thế xác minh quyền Admin.
+
+Work Inbox hiện cho Librarian/Admin xem dữ liệu toàn hệ thống; bộ lọc chi nhánh chỉ lọc kết quả, không phải ranh giới ủy quyền. Chưa có quan hệ phân công nhân viên–chi nhánh để giới hạn thêm. Không trình diễn hoặc mô tả bộ lọc này như kiểm soát truy cập.
+
 ## Luồng trình diễn Phase 5–7
 
-1. Kiểm kê: Nhân viên mở phiên theo chi nhánh/kệ, quét barcode bằng bàn phím hoặc máy quét kiểu bàn phím, rồi chốt. Có thể quét ở kệ khác trên database demo để tạo bằng chứng sai kệ; xem snapshot, scan và anomaly trước khi xác nhận chuyển kệ. Việc xác nhận thay đổi vị trí Copy demo, nên ghi lại vị trí ban đầu nếu cần trình diễn lại. Không có camera/offline; chưa kiểm máy quét vật lý trên máy thứ hai.
+1. Kiểm kê: Nhân viên mở phiên theo chi nhánh/kệ, nhập barcode, dùng máy quét kiểu bàn phím hoặc camera rồi kiểm tra mã trước khi ghi nhận scan. Có thể quét ở kệ khác trên database demo để tạo bằng chứng sai kệ; xem snapshot, scan và anomaly trước khi xác nhận chuyển kệ. Việc xác nhận thay đổi vị trí Copy demo, nên ghi lại vị trí ban đầu nếu cần trình diễn lại. Khi mất mạng, hàng đợi chỉ giữ trong bộ nhớ trang và cần chủ động đồng bộ; tải lại hoặc đóng ứng dụng sẽ mất các mã chưa gửi. Camera đã có kiểm thử giả lập, chưa có bằng chứng webcam hoặc máy quét vật lý trên máy thứ hai.
 2. Tìm sách: Tìm tên có dấu và không dấu, thử tên gần đúng, tác giả và ISBN có trong Catalog. Chọn bí danh “Khoa học giả tưởng” để lọc về Category chuẩn “Khoa học viễn tưởng”; mở trang tiếp theo rồi reload để thấy URL giữ bộ lọc. Gợi ý trên topbar gọi API Core, không tải toàn bộ 10.013 Book vào trình duyệt.
 3. Chuẩn bị số liệu Acquisition: Với cùng Book và chi nhánh có Copy vật lý, tạo một Loan và một Hold đang WAITING qua luồng nghiệp vụ. Chọn cửa sổ UTC bắt đầu trước Loan và kết thúc sau Loan nhưng không vượt hiện tại. Nếu chưa chuẩn bị, trang phân tích vẫn hợp lệ nhưng sẽ cho số liệu thấp hoặc rỗng; không mô tả nó là nhu cầu cao.
 4. Phân tích và quyết định: Librarian mở “Đề xuất bổ sung sách”, chọn Book/chi nhánh/cửa sổ, xem số Copy, Hold, Loan, score, confidence và lý do thiếu Favorite. Lưu DRAFT, reload để kiểm persistence, nhập lý do rồi duyệt nội bộ. Tạo một đề xuất khác ở cửa sổ khác để thử từ chối. Mở bằng chứng/audit và tải CSV. APPROVED không tạo đơn mua, thanh toán hoặc Copy mới.

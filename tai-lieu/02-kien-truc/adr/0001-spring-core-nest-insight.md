@@ -17,3 +17,7 @@ Cần event idempotent, observability xuyên service và tránh business rule b�
 ## Bổ sung Phase 2.5
 
 Insight sở hữu lịch sử tra ISBN trong PostgreSQL riêng bằng Prisma. Đây là dữ liệu nghiệp vụ của quá trình discovery, không phải bản sao Book/Edition của Core. Chỉ lưu UUID actor, ISBN, provider/status và thời gian; replay gọi lại nguồn hiện tại. Core vẫn xác thực principal/role; Insight kiểm owner mỗi query. Read model/search/event nói ở quyết định gốc vẫn planned. Phương án hybrid được DEV1 chấp thuận cho triển khai; việc đáp ứng scope NestJS của học phần còn chờ giảng viên xác nhận. Chi tiết ở [ORM](../metadata-history-orm.md).
+
+## Cập nhật sau triển khai lưu thông và thông báo
+
+Đoạn Phase 2.5 ở trên ghi nhận thời điểm ra quyết định. Hiện Core đã có tìm kiếm PostgreSQL FTS/trigram và outbox; Insight đã có consumer sự kiện Loan/Hold, lưu thông báo và xử lý đề xuất bổ sung dựa trên API số liệu Core. Không có search engine riêng trong Insight hoặc truy cập chéo database. Redis phân tán và object storage vẫn chưa dùng cho các luồng này. Cấu hình bật/tắt consumer được trình bày trong [sơ đồ container hiện tại](../container-diagram.md).

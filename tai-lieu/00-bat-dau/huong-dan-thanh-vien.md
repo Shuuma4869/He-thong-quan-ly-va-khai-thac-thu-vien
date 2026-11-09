@@ -4,6 +4,8 @@
 
 Tuan làm trên `Tuan/core-platform`; Toan làm trên `Toan/common-modules`. Mỗi nhánh mở PR trực tiếp vào `main`, chờ review và CI; không có bước tích hợp qua develop. Không tự merge khi chưa được duyệt. Trước task: kiểm working tree, fetch, xem commit graph rồi đồng bộ main bằng cách bảo toàn thay đổi local; không force-push/reset hoặc đưa commit chưa merge của người khác vào nhánh mình.
 
+`Tuan/core-platform` là nhánh phát triển duy nhất của Tuan, kể cả khi sửa lỗi desktop hoặc phát hành. Mọi PR của Tuan dùng nhánh này làm head và `main` làm base. Workspace phát triển, kiểm thử và build chính thức là `D:\LAMS`; không tạo thêm worktree phát triển. Sau khi PR được merge, fetch rồi fast-forward core tới main và push thông thường; kiểm tra hai nhánh remote có cùng SHA, ahead/behind đều bằng 0. Ưu tiên merge commit để giữ ancestry. Chỉ dọn nhánh cũ sau khi đã đối chiếu commit, bảo toàn file chưa commit và xác nhận không có PR mở cần giữ.
+
 Tuan sở hữu UI/desktop, Identity/Auth, shared infrastructure/CI và các nghiệp vụ giao dịch/phân tích được giao. Toan sở hữu Member backend và các module thông thường theo roadmap. Khi sửa phần người khác: phải có lỗi hoặc contract mismatch tái hiện được, bản sửa nhỏ, test regression và nêu trong PR. Không viết lại module chỉ để đổi phong cách.
 
 ## Phase 1: đầu ra và điều kiện nghiệm thu

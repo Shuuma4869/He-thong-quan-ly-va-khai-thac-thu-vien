@@ -51,8 +51,8 @@ function HoldForm({ owner, bookId, editionId }: { owner: string; bookId: string;
             : branch && !hasPhysicalCopies ? <p role="status" className="my-3">Chi nhánh này chưa có bản vật lý đang quản lý cho lựa chọn ấn bản. Chọn chi nhánh khác hoặc cho phép nhận bất kỳ ấn bản nào.</p>
               : branch && <p role="status" className="my-3">
                 {canRegisterNow
-                  ? `Hiện có ${branchCopies?.availableCopies} bản sẵn sàng và chưa có hàng đợi phù hợp. Core sẽ kiểm tra lại rồi phân bổ trong giao dịch.`
-                  : `Hiện có ${branchCopies?.availableCopies ?? 0} bản sẵn sàng; ${branchWaiting ?? 0} yêu cầu đang chờ phù hợp. Core sẽ giữ đúng thứ tự hàng đợi.`}
+                  ? `Hiện có ${branchCopies?.availableCopies} bản sẵn sàng và chưa có hàng đợi phù hợp. Hệ thống sẽ kiểm tra lại trước khi giữ sách.`
+                  : `Hiện có ${branchCopies?.availableCopies ?? 0} bản sẵn sàng; ${branchWaiting ?? 0} yêu cầu đang chờ phù hợp. Yêu cầu được xử lý theo thứ tự hàng đợi phù hợp.`}
                 {' '}Kiểm tra lúc {availability.data && new Date(availability.data.checkedAt).toLocaleString('vi-VN')}; dữ liệu có thể thay đổi trước khi gửi.</p>}
         <button type="submit" className="button-primary" disabled={!branch || submitDisabled}>
           {command.busy ? 'Đang gửi yêu cầu…' : command.uncertain ? 'Thử lại đúng yêu cầu' : canRegisterNow ? 'Đăng ký mượn tại quầy' : 'Xác nhận giữ chỗ'}</button>
@@ -61,7 +61,7 @@ function HoldForm({ owner, bookId, editionId }: { owner: string; bookId: string;
           <strong>{holdLabels[command.result.status]}</strong>
           <p>{command.result.status === 'READY'
             ? 'Bản sách đã được phân bổ. Đến quầy tại chi nhánh nhận để thủ thư xác nhận bàn giao; lượt mượn chưa bắt đầu.'
-            : 'Yêu cầu đã được ghi nhận trong hàng đợi. Core sẽ phân bổ khi có bản phù hợp và đến lượt.'}</p>
+            : 'Yêu cầu đã được ghi nhận trong hàng đợi. Bạn sẽ được phân bổ khi có bản phù hợp và đến lượt.'}</p>
           {command.result.expiresAt && <p>Nhận trước {formatTime(command.result.expiresAt)}.</p>}
           {holdDetail.isSuccess && command.result.status === 'WAITING' && holdDetail.data.queuePosition != null
             && <p>Vị trí hàng đợi hiện tại: {holdDetail.data.queuePosition}.</p>}

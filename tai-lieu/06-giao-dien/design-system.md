@@ -30,11 +30,15 @@ Màn tra cứu ISBN dùng React-Bootstrap trong phạm vi `.metadata-history`; k
 
 Reader có Catalog, My Library, đánh giá và Account Center. Staff dùng cùng topbar/sidebar nhưng có bảng điều khiển, quầy lưu thông, kiểm kê và các màn quản trị theo quyền. Bảng điều khiển đọc số tác phẩm, bản sách, phiên kiểm kê, lượt đang mượn/quá hạn và đề xuất DRAFT từ API. Biểu đồ giữ chỗ tổng hợp sự kiện 30 ngày gần đây, không phải số yêu cầu đang chờ; mỗi nguồn được đọc độc lập, không tạo thành snapshot toàn hệ thống. Admin có thêm đường vào quản lý tài khoản và báo cáo đánh giá. Email mới chỉ trở thành email đăng nhập sau khi nhập mã gửi tới hộp thư mới; khi SMTP chưa bật, giao diện nói rõ tính năng tạm chưa khả dụng.
 
+Dashboard Admin ưu tiên tài khoản bị khóa, báo cáo cần kiểm duyệt và công việc giữ chỗ trước KPI danh mục/lưu thông; màn này độc lập với dashboard Librarian. Ở 390 px, các KPI dùng hai cột để giảm chiều dài cuộn. Dashboard Librarian cũng dùng lưới hai cột ở màn hẹp nhưng các panel nghiệp vụ xếp thành một cột. Drawer kiểm duyệt phân giải nhan đề bằng một truy vấn batch Catalog và giữ thông báo lỗi/tải lại tách biệt; không hiện UUID như tên sách. Quầy mượn nêu rõ lý do nút cho mượn bị khóa theo trạng thái thẻ hoặc bản sách. Thời điểm giao dịch hiển thị theo múi giờ nghiệp vụ `Asia/Ho_Chi_Minh`.
+
 ## Kiểm tra giao diện
 
 Lượt kiểm tra local ngày 27/10/2026 dùng cùng Core và dữ liệu Catalog demo để chụp giao diện trước/sau ở 390, 768, 1024, 1366, 1440, 1536 và 1920 px. Các màn đã kiểm không tràn ngang. Trước thay đổi, topbar của Catalog cuộn theo trang và ba mục cùng đường dẫn trong sidebar cùng được tô sáng; sau thay đổi topbar bám đầu, mỗi URL chỉ có một mục active. Ba sách yêu thích của tài khoản demo trước đây hiện thành ba ô tên sách; bản mới dùng Book Card có tác giả, bìa chữ khi thiếu ảnh và hành động tương ứng. Ảnh chụp kiểm tra nằm trong `.tools/premium-before-images/` và `.tools/premium-visual/` ở máy local, không phải asset cần commit.
 
 Ở lượt kiểm tra ngày 27/10/2026, Web và EXE E2E chạy 17 ca trên PostgreSQL cô lập; bài test Search kiểm phím tắt, gợi ý thật, điều hướng hash, sidebar và back-to-top khi bật reduced motion. Đây không phải chứng nhận WCAG: screen reader, tương phản mọi trạng thái và toàn bộ form nhân viên ở mức zoom cao chưa được nghiệm thu.
+
+Bộ E2E hiện chụp các màn Reader, Librarian và Admin ở 390, 768, 1440 và 1920 px trên dữ liệu PostgreSQL/Core/Insight cô lập. Axe kiểm dashboard Librarian/Admin, Work Inbox, Hold Management, báo cáo và drawer quản trị ở các vùng được nêu trong [chiến lược kiểm thử](../07-kiem-thu/test-strategy.md); đây là kiểm tra tự động có phạm vi, không thay thế kiểm thử screen reader hoặc chứng nhận WCAG.
 
 Mặc định dùng câu tiếng Việt ngắn, nút có động từ và trạng thái trống giải thích được nguyên nhân. Dữ liệu chưa có nguồn được ghi là chưa có, không tạo số liệu hoặc ảnh giả để làm đầy giao diện.
 
@@ -55,3 +59,44 @@ Bản xem thử Appearance giữ nguyên khi chuyển route rồi quay lại. L�
 Chuông thông báo kiểm số chưa đọc mỗi 60 giây khi ở foreground, dùng cache 30 giây. Chỉ mở hộp thoại mới tải danh sách, hiển thị tối đa năm thông báo; xem nhanh không tự đánh dấu đã đọc. My Library lấy trang đầu của lượt mượn và giữ chỗ, hiển thị tối đa ba mục mỗi nhóm rồi dẫn tới trang đầy đủ.
 
 Báo cáo giữ chỗ có kỳ [từ ngày, đến ngày), chi nhánh và tác phẩm; ngày nhập theo giờ Việt Nam, giới hạn sáu tháng lịch kiểm theo UTC như server. Bảng chia 50 nhóm mỗi trang trên kết quả tối đa 10.000 nhóm. CSV dùng cùng bộ lọc đã áp dụng nhưng đọc lại dữ liệu tại lúc tải. Trạng thái chưa chọn kỳ, không có sự kiện và lỗi API được trình bày riêng.
+
+## Xác thực và trạng thái phục hồi
+
+Tiêu đề chính của trang đăng nhập và đăng ký nằm trong vùng biểu mẫu, luôn hiển thị cả trên màn nhỏ. Khối ảnh chỉ giữ thông điệp giới thiệu. Đường quay lại sau xác thực chỉ nhận đường dẫn nội bộ; đường dẫn ngoài hệ thống và vòng lặp về biểu mẫu xác thực bị loại bỏ.
+
+Khi chưa xác nhận được đăng xuất ở máy chủ, một thông báo chung vẫn hiện dù người dùng đã chuyển trang. Ứng dụng không giữ access token hay cache dữ liệu cá nhân; một cờ trong sessionStorage chặn tự khôi phục phiên khi tải lại chính tab/cửa sổ đó. Cờ này không thay thế việc thu hồi cookie trên server và không bảo đảm trạng thái của tab hoặc thiết bị khác. Khi kết nối trở lại, người dùng chọn Thử đóng phiên lại. Nếu trình duyệt không cho dùng sessionStorage, việc chặn khôi phục sau reload không được bảo đảm.
+
+Ba layout dùng chung `useLogoutNavigation`: trạng thái khách được áp dụng trước khi chuyển trang, còn yêu cầu thu hồi phiên tiếp tục ở nền. Không điều hướng lần nữa khi phản hồi logout về muộn, để người dùng có thể mở và nhập vào trang đăng nhập mới mà không bị đưa trở lại trang chủ. Auth vẫn chờ việc đóng phiên cũ kết thúc trước khi gửi lần đăng nhập tiếp theo, tránh tranh chấp cookie refresh.
+## Biểu mẫu xác thực và lỗi trường dữ liệu
+
+Đăng nhập và đăng ký đặt tiêu đề chính trong vùng biểu mẫu để vẫn đọc được ở màn hình nhỏ. Lỗi nhập liệu gắn với input qua `aria-invalid` và `aria-describedby`; thông báo chung từ máy chủ dùng vùng alert. Nút hiện mật khẩu không gửi form. Các giới hạn độ dài được diễn đạt bằng tiếng Việt.
+
+Thanh điều hướng và khung tìm kiếm landing có container query để chuyển bố cục theo chiều rộng thật của vùng chứa, kể cả khi nội dung được phóng đại. Kiểm thử tự động dùng CSS zoom 200% để kiểm reflow, cùng sáu độ rộng 390–1920 px. Đây không phải bằng chứng cho toàn bộ thao tác zoom native hoặc mọi công nghệ hỗ trợ của hệ điều hành.
+
+## Hộp thoại và ngăn chi tiết
+
+Khi mở xác nhận quản trị trên ngăn chi tiết, hộp xác nhận nhận quyền xử lý Tab, Shift+Tab và Escape; ngăn phía sau không kéo focus về các nút của mình. Đóng xác nhận bằng Escape trả focus về nút đã mở nó. Các lớp phủ dùng chung bộ đếm khóa cuộn, chỉ trả quyền cuộn cho trang khi lớp cuối đã đóng. Cách này cũng áp dụng khi lưu thành công làm đóng cả ngăn chi tiết lẫn xác nhận trong cùng một lần cập nhật.
+
+Bộ lọc Catalog trên màn hẹp dùng hộp thoại native với nền đọc rõ, khóa tương tác nền và trả focus về nút Bộ lọc khi đóng. Các lựa chọn áp dụng ngay vào URL và truy vấn; nút Xem kết quả đóng hộp thoại. Nếu đang mở một bộ chọn tác giả hoặc thể loại, Escape đóng bộ chọn trước, giữ hộp thoại bộ lọc. Trên màn rộng, bộ lọc nằm cạnh danh sách sách.
+
+Bộ chọn tham chiếu chỉ cho chọn kết quả đã tải xong của từ khóa hiện tại. Enter trong ô tìm không được gửi biểu mẫu cha, kể cả khi danh sách rỗng hoặc đang chờ tìm kiếm. Đây là yêu cầu chung cho cả lọc danh mục và biên mục.
+
+Khi biên mục đang sửa, xác nhận xóa hoặc duyệt ảnh, bộ chọn loại dữ liệu và tác phẩm cha bị khóa để tránh đổi ngữ cảnh giữa thao tác. Hủy biểu mẫu đã thay đổi cần xác nhận; lỗi lưu giữ nguyên nội dung. Cảnh báo khi tải lại/đóng trang phụ thuộc khả năng hỗ trợ của trình duyệt hoặc WebView.
+
+Các biểu mẫu có bản nháp đăng ký với `UnsavedChangesProvider`: biên mục, duyệt ảnh, hồ sơ, lý do quản trị, rà soát giữ chỗ, kiểm kê, đánh giá và đề xuất bổ sung. Web dùng `createBrowserRouter`, Windows dùng `createHashRouter`. Đổi đường dẫn hoặc tham số truy vấn qua sidebar, liên kết và Back/Forward sẽ hỏi trước khi bỏ nội dung chưa lưu. Neo trong cùng trang không làm mất biểu mẫu nên không bị chặn. Phân trang bất thường kiểm kê dùng `anomalyPage`; phân trang đánh giá dùng `reviewPage`. Cả hai đi qua cùng cơ chế xác nhận trước khi thay danh sách có nội dung đang nhập.
+
+Khi đang gửi, hộp thoại không cho bỏ trang. Nếu mất phản hồi hoặc nhận lỗi máy chủ, thông báo nêu rõ chưa biết giao dịch đã ghi nhận hay chưa; rời trang không có nghĩa là hủy giao dịch. Người dùng cần đọc lại dữ liệu trước khi gửi yêu cầu mới. Các kiểm tra phiên bản và mã yêu cầu nghiệp vụ vẫn được giữ nguyên. Đăng xuất hoặc hết phiên luôn được phép: bản nháp trong bộ nhớ bị bỏ, cache tài khoản được xóa, không mang nội dung sang người đăng nhập sau. Bản xem thử Appearance nằm ở provider riêng và còn nguyên khi đổi route, vì vậy không cần hỏi bỏ bản nháp mỗi lần chuyển trang.
+
+Thông báo từ Insight có thể đến sau giao dịch Core. Danh sách và số chưa đọc là hai truy vấn riêng, không phải một snapshot nguyên tử. Khi nhận danh sách mới, giao diện làm mới số chưa đọc; chuông và trang thông báo dùng chung cache theo tài khoản. Dữ liệu được đọc lại khi trở về cửa sổ, kết nối lại mạng và mỗi phút khi cửa sổ hoạt động. Người dùng cũng có thể chọn Cập nhật thông báo. Số chưa đọc tính trên toàn bộ hộp thư, không chỉ trang đang xem; lỗi tải không được diễn đạt thành không có thông báo.
+
+Tùy chọn ẩn/hiện widget chỉ xuất hiện với dashboard Librarian. Dashboard Admin có bố cục nhiệm vụ riêng, không dùng tùy chọn này. Trong trang Giao diện, liên kết Khám phá sách mở Catalog; các thao tác lưu, bỏ thay đổi và khôi phục mặc định chờ cấu hình tài khoản tải xong mới được dùng.
+
+## Đọc mã bằng camera
+
+Nút quét camera ưu tiên `BarcodeDetector` khi trình duyệt hỗ trợ. Với WebView2 không có API này, ứng dụng tải bộ đọc ZXing được đóng gói cùng frontend. Ảnh camera được giải mã trên máy, không gửi lên API hoặc CDN; khung đọc dự phòng giới hạn chiều rộng 960 px và vòng quét cách nhau 400 ms. Bộ đọc chỉ tải khi người dùng mở camera, không nằm trong luồng tải đầu trang.
+
+Nhận được mã chỉ điền ô nhập; nhân viên kiểm tra mã và chọn Ghi nhận scan để gửi. Hủy lúc đang tải bộ đọc, chờ quyền hoặc đang quét đều làm hết hiệu lực lượt cũ. Stream cấp muộn phải dừng, không được tự mở lại camera. Khi thiết bị hoặc quyền truy cập không khả dụng, người dùng vẫn nhập mã hoặc dùng máy quét bàn phím.
+
+Frontend pin `@zxing/browser` 0.1.5 và `@zxing/library` 0.21.3 để tương thích Node 22. Giữ nguyên các giấy phép đi kèm gói trong `frontend/public/licenses`, được sao chép vào bản Web và tài nguyên EXE. Kết quả giải mã video kiểm thử không thay thế nghiệm thu webcam vật lý, chất lượng ảnh thực tế hoặc thao tác rút thiết bị.
+
+Form báo cáo đánh giá khóa gửi ngay khi nhận submit, trước khi trạng thái chờ được render, để hai lần submit sát nhau không phát hai request. Lỗi mạng hoặc timeout không được xem là giao dịch chắc chắn thất bại; giữ lý do và yêu cầu người đọc kiểm tra lại. HTTP 409 ở đây có thể do đã báo cáo hoặc đánh giá đã bị ẩn, không phải xung đột version. Lý do hợp lệ dài 10–500 ký tự; thông báo lỗi của form này tách khỏi quy tắc viết đánh giá 1–5000 ký tự và điểm sao.

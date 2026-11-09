@@ -11,7 +11,7 @@ export function AuthHero() {
       <Link className="auth-home-link" to="/"><ArrowLeft size={16} /> Về trang chủ</Link>
       <div className="auth-hero-copy">
         <BrandLogo variant="full" tone="light" />
-        <h1 id="auth-hero-title" className="editorial-title">Tìm sách nhanh hơn.<br />Quản lý thư viện gọn hơn.</h1>
+        <p id="auth-hero-title" className="editorial-title">Tìm sách nhanh hơn.<br />Quản lý thư viện gọn hơn.</p>
         <p>Tra cứu sách, theo dõi lượt mượn và xử lý các nghiệp vụ thư viện trong một hệ thống thống nhất.</p>
       </div>
     </div>

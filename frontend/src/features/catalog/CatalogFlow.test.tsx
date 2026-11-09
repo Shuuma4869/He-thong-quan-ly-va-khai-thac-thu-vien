@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { HashRouter, MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, HashRouter, RouterProvider } from 'react-router-dom';
+import { UnsavedChangesProvider } from '../../shared/navigation/UnsavedChangesProvider';
 import { AppProviders } from '../../app/providers/AppProviders';
 import { AppRouter } from '../../app/router/AppRouter';
 
@@ -12,7 +13,10 @@ const session={accessToken:'test-access',accessTokenExpiresAt:'2030-01-01T00:00:
 const page=(items:unknown[],number=0,total=items.length) => ({items,page:{number,size:20,totalElements:total,totalPages:Math.ceil(total/20)}});
 let fetchMock:ReturnType<typeof vi.fn>;
 let role='READER';
-function app(path='/sach') { return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRouter /></MemoryRouter></AppProviders>); }
+function app(path='/sach') {
+  const router = createMemoryRouter([{ path: '*', element: <AppProviders><UnsavedChangesProvider><AppRouter/></UnsavedChangesProvider></AppProviders> }], { initialEntries: [path] });
+  return render(<RouterProvider router={router}/>);
+}
 function response(url:string) {
   const path=new URL(url).pathname;
   if (path.endsWith('/auth/refresh')) return {...session,user:{...user,roles:[role]}};
@@ -40,8 +44,83 @@ function response(url:string) {
   if (path.endsWith('/books')) return page([book],Number(new URL(url).searchParams.get('page')??0),21);
   return page([]);
 }
+it('giữ ngữ cảnh biên mục và xác nhận trước khi bỏ nội dung chưa lưu', async () => {
+  // jsdom does not implement native dialog presentation; browser E2E covers focus/inert behavior.
+  const prototype = HTMLDialogElement.prototype;
+  const originalShow = Object.getOwnPropertyDescriptor(prototype, 'showModal');
+  const originalClose = Object.getOwnPropertyDescriptor(prototype, 'close');
+  Object.defineProperty(prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(prototype, 'close', { configurable: true, value(this: HTMLDialogElement) { this.open = false; } });
+  try {
+  role = 'LIBRARIAN';
+  app('/nhan-vien/danh-muc');
+  fireEvent.click(await screen.findByRole('button', { name: 'Thêm tác phẩm' }));
+  expect(screen.getByLabelText('Loại dữ liệu')).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Tên tác phẩm'), { target: { value: 'Bản nháp chưa lưu' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy chỉnh sửa' }));
+  const confirmation = screen.getByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' });
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Tiếp tục chỉnh sửa' }));
+  expect(screen.getByLabelText('Tên tác phẩm')).toHaveValue('Bản nháp chưa lưu');
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy chỉnh sửa' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bỏ thay đổi' }));
+  expect(screen.queryByLabelText('Tên tác phẩm')).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Loại dữ liệu')).toBeEnabled());
+  expect(fetchMock.mock.calls.some(([url, init]) => new URL(String(url)).pathname.endsWith('/books')
+    && init?.method === 'POST')).toBe(false);
+  } finally {
+    if (originalShow) Object.defineProperty(prototype, 'showModal', originalShow); else Reflect.deleteProperty(prototype, 'showModal');
+    if (originalClose) Object.defineProperty(prototype, 'close', originalClose); else Reflect.deleteProperty(prototype, 'close');
+  }
+});
 beforeEach(() => { role='READER'; fetchMock=vi.fn((url:string) => Promise.resolve(Response.json(response(url)))); vi.stubGlobal('fetch',fetchMock); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); window.history.replaceState(null, '', '/'); });
+
+it('lưu biên mục lỗi giữ input và cảnh báo kết quả chưa rõ khi chuyển trang', async () => {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, writable: true, value(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, writable: true, value(this: HTMLDialogElement) { this.open = false; } });
+  role = 'LIBRARIAN';
+  fetchMock.mockImplementation((url: string, init: RequestInit) => Promise.resolve(
+    new URL(url).pathname.endsWith('/books') && init.method === 'POST'
+      ? Response.json({ detail: 'Mất kết nối sau khi gửi' }, { status: 503 }) : Response.json(response(url))));
+  app('/nhan-vien/danh-muc');
+  fireEvent.click(await screen.findByRole('button', { name: 'Thêm tác phẩm' }));
+  fireEvent.change(screen.getByLabelText('Tên tác phẩm'), { target: { value: 'Bản nháp khi mất kết nối' } });
+  fireEvent.click(screen.getByText('Lưu thông tin'));
+  await screen.findByRole('alert');
+  fireEvent.click(screen.getByText('Xem danh mục dành cho bạn đọc →'));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent('Rời trang không hủy giao dịch');
+  fireEvent.click(within(dialog).getByText('Tiếp tục chỉnh sửa'));
+  expect(screen.getByLabelText('Tên tác phẩm')).toHaveValue('Bản nháp khi mất kết nối');
+  fireEvent.click(screen.getByRole('button', { name: 'Hủy chỉnh sửa' }));
+  expect(await screen.findByRole('dialog')).toHaveTextContent('Đóng biểu mẫu không hủy giao dịch');
+  fireEvent.click(screen.getByRole('button', { name: 'Tiếp tục chỉnh sửa' }));
+  expect(screen.getByLabelText('Tên tác phẩm')).toHaveValue('Bản nháp khi mất kết nối');
+});
+
+it('tạo tác phẩm xong quay lại dashboard nhận số liệu mới ngay', async () => {
+  role = 'LIBRARIAN';
+  let total = 21;
+  fetchMock.mockImplementation((url: string, init: RequestInit) => {
+    if (init.method === 'POST' && url.endsWith('/books')) {
+      total++;
+      return Promise.resolve(Response.json({ ...book, title: 'Tác phẩm mới' }, { status: 201 }));
+    }
+    if (new URL(url).pathname.endsWith('/books')) return Promise.resolve(Response.json(page([book], 0, total)));
+    return Promise.resolve(Response.json(response(url)));
+  });
+  app('/nhan-vien/bang-dieu-khien');
+  const metric = await screen.findByText('Tác phẩm trong danh mục');
+  await waitFor(() => expect(within(metric.closest('article')!).getByText('21')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('link', { name: 'Quản lý danh mục' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Thêm tác phẩm' }));
+  fireEvent.change(screen.getByLabelText('Tên tác phẩm'), { target: { value: 'Tác phẩm mới' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu thông tin' }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Lưu thông tin' })).not.toBeInTheDocument());
+  fireEvent.click(document.querySelector<HTMLAnchorElement>('.library-sidebar-desktop a[href="/nhan-vien/bang-dieu-khien"]')!);
+  const updated = await screen.findByText('Tác phẩm trong danh mục');
+  await waitFor(() => expect(within(updated.closest('article')!).getByText('22')).toBeInTheDocument());
+});
 
 it('desktop mở ấn bản ngay tại trang sách, giữ nguyên route và có lối giữ chỗ', async () => {
   window.history.replaceState(null, '', `/#/sach/${id}`);

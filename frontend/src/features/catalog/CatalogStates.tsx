@@ -15,6 +15,6 @@ export function Pagination({ page, onChange }: { page: Page; onChange: (page: nu
     <button type="button" className="button-secondary" disabled={page.number === 0} onClick={() => onChange(page.number - 1)}>Trang trước</button>
     <span>Trang {page.number + 1} / {Math.max(1, page.totalPages)} · {page.totalElements} kết quả</span>
     <button type="button" className="button-secondary" disabled={page.number + 1 >= page.totalPages} onClick={() => onChange(page.number + 1)}>Trang sau</button>
-    {page.number > 0 && page.totalElements === 0 && <button type="button" className="button-secondary" onClick={() => onChange(0)}>Về trang đầu</button>}
+    {page.number > 0 && page.number >= page.totalPages && <button type="button" className="button-secondary" onClick={() => onChange(0)}>Về trang đầu</button>}
   </nav>;
 }

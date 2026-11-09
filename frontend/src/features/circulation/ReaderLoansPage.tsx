@@ -55,7 +55,7 @@ function ReaderLoans({ owner }: { owner: string }) {
           <option value="">Tất cả</option><option value="ACTIVE">Đang mượn (gồm quá hạn)</option><option value="OVERDUE">Quá hạn</option><option value="RETURNED">Đã trả</option>
         </select></label>
         {loans.isPending ? <p role="status">Đang tải lượt mượn…</p> : loans.isError ? <CirculationError error={loans.error} reload={() => void loans.refetch()}/>
-          : <>{!loans.data.items.length && <p>Không có lượt mượn ở trang này.</p>}
+          : <>{!loans.data.items.length && <div className="editorial-card"><p>{status ? 'Không có lượt mượn phù hợp với bộ lọc này.' : page > 0 ? 'Không có lượt mượn ở trang này.' : 'Bạn chưa có lượt mượn nào.'}</p><p className="mt-2">Tìm sách có bản vật lý, đăng ký nhận tại quầy và mang thẻ thành viên đến thư viện.</p><Link className="text-link" to="/sach">Khám phá sách →</Link></div>}
             <div className="grid gap-4 my-4">{loans.data.items.map(loan => <LoanCard key={`${loan.loanId}:${loan.version}`} owner={owner} loan={loan} reload={() => void loans.refetch()}/>)}</div>
             <Pagination page={loans.data.page} onChange={p => change('page', String(p))}/>
             <p className="text-sm text-muted">Trạng thái tính lúc {formatTime(loans.data.asOf)}. Tải lại trước khi thực hiện nếu dữ liệu đã cũ.</p></>}

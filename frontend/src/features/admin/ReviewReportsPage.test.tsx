@@ -16,11 +16,15 @@ const report = { id: '6dff85ce-9a56-4cca-845d-a6f5d36cbe32', reviewId: '5a5804a7
 afterEach(() => vi.unstubAllGlobals());
 
 it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đánh giá', async () => {
+  const originalOverflow = document.body.style.overflow;
   let decided = false;
   const fetchMock = vi.fn((url: string, init: RequestInit) => {
     if (String(url).endsWith('/auth/refresh')) return Promise.resolve(Response.json(session));
     if (String(url).includes('/admin/review-reports?')) return Promise.resolve(Response.json({
       items: decided ? [] : [report], page: 0, size: 20, totalElements: decided ? 0 : 1 }));
+    if (String(url).includes('/public/catalog/books/batch?')) return Promise.resolve(Response.json([
+      { id: report.bookId, title: 'Tác phẩm báo cáo', description: null, authors: [], categories: [] },
+    ]));
     if (String(url).endsWith(`/admin/review-reports/${report.id}/decisions`) && init.method === 'POST') {
       decided = true;
       return Promise.resolve(Response.json({ reportId: report.id, action: 'HIDE', reviewStatus: 'HIDDEN',
@@ -34,6 +38,7 @@ it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đ
   fireEvent.click(await screen.findByRole('button', { name: 'Xem chi tiết' }));
   const drawer = await screen.findByRole('dialog', { name: 'Chi tiết báo cáo' });
   expect(await within(drawer).findByText('Nội dung tại thời điểm báo cáo')).toBeInTheDocument();
+  expect(within(drawer).getByRole('heading', { name: 'Tác phẩm báo cáo · 2/5' })).toBeInTheDocument();
   fireEvent.change(within(drawer).getByLabelText('Lý do quyết định'), { target: { value: 'Có nội dung xúc phạm rõ ràng' } });
   fireEvent.click(within(drawer).getByRole('button', { name: 'Ẩn đánh giá' }));
   const confirmation = await screen.findByRole('alertdialog', { name: 'Ẩn đánh giá này?' });
@@ -45,6 +50,7 @@ it('quản trị viên thấy ảnh chụp nội dung và ghi lý do khi ẩn đ
       && JSON.parse(String(init.body)).reason === 'Có nội dung xúc phạm rõ ràng')).toBe(true));
   expect(await screen.findByRole('status')).toHaveTextContent('Đã lưu quyết định.');
   expect(await screen.findByText('Không có báo cáo ở trang này.')).toBeInTheDocument();
+  expect(document.body.style.overflow).toBe(originalOverflow);
 });
 
 it('người đọc không tải hàng đợi kiểm duyệt', async () => {

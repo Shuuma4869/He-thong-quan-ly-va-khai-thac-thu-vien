@@ -1,9 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, HashRouter } from 'react-router-dom';
-import { AppProviders } from './app/providers/AppProviders';
-import { AppRouter } from './app/router/AppRouter';
-import { AppearanceProvider } from './features/appearance/AppearanceProvider';
+import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-router-dom';
+import { Application } from './app/router/Application';
 import '@fontsource/be-vietnam-pro/400.css';
 import '@fontsource/be-vietnam-pro/500.css';
 import '@fontsource/be-vietnam-pro/600.css';
@@ -14,14 +12,11 @@ import './styles/library-theme.css';
 import './styles/premium.css';
 import './styles/appearance.css';
 
-const Router = '__TAURI_INTERNALS__' in window ? HashRouter : BrowserRouter;
+const createRouter = '__TAURI_INTERNALS__' in window ? createHashRouter : createBrowserRouter;
+const router = createRouter([{ path: '*', element: <Application/> }]);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Router>
-      <AppProviders>
-        <AppearanceProvider><AppRouter /></AppearanceProvider>
-      </AppProviders>
-    </Router>
+    <RouterProvider router={router}/>
   </StrictMode>,
 );

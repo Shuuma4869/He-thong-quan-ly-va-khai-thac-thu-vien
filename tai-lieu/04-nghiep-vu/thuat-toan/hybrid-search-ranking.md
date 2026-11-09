@@ -18,4 +18,8 @@
 
 Mỗi Book lấy điều kiện đầu tiên khớp theo bảng; nếu bằng điểm thì ID quyết định thứ tự. Đây là quy tắc xác định, không cộng độ phổ biến hay số sao vào điểm. Rating/availability không can thiệp xếp hạng. Trang kết quả và tổng được đọc trong cùng transaction; phân trang bằng request khác có thể thay đổi khi Catalog được sửa.
 
+Nhánh ISBN và tác giả lấy tập `book_id` phù hợp rồi kiểm tra bằng `IN`. Cách này tránh quét lại quan hệ cho từng Book và không nhân đôi kết quả khi nhiều tác giả của một sách cùng khớp. Các khóa `book_id` của Edition và BookAuthor không nhận null; điểm, điều kiện lọc và thứ tự phân trang vẫn giữ nguyên.
+
+Khi phân tích độ trễ, cần xem cả thống kê của các bảng liên quan và phần JIT trong `EXPLAIN (ANALYZE, BUFFERS)`. Bảng phụ mới tạo có thể chưa có thống kê dù Book đã được nhập và `ANALYZE`. PostgreSQL quyết định bật JIT theo chi phí ước lượng; chi phí biên dịch có thể lớn hơn lợi ích với truy vấn ngắn ([tài liệu PostgreSQL 17](https://www.postgresql.org/docs/17/jit-decision.html)). Không tắt JIT toàn hệ thống hoặc thay isolation chỉ dựa vào một mẫu chậm. Benchmark cần ghi fixture, trạng thái thống kê, số mẫu, p50/p95/max và phân biệt thời gian API với thời gian hiển thị.
+
 Kiểm thử cần giữ: tiếng Việt có/không dấu, ISBN đúng, tên tác giả, tên đúng đứng trước tiền tố, thứ tự trang ổn định, bộ lọc, query chứa cú pháp SQL và từ khóa rỗng. Trước khi thay đổi điểm hoặc bật vector, phải benchmark trên dữ liệu có quy mô, chốt phiên bản xếp hạng và cập nhật contract/test. `pgvector` chưa được bật.

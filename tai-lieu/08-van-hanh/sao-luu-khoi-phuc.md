@@ -29,6 +29,18 @@ Lưu cùng manifest gồm thời điểm bắt đầu/kết thúc từng dump, c
 
 ## Restore và mở lại dịch vụ
 
+### Khi schema đã có nhưng lịch sử Prisma thiếu migration
+
+`migrate status` báo migration chưa áp dụng không chứng minh các bảng/cột của migration đó chưa tồn tại. Trước khi chạy deploy trên database có dữ liệu, kiểm `_prisma_migrations` (checksum, finished/rolled back và lỗi), nội dung SQL trong Git và schema thực tế. Đối chiếu cả kiểu dữ liệu, null/default, khóa ngoại, unique/check constraint, index, sequence, trigger/function và quyền. So sánh trên cùng phiên bản PostgreSQL hoặc giải thích được khác biệt biểu diễn của biểu thức SQL.
+
+Tạo backup mới của cả hai database và restore vào môi trường cô lập. Nếu **toàn bộ thay đổi của một migration đã có hiệu lực** và chỉ thiếu bản ghi, có thể dùng `prisma migrate resolve --applied <ten-migration>` trên bản sao theo [quy trình hotfix của Prisma 6](https://www.prisma.io/docs/orm/v6/prisma-migrate/workflows/patching-and-hotfixing). Lệnh này ghi nhận lịch sử, không chạy lại SQL. Tiếp đó chạy deploy hai lần, kiểm status, fingerprint dữ liệu nghiệp vụ, API và restart. Không dùng resolve cho migration còn thiếu DDL hoặc chưa đáp ứng bất biến dữ liệu.
+
+Checksum khác cần được điều tra riêng: giữ hash gốc, tìm nội dung đã triển khai và so byte với file trong Git. Khác dòng kết thúc hoặc dòng trống có thể làm hash khác dù SQL tương đương, nhưng phải chứng minh bằng nội dung cụ thể. Không sửa migration lịch sử, cập nhật checksum bằng SQL hoặc xóa lịch sử để bỏ cảnh báo. Kết quả deploy/status thành công cũng không chứng minh checksum từng migration đã trùng.
+
+Chỉ áp dụng quy trình đã diễn tập lên database gốc sau phê duyệt riêng và trong cửa sổ bảo trì. Lưu manifest trước/sau và giữ nguyên backup. Nếu cần khôi phục, restore sang database mới và đối soát trước khi đổi kết nối; không tự restore đè. Database mới tạo từ source và database cũ có lịch sử riêng là hai phạm vi nghiệm thu khác nhau.
+
+### Các bước khôi phục
+
 1. Khóa quyền truy cập file dump; xác minh checksum, môi trường, version ứng dụng và lịch migration. Giữ nguyên database nguồn để điều tra.
 2. Tạo **hai database rỗng có tên mới** trong môi trường thử nghiệm hoặc vùng khôi phục được phê duyệt. Không restore đè demo, không `docker compose down -v`, `flyway clean` hay `prisma db push`.
 3. Restore từng archive bằng `pg_restore --exit-on-error --single-transaction --no-owner --no-acl --dbname=<database-moi> <dump>`. So `flyway_schema_history`, `_prisma_migrations`, số hàng và các bất biến nghiệp vụ: tài khoản, Book/Edition/Copy, Loan/Hold, phiên kiểm kê, lịch sử ISBN, đề xuất và quyết định.
